@@ -139,45 +139,120 @@ public static class EnvironmentLoader
         TraceFormatter.PrintHeader("ENVIRONMENT FILE DETECTION");
         
         var foundFiles = result.LoadedFiles.Where(f => f.Exists).ToList();
-        var missingFiles = result.LoadedFiles.Where(f => !f.Exists).ToList();
         
-        // Show found files
-        foreach (var envFile in foundFiles)
+        if (!foundFiles.Any())
         {
-            var relativePath = Path.GetRelativePath(Directory.GetCurrentDirectory(), envFile.Path);
-            TraceFormatter.PrintTrace("Found", relativePath, "LOAD");
-            
-            if (showValues)
+            TraceFormatter.PrintTrace("No .env files found", "in directory hierarchy", "INFO");
+        }
+        else
+        {
+            // Show found files with cleaner paths
+            foreach (var envFile in foundFiles)
             {
-                foreach (var kvp in envFile.Variables)
+                var cleanPath = GetCleanPath(envFile.Path);
+                TraceFormatter.PrintTrace("Found", cleanPath, "LOAD");
+                
+                if (envFile.Variables.Any())
                 {
-                    var displayValue = kvp.Value.Length > 40 ? kvp.Value[..37] + "..." : kvp.Value;
-                    TraceFormatter.PrintTrace($"  {kvp.Key}", displayValue, "VAR");
+                    if (showValues)
+                    {
+                        foreach (var kvp in envFile.Variables.OrderBy(x => x.Key))
+                        {
+                            var displayValue = kvp.Value.Length > 40 ? kvp.Value[..37] + "..." : kvp.Value;
+                            TraceFormatter.PrintTrace($"  {kvp.Key}", displayValue, "VAR");
+                        }
+                    }
+                    else
+                    {
+                        // Show just the keys without values
+                        var keys = string.Join(", ", envFile.Variables.Keys.OrderBy(x => x));
+                        var keyDisplay = keys.Length > 60 ? keys[..57] + "..." : keys;
+                        TraceFormatter.PrintTrace($"  Keys", keyDisplay, "KEYS");
+                    }
+                }
+                else
+                {
+                    TraceFormatter.PrintTrace($"  Empty file", "no variables", "EMPTY");
                 }
             }
-            else
-            {
-                TraceFormatter.PrintTrace($"  Variables", $"{envFile.Variables.Count} found", "COUNT");
-            }
-        }
-        
-        // Show missing files
-        foreach (var envFile in missingFiles)
-        {
-            var relativePath = Path.GetRelativePath(Directory.GetCurrentDirectory(), envFile.Path);
-            TraceFormatter.PrintTrace("Missing", relativePath, "SKIP");
         }
         
         TraceFormatter.PrintHeader("MERGED ENVIRONMENT");
         TraceFormatter.PrintTrace("Total Variables", $"{result.MergedVariables.Count} variables", "MERGE");
         
-        if (showValues)
+        if (result.MergedVariables.Any())
         {
-            foreach (var kvp in result.MergedVariables.OrderBy(x => x.Key))
+            if (showValues)
             {
-                var displayValue = kvp.Value.Length > 50 ? kvp.Value[..47] + "..." : kvp.Value;
-                TraceFormatter.PrintTrace(kvp.Key, displayValue, "ENV");
+                foreach (var kvp in result.MergedVariables.OrderBy(x => x.Key))
+                {
+                    var displayValue = kvp.Value.Length > 50 ? kvp.Value[..47] + "..." : kvp.Value;
+                    TraceFormatter.PrintTrace(kvp.Key, displayValue, "ENV");
+                }
+            }
+            else
+            {
+                // Show just the merged keys
+                var allKeys = string.Join(", ", result.MergedVariables.Keys.OrderBy(x => x));
+                var keyChunks = ChunkString(allKeys, 70);
+                foreach (var chunk in keyChunks)
+                {
+                    TraceFormatter.PrintTrace("Keys", chunk, "ENV");
+                }
             }
         }
+    }
+    
+    private static string GetCleanPath(string fullPath)
+    {
+        var currentDir = Directory.GetCurrentDirectory();
+        var relativePath = Path.GetRelativePath(currentDir, fullPath);
+        
+        // If it's just .env in current directory, show it as such
+        if (relativePath == ".env")
+            return ".env (current)";
+        
+        // Count directory levels up
+        var upLevels = relativePath.Count(c => c == Path.DirectorySeparatorChar && relativePath.StartsWith(".."));
+        if (upLevels > 0)
+        {
+            return $".env ({upLevels} level{(upLevels > 1 ? "s" : "")} up)";
+        }
+        
+        // For subdirectories (shouldn't happen with our upward search, but just in case)
+        return relativePath;
+    }
+    
+    private static List<string> ChunkString(string text, int maxLength)
+    {
+        var chunks = new List<string>();
+        if (text.Length <= maxLength)
+        {
+            chunks.Add(text);
+            return chunks;
+        }
+        
+        var words = text.Split(',');
+        var currentChunk = "";
+        
+        foreach (var word in words)
+        {
+            var wordWithComma = currentChunk.Length == 0 ? word.Trim() : "," + word;
+            if (currentChunk.Length + wordWithComma.Length <= maxLength)
+            {
+                currentChunk += wordWithComma;
+            }
+            else
+            {
+                if (currentChunk.Length > 0)
+                    chunks.Add(currentChunk);
+                currentChunk = word.Trim();
+            }
+        }
+        
+        if (currentChunk.Length > 0)
+            chunks.Add(currentChunk);
+            
+        return chunks;
     }
 }
