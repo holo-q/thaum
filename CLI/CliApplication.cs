@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using Thaum.Core.Services;
 using Thaum.Core.Models;
 using Thaum.Core.Utils;
@@ -11,6 +12,7 @@ public class CliApplication
     private readonly SimpleLspClientManager _lspManager;
     private readonly ILogger<CliApplication> _logger;
     private readonly PerceptualColorEngine _colorEngine;
+    private readonly HierarchicalSummarizationEngine _summaryEngine;
 
     public CliApplication(ILogger<CliApplication> logger)
     {
@@ -18,6 +20,24 @@ public class CliApplication
         _lspManager = new SimpleLspClientManager(loggerFactory.CreateLogger<SimpleLspClientManager>());
         _logger = logger;
         _colorEngine = new PerceptualColorEngine();
+        
+        // Setup configuration for LLM provider
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddEnvironmentVariables()
+            .Build();
+            
+        var httpClient = new HttpClient();
+        var llmProvider = new HttpLlmProvider(httpClient, configuration, loggerFactory.CreateLogger<HttpLlmProvider>());
+        var cache = new SqliteCacheService(configuration, loggerFactory.CreateLogger<SqliteCacheService>());
+        
+        _summaryEngine = new HierarchicalSummarizationEngine(
+            llmProvider, 
+            _lspManager, 
+            cache, 
+            loggerFactory.CreateLogger<HierarchicalSummarizationEngine>()
+        );
     }
 
     public async Task RunAsync(string[] args)
@@ -92,8 +112,36 @@ public class CliApplication
     {
         var options = ParseSummarizeOptions(args);
         
-        Console.WriteLine($"Summarizing {options.ProjectPath} ({options.Language})...");
-        Console.WriteLine("Note: Summarization not yet implemented in simplified version.");
+        Console.WriteLine($"Starting hierarchical summarization of {options.ProjectPath} ({options.Language})...");
+        Console.WriteLine();
+
+        try
+        {
+            var startTime = DateTime.UtcNow;
+            var hierarchy = await _summaryEngine.ProcessCodebaseAsync(options.ProjectPath, options.Language);
+            var duration = DateTime.UtcNow - startTime;
+            
+            // Display extracted keys
+            TraceFormatter.PrintHeader("EXTRACTED KEYS");
+            foreach (var key in hierarchy.ExtractedKeys)
+            {
+                TraceFormatter.PrintTrace(key.Key, key.Value.Length > 80 ? key.Value[..77] + "..." : key.Value, "KEY");
+            }
+            
+            TraceFormatter.PrintHeader("SUMMARY COMPLETE");
+            TraceFormatter.PrintTrace("Duration", $"{duration.TotalSeconds:F2} seconds", "TIME");
+            TraceFormatter.PrintTrace("Root Symbols", $"{hierarchy.RootSymbols.Count} symbols", "COUNT");
+            TraceFormatter.PrintTrace("Keys Generated", $"{hierarchy.ExtractedKeys.Count} keys", "COUNT");
+            
+            Console.WriteLine();
+            Console.WriteLine("Hierarchical summarization completed successfully!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during summarization: {ex.Message}");
+            _logger.LogError(ex, "Summarization failed");
+            Environment.Exit(1);
+        }
     }
 
     private LsOptions ParseLsOptions(string[] args)
