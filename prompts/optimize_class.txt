@@ -1,0 +1,10 @@
+Optimize this class to its core operational abstraction. Output ONLY the lossless compressed representation.
+
+CODE:
+{sourceCode}
+
+CLASS: {symbolName}
+
+CONTEXT: {availableKeys}
+
+OUTPUT: Single technical statement capturing essential architectural responsibility and state management.

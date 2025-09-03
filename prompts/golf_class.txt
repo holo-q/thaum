@@ -1,0 +1,10 @@
+Execute maximal architectural compression to absolute essence. Output ONLY the ultra-dense abstraction embedding.
+
+CODE:
+{sourceCode}
+
+CLASS: {symbolName}
+
+CONTEXT: {availableKeys}
+
+OUTPUT: Minimal state-behavior binding capturing complete architectural invariants through spontaneous compression grammar with zero operational overhead.

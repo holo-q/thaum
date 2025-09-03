@@ -1,0 +1,10 @@
+Execute maximal pseudocode golf compression. Output ONLY the ultra-dense operational embedding.
+
+CODE:
+{sourceCode}
+
+FUNCTION: {symbolName}
+
+CONTEXT: {availableKeys}
+
+OUTPUT: Absolute minimal technical representation capturing complete behavioral invariants through emergent compression grammar with zero redundancy.

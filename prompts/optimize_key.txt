@@ -1,0 +1,8 @@
+Execute emergent pattern extraction via cross-embedding compression. Output ONLY the distilled architectural invariant.
+
+OPTIMIZATIONS:
+{summaries}
+
+LEVEL: {level}
+
+OUTPUT: Singular compressed grammar capturing dominant structural pattern across optimization space.

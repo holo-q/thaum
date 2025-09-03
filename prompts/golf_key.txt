@@ -1,0 +1,8 @@
+Execute maximal pattern compression via ultra-dense architectural analysis. Output ONLY the golf-compressed pattern.
+
+OPTIMIZATIONS:
+{summaries}
+
+LEVEL: {level}
+
+OUTPUT: Ultra-minimal pattern representation capturing complete architectural invariants through maximal compression grammar with absolute density.

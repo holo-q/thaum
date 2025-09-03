@@ -34,11 +34,13 @@ public class CliApplication
         var httpClient = new HttpClient();
         var llmProvider = new HttpLlmProvider(httpClient, configuration, loggerFactory.CreateLogger<HttpLlmProvider>());
         var cache = new SqliteCacheService(configuration, loggerFactory.CreateLogger<SqliteCacheService>());
+        var promptLoader = new PromptLoader(loggerFactory.CreateLogger<PromptLoader>());
         
         _summaryEngine = new HierarchicalSummarizationEngine(
             llmProvider, 
             _lspManager, 
             cache, 
+            promptLoader,
             loggerFactory.CreateLogger<HierarchicalSummarizationEngine>()
         );
     }
@@ -124,7 +126,7 @@ public class CliApplication
         try
         {
             var startTime = DateTime.UtcNow;
-            var hierarchy = await _summaryEngine.ProcessCodebaseAsync(options.ProjectPath, options.Language);
+            var hierarchy = await _summaryEngine.ProcessCodebaseAsync(options.ProjectPath, options.Language, options.CompressionLevel);
             var duration = DateTime.UtcNow - startTime;
             
             // Display extracted keys
@@ -209,6 +211,7 @@ public class CliApplication
     {
         var projectPath = Directory.GetCurrentDirectory();
         var language = "auto";
+        var compressionLevel = CompressionLevel.Optimize;
 
         for (int i = 1; i < args.Length; i++)
         {
@@ -219,6 +222,21 @@ public class CliApplication
                     break;
                 case "--lang" when i + 1 < args.Length:
                     language = args[++i];
+                    break;
+                case "--compression" when i + 1 < args.Length:
+                case "-c" when i + 1 < args.Length:
+                    var compressionArg = args[++i].ToLowerInvariant();
+                    compressionLevel = compressionArg switch
+                    {
+                        "optimize" or "o" => CompressionLevel.Optimize,
+                        "compress" or "c" => CompressionLevel.Compress,
+                        "golf" or "g" => CompressionLevel.Golf,
+                        "endgame" or "e" => CompressionLevel.Endgame,
+                        _ => throw new ArgumentException($"Invalid compression level: {compressionArg}. Valid options: optimize, compress, golf, endgame")
+                    };
+                    break;
+                case "--endgame":
+                    compressionLevel = CompressionLevel.Endgame;
                     break;
                 default:
                     if (!args[i].StartsWith("--"))
@@ -234,7 +252,7 @@ public class CliApplication
             language = DetectLanguage(projectPath);
         }
 
-        return new SummarizeOptions(projectPath, language);
+        return new SummarizeOptions(projectPath, language, compressionLevel);
     }
 
     private string DetectLanguage(string projectPath)
@@ -512,10 +530,21 @@ public class CliApplication
         Console.WriteLine("Options for 'summarize':");
         Console.WriteLine("  --path <path>          Project path (default: current directory)");
         Console.WriteLine("  --lang <language>      Language (python, csharp, javascript, etc.)");
+        Console.WriteLine("  --compression <level>  Compression level: optimize, compress, golf, endgame");
+        Console.WriteLine("  -c <level>             Short form of --compression");
+        Console.WriteLine("  --endgame              Use maximum endgame compression");
+        Console.WriteLine();
+        Console.WriteLine("Compression Levels:");
+        Console.WriteLine("  optimize (default)     Standard optimization to essential operational semantics");
+        Console.WriteLine("  compress               Lossless pseudocode golf compression with emergent grammars");
+        Console.WriteLine("  golf                   Maximal compression with ultra-dense operational embeddings");
+        Console.WriteLine("  endgame                End-game superposed vector retopologization compression");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  thaum ls");
         Console.WriteLine("  thaum ls /path/to/project --lang python --depth 3");
+        Console.WriteLine("  thaum summarize --compression endgame");
+        Console.WriteLine("  thaum summarize /path/to/project -c golf");
         Console.WriteLine("  thaum ls-env --values");
         Console.WriteLine("  thaum summarize --path ./src --lang csharp");
         Console.WriteLine();
@@ -524,7 +553,7 @@ public class CliApplication
 }
 
 internal record LsOptions(string ProjectPath, string Language, int MaxDepth, bool ShowTypes);
-internal record SummarizeOptions(string ProjectPath, string Language);
+internal record SummarizeOptions(string ProjectPath, string Language, CompressionLevel CompressionLevel = CompressionLevel.Optimize);
 
 internal class HierarchyNode
 {

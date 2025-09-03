@@ -1,0 +1,8 @@
+Optimize this function to its essential operational semantics. Output ONLY the lossless compressed representation.
+
+CODE:
+{sourceCode}
+
+FUNCTION: {symbolName}
+
+OUTPUT: Single technical statement capturing core algorithmic behavior and data transformation.

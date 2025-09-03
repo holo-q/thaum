@@ -1,0 +1,8 @@
+Execute lossless pattern compression via emergent cross-embedding analysis. Output ONLY the compressed architectural pattern.
+
+OPTIMIZATIONS:
+{summaries}
+
+LEVEL: {level}
+
+OUTPUT: Minimal compressed pattern sequence capturing complete architectural invariants through emergent grammar with zero pattern loss.

@@ -11,53 +11,56 @@ public class HierarchicalSummarizationEngine : ISummarizationEngine
     private readonly ILlmProvider _llmProvider;
     private readonly ILspClientManager _lspManager;
     private readonly ICacheService _cache;
+    private readonly IPromptLoader _promptLoader;
     private readonly ILogger<HierarchicalSummarizationEngine> _logger;
 
     public HierarchicalSummarizationEngine(
         ILlmProvider llmProvider,
         ILspClientManager lspManager,
         ICacheService cache,
+        IPromptLoader promptLoader,
         ILogger<HierarchicalSummarizationEngine> logger)
     {
         _llmProvider = llmProvider;
         _lspManager = lspManager;
         _cache = cache;
+        _promptLoader = promptLoader;
         _logger = logger;
     }
 
-    public async Task<string> SummarizeSymbolAsync(CodeSymbol symbol, SummarizationContext context, string sourceCode)
+    public async Task<string> OptimizeSymbolAsync(CodeSymbol symbol, OptimizationContext context, string sourceCode)
     {
-        var cacheKey = $"summary_{symbol.Name}_{symbol.FilePath}_{symbol.StartPosition.Line}_{context.Level}";
+        var cacheKey = $"optimization_{symbol.Name}_{symbol.FilePath}_{symbol.StartPosition.Line}_{context.Level}";
         
         if (await _cache.TryGetAsync<string>(cacheKey) is { } cached)
         {
             return cached;
         }
 
-        var prompt = BuildSummarizationPrompt(symbol, context, sourceCode);
+        var prompt = await BuildOptimizationPromptAsync(symbol, context, sourceCode);
         var summary = await _llmProvider.CompleteAsync(prompt, new LlmOptions(Temperature: 0.3, MaxTokens: 1024));
         
         await _cache.SetAsync(cacheKey, summary, TimeSpan.FromHours(24));
         return summary;
     }
 
-    public async Task<string> ExtractCommonKeyAsync(List<string> summaries, int level)
+    public async Task<string> ExtractCommonKeyAsync(List<string> summaries, int level, CompressionLevel compressionLevel = CompressionLevel.Optimize)
     {
-        var cacheKey = $"key_L{level}_{GetSummariesHash(summaries)}";
+        var cacheKey = $"key_L{level}_{GetOptimizationsHash(summaries)}";
         
         if (await _cache.TryGetAsync<string>(cacheKey) is { } cached)
         {
             return cached;
         }
 
-        var prompt = BuildKeyExtractionPrompt(summaries, level);
+        var prompt = await BuildKeyExtractionPromptAsync(summaries, level, compressionLevel);
         var key = await _llmProvider.CompleteAsync(prompt, new LlmOptions(Temperature: 0.2, MaxTokens: 512));
         
         await _cache.SetAsync(cacheKey, key, TimeSpan.FromDays(1));
         return key;
     }
 
-    public async Task<SymbolHierarchy> ProcessCodebaseAsync(string projectPath, string language)
+    public async Task<SymbolHierarchy> ProcessCodebaseAsync(string projectPath, string language, CompressionLevel compressionLevel = CompressionLevel.Optimize)
     {
         TraceFormatter.PrintHeader("HIERARCHICAL CODEBASE ANALYSIS");
         _logger.LogInformation("Starting codebase processing for {ProjectPath}", projectPath);
@@ -73,73 +76,69 @@ public class HierarchicalSummarizationEngine : ISummarizationEngine
         var allSymbols = await _lspManager.GetWorkspaceSymbolsAsync(language, projectPath);
         var hierarchyBuilder = new HierarchyBuilder();
 
-        // Phase 1: Summarize functions (deepest scope)
+        // Phase 1: Optimize functions (deepest scope)
         TraceFormatter.PrintHeader("PHASE 1: FUNCTION ANALYSIS");
         var functions = allSymbols.Where(s => s.Kind == SymbolKind.Function || s.Kind == SymbolKind.Method).ToList();
-        var functionSummaries = new List<string>();
-
-        for (int i = 0; i < functions.Count; i++)
+        
+        TraceFormatter.PrintTrace("Parallel Processing", $"{functions.Count} functions", "START");
+        
+        var functionOptimizationTasks = functions.Select(async function =>
         {
-            var function = functions[i];
-            TraceFormatter.PrintProgress($"Analyzing {function.Name}", i + 1, functions.Count);
-            
-            var sourceCode = await GetSymbolSourceCode(function);
-            var context = new SummarizationContext(Level: 1, AvailableKeys: new List<string>());
-            
             TraceFormatter.PrintTrace(function.Name, "LLM Analysis", "STREAM");
-            var summary = await SummarizeSymbolWithStreamAsync(function, context, sourceCode);
-            functionSummaries.Add(summary);
-        }
+            var sourceCode = await GetSymbolSourceCode(function);
+            var context = new OptimizationContext(Level: 1, AvailableKeys: new List<string>(), CompressionLevel: compressionLevel);
+            return await OptimizeSymbolWithStreamAsync(function, context, sourceCode);
+        });
+
+        var functionOptimizations = (await Task.WhenAll(functionOptimizationTasks)).ToList();
 
         // Phase 2: Extract K1 from function summaries
         TraceFormatter.PrintHeader("PHASE 2: K1 EXTRACTION");
-        TraceFormatter.PrintTrace("Function Summaries", "Pattern Analysis", "KEY");
-        var k1 = await ExtractCommonKeyWithStreamAsync(functionSummaries, 1);
+        TraceFormatter.PrintTrace("Function Optimizations", "Pattern Analysis", "KEY");
+        var k1 = await ExtractCommonKeyWithStreamAsync(functionOptimizations, 1, compressionLevel);
         var extractedKeys = new Dictionary<string, string> { ["K1"] = k1 };
         TraceFormatter.PrintTrace("K1 Extracted", k1.Length > 50 ? k1[..47] + "..." : k1, "DONE");
 
         // Phase 3: Re-summarize functions with K1
         TraceFormatter.PrintHeader("PHASE 3: FUNCTION RE-ANALYSIS WITH K1");
-        for (int i = 0; i < functions.Count; i++)
+        TraceFormatter.PrintTrace("Parallel Re-analysis", $"{functions.Count} functions", "START");
+        
+        var functionReanalysisTasks = functions.Select(async function =>
         {
-            var function = functions[i];
-            TraceFormatter.PrintProgress($"Re-analyzing {function.Name}", i + 1, functions.Count);
-            
-            var sourceCode = await GetSymbolSourceCode(function);
-            var context = new SummarizationContext(Level: 1, AvailableKeys: new List<string> { k1 });
-            
             TraceFormatter.PrintTrace(function.Name, "K1-Enhanced Analysis", "STREAM");
-            var summary = await SummarizeSymbolWithStreamAsync(function, context, sourceCode);
-        }
+            var sourceCode = await GetSymbolSourceCode(function);
+            var context = new OptimizationContext(Level: 1, AvailableKeys: new List<string> { k1 }, CompressionLevel: compressionLevel);
+            return await OptimizeSymbolWithStreamAsync(function, context, sourceCode);
+        });
 
-        // Phase 4: Summarize classes with K1
+        await Task.WhenAll(functionReanalysisTasks);
+
+        // Phase 4: Optimize classes with K1
         TraceFormatter.PrintHeader("PHASE 4: CLASS ANALYSIS WITH K1");
         var classes = allSymbols.Where(s => s.Kind == SymbolKind.Class).ToList();
-        var classSummaries = new List<string>();
-
-        for (int i = 0; i < classes.Count; i++)
+        
+        TraceFormatter.PrintTrace("Parallel Processing", $"{classes.Count} classes", "START");
+        
+        var classOptimizationTasks = classes.Select(async cls =>
         {
-            var cls = classes[i];
-            TraceFormatter.PrintProgress($"Analyzing {cls.Name}", i + 1, classes.Count);
-            
-            var sourceCode = await GetSymbolSourceCode(cls);
-            var context = new SummarizationContext(Level: 2, AvailableKeys: new List<string> { k1 });
-            
             TraceFormatter.PrintTrace(cls.Name, "K1-Enhanced Analysis", "STREAM");
-            var summary = await SummarizeSymbolWithStreamAsync(cls, context, sourceCode);
-            classSummaries.Add(summary);
-        }
+            var sourceCode = await GetSymbolSourceCode(cls);
+            var context = new OptimizationContext(Level: 2, AvailableKeys: new List<string> { k1 }, CompressionLevel: compressionLevel);
+            return await OptimizeSymbolWithStreamAsync(cls, context, sourceCode);
+        });
+
+        var classOptimizations = (await Task.WhenAll(classOptimizationTasks)).ToList();
 
         // Phase 5: Extract K2 from class summaries
         TraceFormatter.PrintHeader("PHASE 5: K2 EXTRACTION");
-        TraceFormatter.PrintTrace("Class Summaries", "Pattern Analysis", "KEY");
-        var k2 = await ExtractCommonKeyWithStreamAsync(classSummaries, 2);
+        TraceFormatter.PrintTrace("Class Optimizations", "Pattern Analysis", "KEY");
+        var k2 = await ExtractCommonKeyWithStreamAsync(classOptimizations, 2, compressionLevel);
         extractedKeys["K2"] = k2;
         TraceFormatter.PrintTrace("K2 Extracted", k2.Length > 50 ? k2[..47] + "..." : k2, "DONE");
 
         // Phase 6: Re-summarize everything with K1+K2
         TraceFormatter.PrintHeader("PHASE 6: FINAL RE-ANALYSIS WITH K1+K2");
-        await ResummarizeWithKeysAsync(functions.Concat(classes).ToList(), new List<string> { k1, k2 });
+        await ResummarizeWithKeysAsync(functions.Concat(classes).ToList(), new List<string> { k1, k2 }, compressionLevel);
 
         TraceFormatter.PrintHeader("HIERARCHY CONSTRUCTION");
         TraceFormatter.PrintTrace("Flat Symbols", "Nested Structure", "BUILD");
@@ -180,46 +179,42 @@ public class HierarchicalSummarizationEngine : ISummarizationEngine
         return await _llmProvider.CompleteAsync(optimizationPrompt, new LlmOptions(Temperature: 0.3));
     }
 
-    private string BuildSummarizationPrompt(CodeSymbol symbol, SummarizationContext context, string sourceCode)
+    private async Task<string> BuildOptimizationPromptAsync(CodeSymbol symbol, OptimizationContext context, string sourceCode)
     {
-        var sb = new StringBuilder();
-        
-        if (context.AvailableKeys.Any())
+        var compressionPrefix = context.CompressionLevel.GetPromptPrefix();
+        var symbolType = symbol.Kind switch
         {
-            sb.AppendLine("Given the following summarization keys from previous analysis:");
-            foreach (var key in context.AvailableKeys)
-            {
-                sb.AppendLine($"- {key}");
-            }
-            sb.AppendLine();
-        }
+            SymbolKind.Function or SymbolKind.Method => "function",
+            SymbolKind.Class => "class",
+            _ => "function"
+        };
+        
+        var promptName = $"{compressionPrefix}_{symbolType}";
 
-        sb.AppendLine($"Summarize this {symbol.Kind.ToString().ToLower()} concisely, focusing on its purpose and key functionality:");
-        sb.AppendLine($"Name: {symbol.Name}");
-        sb.AppendLine("Source Code:");
-        sb.AppendLine(sourceCode);
-        sb.AppendLine();
-        sb.AppendLine("Provide a 1-2 sentence summary that captures the essential purpose and behavior.");
+        var parameters = new Dictionary<string, object>
+        {
+            ["sourceCode"] = sourceCode,
+            ["symbolName"] = symbol.Name,
+            ["availableKeys"] = context.AvailableKeys.Any() 
+                ? string.Join("\n", context.AvailableKeys.Select(k => $"- {k}")) 
+                : "None"
+        };
 
-        return sb.ToString();
+        return await _promptLoader.FormatPromptAsync(promptName, parameters);
     }
 
-    private string BuildKeyExtractionPrompt(List<string> summaries, int level)
+    private async Task<string> BuildKeyExtractionPromptAsync(List<string> summaries, int level, CompressionLevel compressionLevel = CompressionLevel.Optimize)
     {
-        var sb = new StringBuilder();
+        var compressionPrefix = compressionLevel.GetPromptPrefix();
+        var promptName = $"{compressionPrefix}_key";
         
-        sb.AppendLine($"Analyze the following {summaries.Count} summaries from level {level} and extract a common key or pattern:");
-        sb.AppendLine();
-        
-        for (int i = 0; i < summaries.Count; i++)
+        var parameters = new Dictionary<string, object>
         {
-            sb.AppendLine($"{i + 1}. {summaries[i]}");
-        }
-        
-        sb.AppendLine();
-        sb.AppendLine("Extract a concise key (1-2 sentences) that captures the common patterns, themes, or architectural principles across these summaries. This key will be used to improve future summarizations at this level.");
+            ["summaries"] = string.Join("\n", summaries.Select((s, i) => $"{i + 1}. {s}")),
+            ["level"] = level.ToString()
+        };
 
-        return sb.ToString();
+        return await _promptLoader.FormatPromptAsync(promptName, parameters);
     }
 
     private async Task<string> GetSymbolSourceCode(CodeSymbol symbol)
@@ -239,17 +234,17 @@ public class HierarchicalSummarizationEngine : ISummarizationEngine
         }
     }
 
-    private async Task<string> SummarizeSymbolWithStreamAsync(CodeSymbol symbol, SummarizationContext context, string sourceCode)
+    private async Task<string> OptimizeSymbolWithStreamAsync(CodeSymbol symbol, OptimizationContext context, string sourceCode)
     {
-        var cacheKey = $"summary_{symbol.Name}_{symbol.FilePath}_{symbol.StartPosition.Line}_{context.Level}";
+        var cacheKey = $"optimization_{symbol.Name}_{symbol.FilePath}_{symbol.StartPosition.Line}_{context.Level}";
         
         if (await _cache.TryGetAsync<string>(cacheKey) is { } cached)
         {
-            TraceFormatter.PrintTrace(symbol.Name, "Cached Summary", "HIT");
+            TraceFormatter.PrintTrace(symbol.Name, "Cached Optimization", "HIT");
             return cached;
         }
 
-        var prompt = BuildSummarizationPrompt(symbol, context, sourceCode);
+        var prompt = await BuildOptimizationPromptAsync(symbol, context, sourceCode);
         
         // Stream the response in real-time
         var streamResponse = await _llmProvider.StreamCompleteAsync(prompt, new LlmOptions(Temperature: 0.3, MaxTokens: 1024));
@@ -263,14 +258,14 @@ public class HierarchicalSummarizationEngine : ISummarizationEngine
         
         var result = summary.ToString().Trim();
         await _cache.SetAsync(cacheKey, result, TimeSpan.FromHours(24));
-        TraceFormatter.PrintTrace(symbol.Name, $"Summary ({result.Length} chars)", "DONE");
+        TraceFormatter.PrintTrace(symbol.Name, $"Optimization ({result.Length} chars)", "DONE");
         
         return result;
     }
     
-    private async Task<string> ExtractCommonKeyWithStreamAsync(List<string> summaries, int level)
+    private async Task<string> ExtractCommonKeyWithStreamAsync(List<string> summaries, int level, CompressionLevel compressionLevel = CompressionLevel.Optimize)
     {
-        var cacheKey = $"key_L{level}_{GetSummariesHash(summaries)}";
+        var cacheKey = $"key_L{level}_{GetOptimizationsHash(summaries)}";
         
         if (await _cache.TryGetAsync<string>(cacheKey) is { } cached)
         {
@@ -278,7 +273,7 @@ public class HierarchicalSummarizationEngine : ISummarizationEngine
             return cached;
         }
 
-        var prompt = BuildKeyExtractionPrompt(summaries, level);
+        var prompt = await BuildKeyExtractionPromptAsync(summaries, level, compressionLevel);
         
         // Stream the key extraction response
         var streamResponse = await _llmProvider.StreamCompleteAsync(prompt, new LlmOptions(Temperature: 0.2, MaxTokens: 512));
@@ -296,34 +291,35 @@ public class HierarchicalSummarizationEngine : ISummarizationEngine
         return result;
     }
 
-    private async Task ResummarizeWithKeysAsync(List<CodeSymbol> symbols, List<string> keys)
+    private async Task ResummarizeWithKeysAsync(List<CodeSymbol> symbols, List<string> keys, CompressionLevel compressionLevel)
     {
-        for (int i = 0; i < symbols.Count; i++)
+        TraceFormatter.PrintTrace("Parallel Final Analysis", $"{symbols.Count} symbols", "START");
+        
+        var reanalysisTasks = symbols.Select(async symbol =>
         {
-            var symbol = symbols[i];
-            TraceFormatter.PrintProgress($"Re-analyzing {symbol.Name}", i + 1, symbols.Count);
-            
-            var sourceCode = await GetSymbolSourceCode(symbol);
-            var context = new SummarizationContext(
-                Level: symbol.Kind == SymbolKind.Function || symbol.Kind == SymbolKind.Method ? 1 : 2,
-                AvailableKeys: keys
-            );
-            
             TraceFormatter.PrintTrace(symbol.Name, "Final K1+K2 Analysis", "STREAM");
-            var summary = await SummarizeSymbolWithStreamAsync(symbol, context, sourceCode);
-        }
+            var sourceCode = await GetSymbolSourceCode(symbol);
+            var context = new OptimizationContext(
+                Level: symbol.Kind == SymbolKind.Function || symbol.Kind == SymbolKind.Method ? 1 : 2,
+                AvailableKeys: keys,
+                CompressionLevel: compressionLevel
+            );
+            return await OptimizeSymbolWithStreamAsync(symbol, context, sourceCode);
+        });
+
+        await Task.WhenAll(reanalysisTasks);
     }
 
     private async Task InvalidateCacheForChange(SymbolChange change)
     {
         // Implement cache invalidation logic based on the change
-        var pattern = $"summary_{change.Symbol?.Name ?? "*"}_{change.FilePath}*";
+        var pattern = $"optimization_{change.Symbol?.Name ?? "*"}_{change.FilePath}*";
         await _cache.InvalidatePatternAsync(pattern);
     }
 
-    private static string GetSummariesHash(List<string> summaries)
+    private static string GetOptimizationsHash(List<string> optimizations)
     {
-        var combined = string.Join("|", summaries);
+        var combined = string.Join("|", optimizations);
         return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(combined)))[..16];
     }
 }

@@ -25,7 +25,7 @@ public class HttpLlmProvider : ILlmProvider
     {
         options ??= new LlmOptions();
         
-        var provider = _configuration["LLM:Provider"] ?? "openai";
+        var provider = _configuration["LLM:Provider"] ?? throw new InvalidOperationException("LLM:Provider configuration is required");
         
         return provider.ToLowerInvariant() switch
         {
@@ -41,7 +41,7 @@ public class HttpLlmProvider : ILlmProvider
     {
         options ??= new LlmOptions();
         
-        var provider = _configuration["LLM:Provider"] ?? "openai";
+        var provider = _configuration["LLM:Provider"] ?? throw new InvalidOperationException("LLM:Provider configuration is required");
         
         return provider.ToLowerInvariant() switch
         {
@@ -57,7 +57,7 @@ public class HttpLlmProvider : ILlmProvider
     {
         options ??= new LlmOptions();
         
-        var provider = _configuration["LLM:Provider"] ?? "openai";
+        var provider = _configuration["LLM:Provider"] ?? throw new InvalidOperationException("LLM:Provider configuration is required");
         
         return provider.ToLowerInvariant() switch
         {
@@ -106,7 +106,7 @@ public class HttpLlmProvider : ILlmProvider
 
     private async Task<string> SendOpenAIRequestAsync(OpenAIRequest request)
     {
-        var baseUrl = _configuration["LLM:BaseUrl"] ?? "https://api.openai.com/v1";
+        var baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenAI provider");
         var json = JsonSerializer.Serialize(request, JsonOptions.Default);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -148,7 +148,7 @@ public class HttpLlmProvider : ILlmProvider
             MaxTokens = options.MaxTokens
         };
 
-        var baseUrl = _configuration["LLM:BaseUrl"] ?? "https://api.anthropic.com/v1";
+        var baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for Anthropic provider");
         var json = JsonSerializer.Serialize(request, JsonOptions.Default);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -192,7 +192,7 @@ public class HttpLlmProvider : ILlmProvider
             MaxTokens = options.MaxTokens
         };
 
-        var baseUrl = _configuration["LLM:BaseUrl"] ?? "https://api.anthropic.com/v1";
+        var baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for Anthropic provider");
         var json = JsonSerializer.Serialize(request, JsonOptions.Default);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -236,7 +236,7 @@ public class HttpLlmProvider : ILlmProvider
             }
         };
 
-        var baseUrl = _configuration["LLM:BaseUrl"] ?? "http://localhost:11434";
+        var baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for Ollama provider");
         var json = JsonSerializer.Serialize(request, JsonOptions.Default);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -265,7 +265,7 @@ public class HttpLlmProvider : ILlmProvider
 
     private async Task<string> CompleteOpenRouterAsync(string prompt, LlmOptions options)
     {
-        var model = options.Model == "gpt-4" ? "moonshotai/moonshot-v1-8k" : options.Model;
+        var model = options.Model;
         var request = new OpenAIRequest
         {
             Model = model,
@@ -283,7 +283,7 @@ public class HttpLlmProvider : ILlmProvider
 
     private async Task<string> CompleteOpenRouterWithSystemAsync(string systemPrompt, string userPrompt, LlmOptions options)
     {
-        var model = options.Model == "gpt-4" ? "moonshotai/moonshot-v1-8k" : options.Model;
+        var model = options.Model;
         var request = new OpenAIRequest
         {
             Model = model,
@@ -302,7 +302,7 @@ public class HttpLlmProvider : ILlmProvider
 
     private async Task<string> SendOpenRouterRequestAsync(OpenAIRequest request)
     {
-        var baseUrl = _configuration["LLM:BaseUrl"] ?? "https://openrouter.ai/api/v1";
+        var baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenRouter provider");
         var json = JsonSerializer.Serialize(request, JsonOptions.Default);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -325,7 +325,13 @@ public class HttpLlmProvider : ILlmProvider
         try
         {
             var response = await _httpClient.PostAsync($"{baseUrl}/chat/completions", content);
-            response.EnsureSuccessStatusCode();
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("OpenRouter API error {StatusCode}: {ErrorContent}", response.StatusCode, errorContent);
+                throw new HttpRequestException($"OpenRouter API error {response.StatusCode}: {errorContent}");
+            }
 
             var responseJson = await response.Content.ReadAsStringAsync();
             var openAIResponse = JsonSerializer.Deserialize<OpenAIResponse>(responseJson, JsonOptions.Default);
@@ -353,7 +359,7 @@ public class HttpLlmProvider : ILlmProvider
             Stream = true
         };
 
-        var baseUrl = _configuration["LLM:BaseUrl"] ?? "https://api.openai.com/v1";
+        var baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenAI provider");
         var json = JsonSerializer.Serialize(request, JsonOptions.Default);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -396,7 +402,7 @@ public class HttpLlmProvider : ILlmProvider
             }
         };
 
-        var baseUrl = _configuration["LLM:BaseUrl"] ?? "http://localhost:11434";
+        var baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for Ollama provider");
         var json = JsonSerializer.Serialize(request, JsonOptions.Default);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -412,7 +418,7 @@ public class HttpLlmProvider : ILlmProvider
 
     private async Task<IAsyncEnumerable<string>> StreamOpenRouterAsync(string prompt, LlmOptions options)
     {
-        var model = options.Model == "gpt-4" ? "moonshotai/moonshot-v1-8k" : options.Model;
+        var model = options.Model;
         var request = new OpenAIStreamRequest
         {
             Model = model,
@@ -425,7 +431,7 @@ public class HttpLlmProvider : ILlmProvider
             Stream = true
         };
 
-        var baseUrl = _configuration["LLM:BaseUrl"] ?? "https://openrouter.ai/api/v1";
+        var baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenRouter provider");
         var json = JsonSerializer.Serialize(request, JsonOptions.Default);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -447,7 +453,13 @@ public class HttpLlmProvider : ILlmProvider
         httpRequest.Headers.Add("X-Title", appName);
 
         var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
-        response.EnsureSuccessStatusCode();
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogError("OpenRouter streaming API error {StatusCode}: {ErrorContent}", response.StatusCode, errorContent);
+            throw new HttpRequestException($"OpenRouter streaming API error {response.StatusCode}: {errorContent}");
+        }
 
         return StreamResponseTokens(response);
     }

@@ -45,9 +45,10 @@ public record SymbolHierarchy(
     DateTime LastUpdated
 );
 
-public record SummarizationContext(
+public record OptimizationContext(
     int Level,
     List<string> AvailableKeys,
+    CompressionLevel CompressionLevel = CompressionLevel.Optimize,
     string? ParentContext = null,
     List<string>? SiblingContexts = null
 );

@@ -1,0 +1,10 @@
+Execute lossless pseudocode golf compression. Output ONLY the emergent grammar representation.
+
+CODE:
+{sourceCode}
+
+FUNCTION: {symbolName}
+
+CONTEXT: {availableKeys}
+
+OUTPUT: Minimal operator sequence capturing complete behavioral semantics in compressed technical embedding.

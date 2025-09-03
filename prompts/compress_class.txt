@@ -1,0 +1,10 @@
+Execute architectural compression to minimal state-behavior binding. Output ONLY the compressed abstraction.
+
+CODE:
+{sourceCode}
+
+CLASS: {symbolName}
+
+CONTEXT: {availableKeys}
+
+OUTPUT: Spontaneous grammar encoding essential encapsulation and operational invariants in maximal density.
