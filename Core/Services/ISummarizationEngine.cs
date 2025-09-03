@@ -1,0 +1,26 @@
+using Thaum.Core.Models;
+
+namespace Thaum.Core.Services;
+
+public interface ISummarizationEngine
+{
+    Task<string> SummarizeSymbolAsync(CodeSymbol symbol, SummarizationContext context, string sourceCode);
+    Task<string> ExtractCommonKeyAsync(List<string> summaries, int level);
+    Task<SymbolHierarchy> ProcessCodebaseAsync(string projectPath, string language);
+    Task<SymbolHierarchy> UpdateHierarchyAsync(SymbolHierarchy existing, List<SymbolChange> changes);
+    Task<string> GetOptimizedPromptAsync(string basePrompt, List<string> examples, string task);
+}
+
+public interface ILlmProvider
+{
+    Task<string> CompleteAsync(string prompt, LlmOptions? options = null);
+    Task<string> CompleteWithSystemAsync(string systemPrompt, string userPrompt, LlmOptions? options = null);
+    Task<IAsyncEnumerable<string>> StreamCompleteAsync(string prompt, LlmOptions? options = null);
+}
+
+public record LlmOptions(
+    double Temperature = 0.7,
+    int MaxTokens = 4096,
+    string Model = "gpt-4",
+    List<string>? StopSequences = null
+);
