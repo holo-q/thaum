@@ -361,6 +361,14 @@ public class HttpLlmProvider : ILlmProvider
         {
             Content = content
         };
+        
+        // Add OpenAI authorization header
+        var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? _configuration["LLM:ApiKey"];
+        if (!string.IsNullOrEmpty(apiKey))
+        {
+            httpRequest.Headers.Add("Authorization", $"Bearer {apiKey}");
+        }
+        
         var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
 
@@ -421,26 +429,23 @@ public class HttpLlmProvider : ILlmProvider
         var json = JsonSerializer.Serialize(request, JsonOptions.Default);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        // Add OpenRouter-specific headers
+        // Add OpenRouter-specific headers to the request
         var apiKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY") ?? _configuration["LLM:ApiKey"];
         var appName = _configuration["LLM:AppName"] ?? "Thaum";
         var siteUrl = _configuration["LLM:SiteUrl"] ?? "https://github.com/your-repo/thaum";
-        
-        _httpClient.DefaultRequestHeaders.Remove("Authorization");
-        _httpClient.DefaultRequestHeaders.Remove("HTTP-Referer");
-        _httpClient.DefaultRequestHeaders.Remove("X-Title");
-        
-        if (!string.IsNullOrEmpty(apiKey))
-        {
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-        }
-        _httpClient.DefaultRequestHeaders.Add("HTTP-Referer", siteUrl);
-        _httpClient.DefaultRequestHeaders.Add("X-Title", appName);
 
         var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/chat/completions")
         {
             Content = content
         };
+        
+        if (!string.IsNullOrEmpty(apiKey))
+        {
+            httpRequest.Headers.Add("Authorization", $"Bearer {apiKey}");
+        }
+        httpRequest.Headers.Add("HTTP-Referer", siteUrl);
+        httpRequest.Headers.Add("X-Title", appName);
+
         var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
 

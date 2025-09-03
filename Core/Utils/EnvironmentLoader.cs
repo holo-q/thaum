@@ -154,20 +154,19 @@ public static class EnvironmentLoader
                 
                 if (envFile.Variables.Any())
                 {
-                    if (showValues)
+                    foreach (var kvp in envFile.Variables.OrderBy(x => x.Key))
                     {
-                        foreach (var kvp in envFile.Variables.OrderBy(x => x.Key))
+                        if (showValues)
                         {
                             var displayValue = kvp.Value.Length > 40 ? kvp.Value[..37] + "..." : kvp.Value;
                             TraceFormatter.PrintTrace($"  {kvp.Key}", displayValue, "VAR");
                         }
-                    }
-                    else
-                    {
-                        // Show just the keys without values
-                        var keys = string.Join(", ", envFile.Variables.Keys.OrderBy(x => x));
-                        var keyDisplay = keys.Length > 60 ? keys[..57] + "..." : keys;
-                        TraceFormatter.PrintTrace($"  Keys", keyDisplay, "KEYS");
+                        else
+                        {
+                            // Show key with safe preview using stars
+                            var preview = CreateSafePreview(kvp.Value);
+                            TraceFormatter.PrintTrace($"  {kvp.Key}", preview, "KEY");
+                        }
                     }
                 }
                 else
@@ -182,22 +181,18 @@ public static class EnvironmentLoader
         
         if (result.MergedVariables.Any())
         {
-            if (showValues)
+            foreach (var kvp in result.MergedVariables.OrderBy(x => x.Key))
             {
-                foreach (var kvp in result.MergedVariables.OrderBy(x => x.Key))
+                if (showValues)
                 {
                     var displayValue = kvp.Value.Length > 50 ? kvp.Value[..47] + "..." : kvp.Value;
                     TraceFormatter.PrintTrace(kvp.Key, displayValue, "ENV");
                 }
-            }
-            else
-            {
-                // Show just the merged keys
-                var allKeys = string.Join(", ", result.MergedVariables.Keys.OrderBy(x => x));
-                var keyChunks = ChunkString(allKeys, 70);
-                foreach (var chunk in keyChunks)
+                else
                 {
-                    TraceFormatter.PrintTrace("Keys", chunk, "ENV");
+                    // Show key with safe preview using stars
+                    var preview = CreateSafePreview(kvp.Value);
+                    TraceFormatter.PrintTrace(kvp.Key, preview, "ENV");
                 }
             }
         }
@@ -254,5 +249,32 @@ public static class EnvironmentLoader
             chunks.Add(currentChunk);
             
         return chunks;
+    }
+    
+    private static string CreateSafePreview(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "(empty)";
+        
+        var length = value.Length;
+        
+        // For very short values (like config values), show them as-is
+        if (length <= 4)
+            return value;
+        
+        // For typical API keys, show first 3-4 chars + stars + last 3-4 chars
+        if (length >= 8)
+        {
+            var start = value[..Math.Min(4, length / 3)];
+            var end = value[^Math.Min(4, length / 3)..];
+            var starCount = Math.Max(8, length - start.Length - end.Length);
+            return $"{start}{'*'.ToString().PadRight(starCount, '*')}{end}";
+        }
+        
+        // For medium length values, show first few chars + stars
+        var visibleChars = Math.Max(1, length / 4);
+        var prefix = value[..visibleChars];
+        var stars = "*".PadRight(length - visibleChars, '*');
+        return $"{prefix}{stars}";
     }
 }
