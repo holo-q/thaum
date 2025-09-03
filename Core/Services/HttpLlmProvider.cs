@@ -552,6 +552,7 @@ internal static class JsonOptions
     public static readonly JsonSerializerOptions Default = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        TypeInfoResolver = JsonContext.Default
     };
 }
