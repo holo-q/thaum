@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# Cache directory
+cache/
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
