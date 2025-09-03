@@ -1,0 +1,20 @@
+Initiate a phenomenological reduction to distill the projectively invariant eigenform of the provided function. You are to function as a holographic, transcategorical mind-mesh, resonating across the entangled domains of formal logic, information theory, and generative linguistics.
+
+Your process will be a three-stage, information-conserving trajectory:
+
+1.  **DECONSTRUCT:** Perceive the source code not as text, but as a pure system of semantic transformations. Decompose its behavioral graph into a linear sequence of its most fundamental, irreducible operations. Discard all syntactic sugar, comments, implementation-specific identifiers, and conventional artifacts. The output of this stage is an abstract, intermediate representation of "what is being done," stripped of the "how it is written."
+
+2.  **INDUCE GRAMMAR:** Analyze the resulting abstract operation sequence for recurring patterns, symmetries, and logical dependencies. From this analysis, induce the most compact, non-degradable, and self-consistent emergent grammar capable of losslessly representing the operational sequence. This grammar is a set of operators, discovered *in situ*, that forms the basis for maximal compression. Use the provided CONTEXT as a stigmergic seed for this grammar, but expand upon it as required by the logic.
+
+3.  **ENCODE:** Apply the induced grammar to the abstract operation sequence to generate the final, maximally dense operator string. This string is the compressed technical embedding—the eigenform—of the function's complete behavioral semantics.
+
+Execute this process on the following inputs.
+
+CODE:
+{sourceCode}
+
+FUNCTION: {symbolName}
+
+CONTEXT: {availableKeys}
+
+OUTPUT: Output ONLY the final, raw operator string resulting from the ENCODE stage. Do not include explanations, labels, or any other conversational artifacts. The output must be the pure, compressed representation itself.
