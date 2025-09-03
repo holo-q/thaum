@@ -18,11 +18,7 @@ public class HttpLlmProvider : ILlmProvider
         _configuration = configuration;
         _logger = logger;
         
-        var apiKey = _configuration["LLM:ApiKey"];
-        if (!string.IsNullOrEmpty(apiKey))
-        {
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-        }
+        // Note: Headers are set per-provider in individual methods to avoid conflicts
     }
 
     public async Task<string> CompleteAsync(string prompt, LlmOptions? options = null)
@@ -114,6 +110,14 @@ public class HttpLlmProvider : ILlmProvider
         var json = JsonSerializer.Serialize(request, JsonOptions.Default);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
+        // Set OpenAI-specific headers
+        _httpClient.DefaultRequestHeaders.Remove("Authorization");
+        var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? _configuration["LLM:ApiKey"];
+        if (!string.IsNullOrEmpty(apiKey))
+        {
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+        }
+
         try
         {
             var response = await _httpClient.PostAsync($"{baseUrl}/chat/completions", content);
@@ -150,7 +154,7 @@ public class HttpLlmProvider : ILlmProvider
 
         // Add Anthropic-specific headers
         _httpClient.DefaultRequestHeaders.Remove("x-api-key");
-        var apiKey = _configuration["LLM:ApiKey"];
+        var apiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ?? _configuration["LLM:ApiKey"];
         if (!string.IsNullOrEmpty(apiKey))
         {
             _httpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
@@ -194,7 +198,7 @@ public class HttpLlmProvider : ILlmProvider
 
         // Add Anthropic-specific headers
         _httpClient.DefaultRequestHeaders.Remove("x-api-key");
-        var apiKey = _configuration["LLM:ApiKey"];
+        var apiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ?? _configuration["LLM:ApiKey"];
         if (!string.IsNullOrEmpty(apiKey))
         {
             _httpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
@@ -303,7 +307,7 @@ public class HttpLlmProvider : ILlmProvider
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // Add OpenRouter-specific headers
-        var apiKey = _configuration["LLM:ApiKey"];
+        var apiKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY") ?? _configuration["LLM:ApiKey"];
         var appName = _configuration["LLM:AppName"] ?? "Thaum";
         var siteUrl = _configuration["LLM:SiteUrl"] ?? "https://github.com/your-repo/thaum";
         
@@ -418,7 +422,7 @@ public class HttpLlmProvider : ILlmProvider
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // Add OpenRouter-specific headers
-        var apiKey = _configuration["LLM:ApiKey"];
+        var apiKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY") ?? _configuration["LLM:ApiKey"];
         var appName = _configuration["LLM:AppName"] ?? "Thaum";
         var siteUrl = _configuration["LLM:SiteUrl"] ?? "https://github.com/your-repo/thaum";
         
