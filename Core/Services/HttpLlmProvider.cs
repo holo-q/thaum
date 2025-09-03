@@ -36,6 +36,7 @@ public class HttpLlmProvider : ILlmProvider
             "openai" => await CompleteOpenAIAsync(prompt, options),
             "anthropic" => await CompleteAnthropicAsync(prompt, options),
             "ollama" => await CompleteOllamaAsync(prompt, options),
+            "openrouter" => await CompleteOpenRouterAsync(prompt, options),
             _ => throw new NotSupportedException($"Provider {provider} not supported")
         };
     }
@@ -51,6 +52,7 @@ public class HttpLlmProvider : ILlmProvider
             "openai" => await CompleteOpenAIWithSystemAsync(systemPrompt, userPrompt, options),
             "anthropic" => await CompleteAnthropicWithSystemAsync(systemPrompt, userPrompt, options),
             "ollama" => await CompleteOllamaWithSystemAsync(systemPrompt, userPrompt, options),
+            "openrouter" => await CompleteOpenRouterWithSystemAsync(systemPrompt, userPrompt, options),
             _ => throw new NotSupportedException($"Provider {provider} not supported")
         };
     }
@@ -66,6 +68,7 @@ public class HttpLlmProvider : ILlmProvider
             "openai" => await StreamOpenAIAsync(prompt, options),
             "anthropic" => await StreamAnthropicAsync(prompt, options),
             "ollama" => await StreamOllamaAsync(prompt, options),
+            "openrouter" => await StreamOpenRouterAsync(prompt, options),
             _ => throw new NotSupportedException($"Provider {provider} streaming not supported")
         };
     }
@@ -256,6 +259,82 @@ public class HttpLlmProvider : ILlmProvider
         return await CompleteOllamaAsync(fullPrompt, options);
     }
 
+    private async Task<string> CompleteOpenRouterAsync(string prompt, LlmOptions options)
+    {
+        var model = options.Model == "gpt-4" ? "moonshotai/moonshot-v1-8k" : options.Model;
+        var request = new OpenAIRequest
+        {
+            Model = model,
+            Messages = new[]
+            {
+                new OpenAIMessage { Role = "user", Content = prompt }
+            },
+            Temperature = options.Temperature,
+            MaxTokens = options.MaxTokens,
+            Stop = options.StopSequences?.ToArray()
+        };
+
+        return await SendOpenRouterRequestAsync(request);
+    }
+
+    private async Task<string> CompleteOpenRouterWithSystemAsync(string systemPrompt, string userPrompt, LlmOptions options)
+    {
+        var model = options.Model == "gpt-4" ? "moonshotai/moonshot-v1-8k" : options.Model;
+        var request = new OpenAIRequest
+        {
+            Model = model,
+            Messages = new[]
+            {
+                new OpenAIMessage { Role = "system", Content = systemPrompt },
+                new OpenAIMessage { Role = "user", Content = userPrompt }
+            },
+            Temperature = options.Temperature,
+            MaxTokens = options.MaxTokens,
+            Stop = options.StopSequences?.ToArray()
+        };
+
+        return await SendOpenRouterRequestAsync(request);
+    }
+
+    private async Task<string> SendOpenRouterRequestAsync(OpenAIRequest request)
+    {
+        var baseUrl = _configuration["LLM:BaseUrl"] ?? "https://openrouter.ai/api/v1";
+        var json = JsonSerializer.Serialize(request, JsonOptions.Default);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Add OpenRouter-specific headers
+        var apiKey = _configuration["LLM:ApiKey"];
+        var appName = _configuration["LLM:AppName"] ?? "Thaum";
+        var siteUrl = _configuration["LLM:SiteUrl"] ?? "https://github.com/your-repo/thaum";
+        
+        _httpClient.DefaultRequestHeaders.Remove("Authorization");
+        _httpClient.DefaultRequestHeaders.Remove("HTTP-Referer");
+        _httpClient.DefaultRequestHeaders.Remove("X-Title");
+        
+        if (!string.IsNullOrEmpty(apiKey))
+        {
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+        }
+        _httpClient.DefaultRequestHeaders.Add("HTTP-Referer", siteUrl);
+        _httpClient.DefaultRequestHeaders.Add("X-Title", appName);
+
+        try
+        {
+            var response = await _httpClient.PostAsync($"{baseUrl}/chat/completions", content);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            var openAIResponse = JsonSerializer.Deserialize<OpenAIResponse>(responseJson, JsonOptions.Default);
+
+            return openAIResponse?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to complete OpenRouter request");
+            throw;
+        }
+    }
+
     private async Task<IAsyncEnumerable<string>> StreamOpenAIAsync(string prompt, LlmOptions options)
     {
         var request = new OpenAIStreamRequest
@@ -317,6 +396,51 @@ public class HttpLlmProvider : ILlmProvider
         response.EnsureSuccessStatusCode();
 
         return StreamOllamaTokens(response);
+    }
+
+    private async Task<IAsyncEnumerable<string>> StreamOpenRouterAsync(string prompt, LlmOptions options)
+    {
+        var model = options.Model == "gpt-4" ? "moonshotai/moonshot-v1-8k" : options.Model;
+        var request = new OpenAIStreamRequest
+        {
+            Model = model,
+            Messages = new[]
+            {
+                new OpenAIMessage { Role = "user", Content = prompt }
+            },
+            Temperature = options.Temperature,
+            MaxTokens = options.MaxTokens,
+            Stream = true
+        };
+
+        var baseUrl = _configuration["LLM:BaseUrl"] ?? "https://openrouter.ai/api/v1";
+        var json = JsonSerializer.Serialize(request, JsonOptions.Default);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Add OpenRouter-specific headers
+        var apiKey = _configuration["LLM:ApiKey"];
+        var appName = _configuration["LLM:AppName"] ?? "Thaum";
+        var siteUrl = _configuration["LLM:SiteUrl"] ?? "https://github.com/your-repo/thaum";
+        
+        _httpClient.DefaultRequestHeaders.Remove("Authorization");
+        _httpClient.DefaultRequestHeaders.Remove("HTTP-Referer");
+        _httpClient.DefaultRequestHeaders.Remove("X-Title");
+        
+        if (!string.IsNullOrEmpty(apiKey))
+        {
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+        }
+        _httpClient.DefaultRequestHeaders.Add("HTTP-Referer", siteUrl);
+        _httpClient.DefaultRequestHeaders.Add("X-Title", appName);
+
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/chat/completions")
+        {
+            Content = content
+        };
+        var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
+        response.EnsureSuccessStatusCode();
+
+        return StreamResponseTokens(response);
     }
 
     private static async IAsyncEnumerable<string> StreamResponseTokens(HttpResponseMessage response)

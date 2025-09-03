@@ -21,6 +21,9 @@ public class CliApplication
         _logger = logger;
         _colorEngine = new PerceptualColorEngine();
         
+        // Load .env files from directory hierarchy
+        EnvironmentLoader.LoadAndApply();
+        
         // Setup configuration for LLM provider
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
@@ -54,6 +57,9 @@ public class CliApplication
         {
             case "ls":
                 await HandleLsCommand(args);
+                break;
+            case "ls-env":
+                HandleLsEnvCommand(args);
                 break;
             case "summarize":
                 await HandleSummarizeCommand(args);
@@ -142,6 +148,20 @@ public class CliApplication
             _logger.LogError(ex, "Summarization failed");
             Environment.Exit(1);
         }
+    }
+
+    private void HandleLsEnvCommand(string[] args)
+    {
+        var showValues = args.Contains("--values") || args.Contains("-v");
+        
+        Console.WriteLine("Environment file detection and loading trace:");
+        Console.WriteLine();
+        
+        var result = EnvironmentLoader.LoadEnvironmentFiles();
+        EnvironmentLoader.PrintLoadTrace(result, showValues);
+        
+        Console.WriteLine();
+        Console.WriteLine($"Environment variables successfully loaded and available for configuration.");
     }
 
     private LsOptions ParseLsOptions(string[] args)
@@ -476,6 +496,7 @@ public class CliApplication
         Console.WriteLine();
         Console.WriteLine("Commands:");
         Console.WriteLine("  ls [path]              List symbols in hierarchical format");
+        Console.WriteLine("  ls-env [--values]      Show .env file detection and merging trace");
         Console.WriteLine("  summarize [path]       Generate codebase summaries");
         Console.WriteLine("  help                   Show this help message");
         Console.WriteLine();
@@ -485,6 +506,9 @@ public class CliApplication
         Console.WriteLine("  --depth <number>       Maximum nesting depth (default: 10)");
         Console.WriteLine("  --types                Show symbol types");
         Console.WriteLine();
+        Console.WriteLine("Options for 'ls-env':");
+        Console.WriteLine("  --values, -v           Show actual environment variable values");
+        Console.WriteLine();
         Console.WriteLine("Options for 'summarize':");
         Console.WriteLine("  --path <path>          Project path (default: current directory)");
         Console.WriteLine("  --lang <language>      Language (python, csharp, javascript, etc.)");
@@ -492,6 +516,7 @@ public class CliApplication
         Console.WriteLine("Examples:");
         Console.WriteLine("  thaum ls");
         Console.WriteLine("  thaum ls /path/to/project --lang python --depth 3");
+        Console.WriteLine("  thaum ls-env --values");
         Console.WriteLine("  thaum summarize --path ./src --lang csharp");
         Console.WriteLine();
         Console.WriteLine("Run without arguments to launch the interactive TUI.");
