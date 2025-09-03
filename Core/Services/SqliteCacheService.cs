@@ -15,7 +15,10 @@ public class SqliteCacheService : ICacheService
     {
         _logger = logger;
         
-        var cacheDir = configuration["Cache:Directory"] ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Thaum");
+        // Simple cache directory - works on all platforms
+        var cacheDir = configuration["Cache:Directory"] ?? Path.Combine(Path.GetTempPath(), "Thaum");
+        
+        _logger.LogDebug("Creating cache directory: {CacheDir}", cacheDir);
         Directory.CreateDirectory(cacheDir);
         
         var dbPath = Path.Combine(cacheDir, "cache.db");
@@ -81,8 +84,8 @@ public class SqliteCacheService : ICacheService
                 return null;
             }
 
-            var value = reader.GetString("value");
-            var typeName = reader.GetString("type_name");
+            var value = reader.GetString(0);
+            var typeName = reader.GetString(1);
             
             // Update last accessed time
             await UpdateLastAccessedAsync(key, now);

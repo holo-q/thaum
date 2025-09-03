@@ -1,0 +1,1 @@
+- Always dotnet run with --no-restore and restore manually when we update packages, as this shaves of 2 seconds of waiting on every run.

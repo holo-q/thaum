@@ -1,9 +1,5 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Terminal.Gui;
-using Thaum.Core.Services;
-using Thaum.UI;
+using Thaum.CLI;
 
 namespace Thaum;
 
@@ -11,40 +7,27 @@ public static class Program
 {
     public static async Task Main(string[] args)
     {
-        var host = Host.CreateDefaultBuilder(args)
-            .ConfigureServices(ConfigureServices)
-            .ConfigureLogging(logging => logging.AddConsole())
-            .UseConsoleLifetime()
-            .Build();
+        var loggerFactory = LoggerFactory.Create(builder => 
+            builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
 
-        var app = host.Services.GetRequiredService<ThaumApplication>();
-        
-        try
+        // Check if CLI arguments provided
+        if (args.Length > 0)
         {
-            await app.RunAsync();
+            var cliApp = new CliApplication(loggerFactory.CreateLogger<CliApplication>());
+            try
+            {
+                await cliApp.RunAsync(args);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                Environment.Exit(1);
+            }
         }
-        catch (Exception ex)
+        else
         {
-            Console.WriteLine($"Fatal error: {ex.Message}");
-            Environment.Exit(1);
+            Console.WriteLine("TUI mode not implemented yet. Use CLI commands.");
+            Console.WriteLine("Run 'dotnet run help' for usage information.");
         }
-        finally
-        {
-            await host.StopAsync();
-            host.Dispose();
-        }
-    }
-
-    private static void ConfigureServices(IServiceCollection services)
-    {
-        services.AddSingleton<ThaumApplication>();
-        services.AddSingleton<ILspClientManager, SimpleLspClientManager>();
-        services.AddSingleton<ISummarizationEngine, HierarchicalSummarizationEngine>();
-        services.AddSingleton<ILlmProvider, HttpLlmProvider>();
-        services.AddSingleton<ICacheService, SqliteCacheService>();
-        services.AddSingleton<IChangeDetectionService, FileSystemChangeDetectionService>();
-        services.AddSingleton<IDependencyTracker, DependencyTracker>();
-        services.AddSingleton<IMcpServer, SimpleMcpServer>();
-        services.AddHttpClient();
     }
 }

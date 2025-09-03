@@ -169,11 +169,27 @@ public class SimpleLspClientManager : ILspClientManager
         {
             var line = lines[i].Trim();
             
-            if ((line.Contains("public ") || line.Contains("private ") || line.Contains("protected ")) &&
-                line.Contains('(') && !line.Contains("class"))
+            // Skip comments and empty lines
+            if (line.StartsWith("//") || string.IsNullOrEmpty(line))
+                continue;
+                
+            // Match methods/functions with proper C# syntax (not records, properties, etc.)
+            if ((line.StartsWith("public ") || line.StartsWith("private ") || 
+                 line.StartsWith("protected ") || line.StartsWith("internal ")) &&
+                line.Contains('(') && line.Contains(')') && 
+                !line.Contains("class ") && !line.Contains("interface ") &&
+                !line.Contains("record ") && !line.Contains("enum ") &&
+                !line.Contains("=") && // Skip property assignments
+                !line.Contains("new ") && // Skip constructors called with 'new'
+                !line.Contains("get;") && !line.Contains("set;") && // Skip properties
+                !line.Contains(" => ") && // Skip expression-bodied members
+                (line.Contains("void ") || line.Contains("async ") || line.Contains("Task") || 
+                 line.Contains("string ") || line.Contains("int ") || line.Contains("bool ") ||
+                 line.Contains("List<") || line.Contains("IAsync") || line.Contains("public static"))) // Must return something or be static
             {
                 var name = ExtractMethodName(line);
-                if (!string.IsNullOrEmpty(name))
+                if (!string.IsNullOrEmpty(name) && name.Length > 1 && 
+                    char.IsLetter(name[0])) // Must start with letter
                 {
                     symbols.Add(new CodeSymbol(
                         Name: name,
@@ -184,10 +200,13 @@ public class SimpleLspClientManager : ILspClientManager
                     ));
                 }
             }
-            else if (line.Contains("class ") && !line.StartsWith("//"))
+            // Match class declarations
+            else if ((line.StartsWith("public class ") || line.StartsWith("internal class ") ||
+                     line.StartsWith("class ")) && !line.Contains("//"))
             {
                 var name = ExtractCSharpClassName(line);
-                if (!string.IsNullOrEmpty(name))
+                if (!string.IsNullOrEmpty(name) && name.Length > 1 && 
+                    char.IsLetter(name[0])) // Must start with letter
                 {
                     symbols.Add(new CodeSymbol(
                         Name: name,

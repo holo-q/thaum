@@ -35,10 +35,11 @@ public class SummaryView : FrameView
             Text = "Select a symbol to view its summary."
         };
 
-        // Scroll bar for the text view
+        Add(_symbolInfoLabel, _summaryText);
+        
+        // Add scroll bar after adding to the view (Terminal.Gui v1.15.0 requirement)
         _scrollBar = new ScrollBarView(_summaryText, true);
-
-        Add(_symbolInfoLabel, _summaryText, _scrollBar);
+        Add(_scrollBar);
     }
 
     public void UpdateSummary(CodeSymbol symbol)
