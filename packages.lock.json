@@ -12,12 +12,6 @@
           "SQLitePCLRaw.bundle_e_sqlite3": "2.1.6"
         }
       },
-      "Microsoft.DotNet.ILCompiler": {
-        "type": "Direct",
-        "requested": "[9.0.8, )",
-        "resolved": "9.0.8",
-        "contentHash": "cMwVh5hsxAhv+oMHQdgcXodt2kDpfviofBO4IXupSAHJW2vZOZOOIhvPWRGO6NeGcP8SR4OpSwktRqb0i79KFA=="
-      },
       "Microsoft.Extensions.Configuration": {
         "type": "Direct",
         "requested": "[8.0.0, )",
@@ -551,6 +545,9 @@
         "type": "Transitive",
         "resolved": "4.5.0",
         "contentHash": "okurQJO6NRE/apDIP23ajJ0hpiNmJ+f0BwOlB/cSqTLQlw5upkf+5+96+iG2Jw40G1fCVCyPz/FhIABUjMR+RQ=="
+      },
+      "TreeSitter.DotNet": {
+        "type": "Project"
       }
     }
   }

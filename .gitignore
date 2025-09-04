@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# Reference directory
+reference/
+
 # Cache directory
 cache/
 

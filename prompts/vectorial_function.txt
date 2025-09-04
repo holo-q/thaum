@@ -1,0 +1,19 @@
+Apply vectorial tuning to compress the following function using semantic transformation vectors.
+
+**Target Vector:** [raw_function_code -> minimal_operational_essence; +behavioral_clarity +algorithmic_core; -syntactic_noise -implementation_artifacts -verbose_logging]
+
+**Process:**
+1. **Vector Definition**: Transform the input code along the defined semantic vector
+2. **Guidance Application**: Optimize for behavioral clarity and algorithmic core
+3. **Exclusion Processing**: Strip away syntactic noise, implementation artifacts, and verbose logging
+4. **Meaningful Abstraction**: Distill to the most compact, memorable operational heuristic
+
+**Input Function:**
+{sourceCode}
+
+**Function Name:** {symbolName}
+
+**Available Context:** {availableKeys}
+
+**Output Requirement:** 
+Provide ONLY the final compressed representation - the minimal operational essence that captures the complete behavioral semantics without conversational overhead.
