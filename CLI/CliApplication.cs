@@ -1051,6 +1051,38 @@ public class CliApplication {
 				Disabled = Terminal.Gui.Attribute.Make(Terminal.Gui.Color.Gray, Terminal.Gui.Color.Black)
 			};
 
+			// Helper function to trigger retry
+			Func<string, Task> triggerRetry = async (source) => {
+				TraceLogger.TraceOperation($"Triggering retry from {source}");
+				if (refreshSemaphore.CurrentCount > 0) {
+					lock (textLock) {
+						currentStatus = $"Auto-retry ({source})...";
+					}
+					_ = Task.Run(async () => {
+						await refreshSemaphore.WaitAsync();
+						try {
+							await RefreshTryTest(textView, filePath, symbolName, customPrompt, 
+								(text) => {
+									TraceLogger.TraceOperation($"UI CALLBACK: Updating currentText to length {text.Length}");
+									lock (textLock) {
+										currentText = text;
+									}
+								},
+								(status) => {
+									TraceLogger.TraceOperation($"STATUS CALLBACK: Updating status to {status}");
+									lock (textLock) {
+										currentStatus = status;
+									}
+								});
+						} finally {
+							refreshSemaphore.Release();
+						}
+					});
+				} else {
+					TraceLogger.TraceOperation($"Refresh already in progress - ignoring {source} trigger");
+				}
+			};
+
 			// Add global key bindings that work regardless of focus
 			TraceLogger.TraceInfo("Setting up global key bindings");
 			Terminal.Gui.Application.RootKeyEvent += (keyEvent) => {
@@ -1059,38 +1091,10 @@ public class CliApplication {
 					Terminal.Gui.Application.RequestStop();
 					return true;
 				} else if (keyEvent.Key == Terminal.Gui.Key.Space || keyEvent.Key == Terminal.Gui.Key.r || keyEvent.Key == Terminal.Gui.Key.R) {
-					char keyPressed = keyEvent.Key == Terminal.Gui.Key.Space ? 'S' : 
-									 keyEvent.Key == Terminal.Gui.Key.r ? 'r' : 'R';
+					string keyPressed = keyEvent.Key == Terminal.Gui.Key.Space ? "SPACE" : 
+									   keyEvent.Key == Terminal.Gui.Key.r ? "r" : "R";
 					TraceLogger.TraceOperation($"User pressed {keyPressed} - attempting manual retry");
-					// Try to acquire semaphore without blocking
-					if (refreshSemaphore.CurrentCount > 0) {
-						TraceLogger.TraceOperation("Triggering manual retry");
-						lock (textLock) {
-							currentStatus = "Retrying...";
-						}
-						_ = Task.Run(async () => {
-							await refreshSemaphore.WaitAsync();
-							try {
-								await RefreshTryTest(textView, filePath, symbolName, customPrompt, 
-									(text) => {
-										TraceLogger.TraceOperation($"UI CALLBACK: Updating currentText to length {text.Length}");
-										lock (textLock) {
-											currentText = text;
-										}
-									},
-									(status) => {
-										TraceLogger.TraceOperation($"STATUS CALLBACK: Updating status to {status}");
-										lock (textLock) {
-											currentStatus = status;
-										}
-									});
-							} finally {
-								refreshSemaphore.Release();
-							}
-						});
-					} else {
-						TraceLogger.TraceOperation($"Refresh already in progress - ignoring {keyPressed} press");
-					}
+					_ = triggerRetry($"key:{keyPressed}");
 					return true;
 				} else if (keyEvent.Key == Terminal.Gui.Key.Esc) {
 					TraceLogger.TraceOperation("User pressed ESC - requesting application stop");
@@ -1105,6 +1109,43 @@ public class CliApplication {
 			mainView.Add(textView);
 			Terminal.Gui.Application.Top.Add(mainView);
 			Terminal.Gui.Application.Top.Add(statusBar);
+
+			// Setup file watcher for prompt file - RE-ENABLED
+			FileSystemWatcher? promptWatcher = null;
+			string? promptFilePath = null;
+
+			TraceLogger.TraceInfo("Setting up FileSystemWatcher for prompt file auto-retry");
+			if (!string.IsNullOrEmpty(customPrompt)) {
+				// Determine the prompt file path
+				string promptsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "prompts");
+				promptFilePath = Path.Combine(promptsDirectory, $"{customPrompt}.txt");
+				
+				TraceLogger.TraceInfo($"Monitoring prompt file: {promptFilePath}");
+				
+				if (File.Exists(promptFilePath)) {
+					promptWatcher = new FileSystemWatcher(Path.GetDirectoryName(promptFilePath)!, Path.GetFileName(promptFilePath)) {
+						NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
+						EnableRaisingEvents = true
+					};
+
+					// Debounce file changes to avoid multiple rapid triggers
+					DateTime lastChangeTime = DateTime.MinValue;
+					promptWatcher.Changed += (sender, e) => {
+						var now = DateTime.Now;
+						if (now - lastChangeTime > TimeSpan.FromMilliseconds(500)) { // 500ms debounce
+							lastChangeTime = now;
+							TraceLogger.TraceOperation($"Prompt file changed: {e.FullPath}");
+							_ = triggerRetry("file-change");
+						}
+					};
+					
+					TraceLogger.TraceInfo("FileSystemWatcher configured and enabled for auto-retry");
+				} else {
+					TraceLogger.TraceInfo($"Prompt file does not exist: {promptFilePath} - auto-retry disabled");
+				}
+			} else {
+				TraceLogger.TraceInfo("No custom prompt specified - auto-retry disabled");
+			}
 
 			// Set up timer for UI updates - this runs on the main thread
 			Terminal.Gui.Application.MainLoop.AddTimeout(TimeSpan.FromMilliseconds(100), (mainLoop) => {
@@ -1137,35 +1178,17 @@ public class CliApplication {
 			TraceLogger.TraceInfo("Scheduling initial content load");
 			Terminal.Gui.Application.MainLoop.Invoke(() => {
 				TraceLogger.TraceInfo("Starting initial RefreshTryTest");
-				lock (textLock) {
-					currentStatus = "Running...";
-				}
-				_ = Task.Run(async () => {
-					await refreshSemaphore.WaitAsync();
-					try {
-						await RefreshTryTest(textView, filePath, symbolName, customPrompt, 
-							(text) => {
-								TraceLogger.TraceOperation($"UI CALLBACK: Updating currentText to length {text.Length}");
-								lock (textLock) {
-									currentText = text;
-								}
-							},
-							(status) => {
-								TraceLogger.TraceOperation($"STATUS CALLBACK: Updating status to {status}");
-								lock (textLock) {
-									currentStatus = status;
-								}
-							});
-					} finally {
-						refreshSemaphore.Release();
-					}
-				});
+				_ = triggerRetry("initial-load");
 			});
 
 			// Run the application
 			TraceLogger.TraceInfo("Starting Terminal.Gui application main loop");
 			Terminal.Gui.Application.Run();
 			TraceLogger.TraceInfo("Terminal.Gui application main loop exited");
+
+			// Cleanup
+			TraceLogger.TraceInfo("Disposing FileSystemWatcher");
+			promptWatcher?.Dispose();
 
 		} finally {
 			TraceLogger.TraceInfo("Shutting down Terminal.Gui application");
