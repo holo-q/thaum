@@ -1314,8 +1314,12 @@ public class CliApplication {
 			List<CodeSymbol> filteredSymbols = fileGroup.Where(s =>
 				s.Kind == SymbolKind.Class ||
 				s.Kind == SymbolKind.Interface ||
+				s.Kind == SymbolKind.Enum ||
+				s.Kind == SymbolKind.EnumMember ||
+				s.Kind == SymbolKind.Namespace ||
 				s.Kind == SymbolKind.Function ||
 				s.Kind == SymbolKind.Method ||
+				s.Kind == SymbolKind.Constructor ||
 				s.Kind == SymbolKind.Property ||
 				s.Kind == SymbolKind.Field).ToList();
 
