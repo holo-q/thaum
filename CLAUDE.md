@@ -1,1 +1,2 @@
 - Always dotnet run with --no-restore and restore manually when we update packages, as this shaves of 2 seconds of waiting on every run.
+- When working on TUIs, always either 1) ask the user to test the features or 2) start in the background, wait for a few seconds then kill it and read the logs, if that's enough for the thing to debug.

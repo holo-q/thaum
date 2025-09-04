@@ -8,6 +8,11 @@ namespace Thaum;
 
 public static class Program {
 	public static async Task Main(string[] args) {
+		// Clear the output log file on startup
+		if (File.Exists("output.log")) {
+			File.Delete("output.log");
+		}
+		
 		// Configure Serilog
 		Log.Logger = new LoggerConfiguration()
 			.MinimumLevel.Verbose()
@@ -26,8 +31,18 @@ public static class Program {
 			try {
 				await cliApp.RunAsync(args);
 			} catch (Exception ex) {
-				Console.WriteLine($"Error: {ex.Message}");
-				Console.WriteLine($"Stack trace: {ex.StackTrace}");
+				// Log to both console and file
+				var errorMsg = $"Error: {ex.Message}";
+				var stackMsg = $"Stack trace: {ex.StackTrace}";
+				
+				Console.WriteLine(errorMsg);
+				Console.WriteLine(stackMsg);
+				
+				// Also log to Serilog file
+				Log.Fatal(ex, "Application crashed");
+				Log.Information("Error details: {ErrorMessage}", errorMsg);
+				Log.Information("Stack trace: {StackTrace}", stackMsg);
+				
 				Environment.Exit(1);
 			} finally {
 				// Ensure trace logger resources are cleaned up
