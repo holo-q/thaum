@@ -24,8 +24,11 @@ public record CodeSymbol(
 public enum SymbolKind {
 	Function,
 	Method,
+	Constructor,
 	Class,
 	Interface,
+	Enum,
+	EnumMember,
 	Module,
 	Namespace,
 	Property,

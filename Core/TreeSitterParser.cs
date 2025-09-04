@@ -55,12 +55,26 @@ public class TreeSitterParser : IDisposable {
 	}
 
 	private SymbolKind GetSymbolKind(string captureName) {
-		if (captureName.StartsWith("function")) {
+		if (captureName.StartsWith("namespace")) {
+			return SymbolKind.Namespace;
+		} else if (captureName.StartsWith("function")) {
 			return SymbolKind.Function;
 		} else if (captureName.StartsWith("method")) {
 			return SymbolKind.Method;
+		} else if (captureName.StartsWith("constructor")) {
+			return SymbolKind.Constructor;
+		} else if (captureName.StartsWith("property")) {
+			return SymbolKind.Property;
+		} else if (captureName.StartsWith("field")) {
+			return SymbolKind.Field;
+		} else if (captureName.StartsWith("interface")) {
+			return SymbolKind.Interface;
 		} else if (captureName.StartsWith("class")) {
 			return SymbolKind.Class;
+		} else if (captureName.StartsWith("enum_member")) {
+			return SymbolKind.EnumMember;
+		} else if (captureName.StartsWith("enum")) {
+			return SymbolKind.Enum;
 		} else {
 			return SymbolKind.Variable;
 		}
