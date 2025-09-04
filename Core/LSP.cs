@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Serilog.Extensions.Logging;
 using Thaum.Core.Models;
 using ThaumPosition = Thaum.Core.Models.Position;
 
@@ -18,7 +19,7 @@ public class LSP : ILanguageServer {
 	public LSP(ILogger<LSP> logger) {
 		_logger = logger;
 		_manager = new LSPManager(
-			LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Debug)).CreateLogger<LSPManager>(),
+			new SerilogLoggerFactory().CreateLogger<LSPManager>(),
 			progressReporter: new ConsoleDownloadProgress()
 		);
 	}

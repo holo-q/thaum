@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Data.Sqlite;
 using System.Text.Json;
 using System.Reflection;
+using Serilog.Extensions.Logging;
 using Thaum.Core.Services;
 using Thaum.Core.Models;
 using Thaum.Core.Utils;
@@ -17,10 +18,14 @@ public class CliApplication {
 	private readonly Compressor _summaryEngine;
 
 	public CliApplication(ILogger<CliApplication> logger) {
-		ILoggerFactory loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+		ILoggerFactory loggerFactory = new SerilogLoggerFactory();
 		_languageServerManager  = new LSTreeSitter(loggerFactory);
 		_logger      = logger;
 		_colorEngine = new PerceptualColorEngine();
+		
+		// Initialize trace logger
+		TraceLogger.Initialize(_logger);
+		TraceLogger.TraceEnter();
 
 		// Load .env files from directory hierarchy
 		EnvLoader.LoadAndApply();
@@ -44,46 +49,65 @@ public class CliApplication {
 			promptLoader,
 			loggerFactory.CreateLogger<Compressor>()
 		);
+		
+		TraceLogger.TraceExit();
 	}
 
 	public async Task RunAsync(string[] args) {
+		TraceLogger.TraceEnter(parameters: new { args = string.Join(" ", args) });
+		
+		using var scope = ScopeTracer.TraceScope("RunAsync");
+		
 		if (args.Length == 0) {
+			TraceLogger.TraceInfo("No arguments provided, showing help");
 			ShowHelp();
+			TraceLogger.TraceExit();
 			return;
 		}
 
 		string command = args[0].ToLowerInvariant();
+		TraceLogger.TraceInfo($"Processing command: {command}");
 
 		switch (command) {
 			case "ls":
+				TraceLogger.TraceOperation("Executing ls command");
 				await HandleLsCommand(args);
 				break;
 			case "ls-env":
+				TraceLogger.TraceOperation("Executing ls-env command");
 				HandleLsEnvCommand(args);
 				break;
 			case "ls-cache":
+				TraceLogger.TraceOperation("Executing ls-cache command");
 				await HandleLsCacheCommand(args);
 				break;
 			case "ls-lsp":
+				TraceLogger.TraceOperation("Executing ls-lsp command");
 				await HandleLsLspCommand(args);
 				break;
-			case "test-prompt":
-				await HandleTestPromptCommand(args);
+			case "try":
+				TraceLogger.TraceOperation("Executing try command");
+				await HandleTryCommand(args);
 				break;
-			case "summarize":
-				await HandleSummarizeCommand(args);
+			case "optimize":
+				TraceLogger.TraceOperation("Executing optimize command");
+				await HandleOptimizeCommand(args);
 				break;
 			case "help":
 			case "--help":
 			case "-h":
+				TraceLogger.TraceInfo("Help command requested, showing help");
 				ShowHelp();
 				break;
 			default:
+				TraceLogger.TraceInfo($"Unknown command received: {command}");
 				Console.WriteLine($"Unknown command: {command}");
 				ShowHelp();
 				Environment.Exit(1);
 				break;
 		}
+		
+		TraceLogger.TraceExit();
 	}
 
 	private async Task HandleLsCommand(string[] args) {
@@ -425,10 +449,10 @@ public class CliApplication {
 		await Task.CompletedTask;
 	}
 
-	private async Task HandleSummarizeCommand(string[] args) {
+	private async Task HandleOptimizeCommand(string[] args) {
 		SummarizeOptions options = ParseSummarizeOptions(args);
 
-		Console.WriteLine($"Starting hierarchical summarization of {options.ProjectPath} ({options.Language})...");
+		Console.WriteLine($"Starting hierarchical optimization of {options.ProjectPath} ({options.Language})...");
 		Console.WriteLine();
 
 		try {
@@ -442,16 +466,16 @@ public class CliApplication {
 				TraceFormatter.PrintTrace(key.Key, key.Value.Length > 80 ? key.Value[..77] + "..." : key.Value, "KEY");
 			}
 
-			TraceFormatter.PrintHeader("SUMMARY COMPLETE");
+			TraceFormatter.PrintHeader("OPTIMIZATION COMPLETE");
 			TraceFormatter.PrintTrace("Duration", $"{duration.TotalSeconds:F2} seconds", "TIME");
 			TraceFormatter.PrintTrace("Root Symbols", $"{hierarchy.RootSymbols.Count} symbols", "COUNT");
 			TraceFormatter.PrintTrace("Keys Generated", $"{hierarchy.ExtractedKeys.Count} keys", "COUNT");
 
 			Console.WriteLine();
-			Console.WriteLine("Hierarchical summarization completed successfully!");
+			Console.WriteLine("Hierarchical optimization completed successfully!");
 		} catch (Exception ex) {
-			Console.WriteLine($"Error during summarization: {ex.Message}");
-			_logger.LogError(ex, "Summarization failed");
+			Console.WriteLine($"Error during optimization: {ex.Message}");
+			_logger.LogError(ex, "Optimization failed");
 			Environment.Exit(1);
 		}
 	}
@@ -465,7 +489,7 @@ public class CliApplication {
 		Console.WriteLine();
 
 		try {
-			ILoggerFactory loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+			ILoggerFactory loggerFactory = new SerilogLoggerFactory();
 			LSPManager serverManager = new LSPManager(loggerFactory.CreateLogger<LSPManager>());
 
 			if (cleanup) {
@@ -576,7 +600,7 @@ public class CliApplication {
 				.AddEnvironmentVariables()
 				.Build();
 
-			Cache cache = new Cache(configuration, LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Cache>());
+			Cache cache = new Cache(configuration, new SerilogLoggerFactory().CreateLogger<Cache>());
 
 			// Get all cache entries with prompt metadata
 			List<CacheEntryInfo> allEntries = await cache.GetAllEntriesAsync();
@@ -787,36 +811,69 @@ public class CliApplication {
 		}
 	}
 
-	private async Task HandleTestPromptCommand(string[] args) {
+	private async Task HandleTryCommand(string[] args) {
+		TraceLogger.TraceEnter(parameters: new { args = string.Join(" ", args) });
+		
+		using var scope = ScopeTracer.TraceScope("HandleTryCommand");
+		
 		if (args.Length < 3) {
-			Console.WriteLine("Usage: thaum test-prompt <file_path> <symbol_name> [--prompt <prompt_name>]");
+			TraceLogger.TraceInfo("Insufficient arguments provided");
+			Console.WriteLine("Usage: thaum try <file_path> <symbol_name> [--prompt <prompt_name>] [--interactive]");
 			Console.WriteLine();
 			Console.WriteLine("Examples:");
-			Console.WriteLine("  thaum test-prompt CLI/CliApplication.cs BuildHierarchy");
-			Console.WriteLine("  thaum test-prompt CLI/CliApplication.cs BuildHierarchy --prompt compress_function_v2");
-			Console.WriteLine("  thaum test-prompt CLI/CliApplication.cs BuildHierarchy --prompt endgame_function");
+			Console.WriteLine("  thaum try CLI/CliApplication.cs BuildHierarchy");
+			Console.WriteLine("  thaum try CLI/CliApplication.cs BuildHierarchy --prompt compress_function_v2");
+			Console.WriteLine("  thaum try CLI/CliApplication.cs BuildHierarchy --prompt endgame_function");
+			Console.WriteLine("  thaum try CLI/CliApplication.cs BuildHierarchy --interactive");
+			TraceLogger.TraceExit();
 			return;
 		}
 
 		string filePath   = args[1];
 		string symbolName = args[2];
 
+		TraceLogger.TraceInfo($"Parsed arguments: filePath='{filePath}', symbolName='{symbolName}'");
+
 		// Parse options
 		string? customPrompt = null;
+		bool interactive = false;
 
 		for (int i = 3; i < args.Length; i++) {
 			switch (args[i]) {
 				case "--prompt" when i + 1 < args.Length:
 					customPrompt = args[++i];
+					TraceLogger.TraceInfo($"Custom prompt specified: {customPrompt}");
+					break;
+				case "--interactive":
+					interactive = true;
+					TraceLogger.TraceInfo("Interactive mode enabled");
 					break;
 			}
 		}
 
 		// Make file path absolute
 		if (!Path.IsPathRooted(filePath)) {
+			string originalPath = filePath;
 			filePath = Path.Combine(Directory.GetCurrentDirectory(), filePath);
+			TraceLogger.TraceInfo($"Converted relative path '{originalPath}' to absolute: '{filePath}'");
 		}
 
+		if (interactive) {
+			TraceLogger.TraceInfo("Initializing TraceLogger for interactive mode");
+			// Re-initialize TraceLogger for interactive mode with file output
+			TraceLogger.Dispose();
+			TraceLogger.Initialize(_logger, isInteractiveMode: true);
+			TraceLogger.TraceInfo("Starting interactive mode");
+			await RunInteractiveTry(filePath, symbolName, customPrompt);
+		} else {
+			TraceLogger.TraceInfo("Starting non-interactive mode");
+			await RunNonInteractiveTry(filePath, symbolName, customPrompt);
+		}
+		
+		TraceLogger.TraceExit();
+	}
+
+	private async Task RunNonInteractiveTry(string filePath, string symbolName, string? customPrompt) {
 		try {
 			Console.WriteLine($"Testing prompt on: {Path.GetRelativePath(Directory.GetCurrentDirectory(), filePath)}::{symbolName}");
 			if (customPrompt != null) {
@@ -880,7 +937,7 @@ public class CliApplication {
 
 			// Get model from configuration
 			string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ??
-			               throw new InvalidOperationException("LLM__DefaultModel environment variable is required");
+						   throw new InvalidOperationException("LLM__DefaultModel environment variable is required");
 
 			// Setup services
 			IConfigurationRoot configuration = new ConfigurationBuilder()
@@ -890,7 +947,7 @@ public class CliApplication {
 				.Build();
 
 			HttpClient httpClient    = new HttpClient();
-			ILoggerFactory loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+			ILoggerFactory loggerFactory = new SerilogLoggerFactory();
 			HttpLLM llmProvider   = new HttpLLM(httpClient, configuration, loggerFactory.CreateLogger<HttpLLM>());
 
 			// Stream response
@@ -907,6 +964,279 @@ public class CliApplication {
 			Environment.Exit(1);
 		}
 	}
+
+	private async Task RunInteractiveTry(string filePath, string symbolName, string? customPrompt) {
+		TraceLogger.TraceEnter(parameters: new { filePath, symbolName, customPrompt });
+		
+		using var scope = ScopeTracer.TraceScope("RunInteractiveTry");
+		TraceLogger.TraceInfo("Initializing Terminal.Gui application");
+		Terminal.Gui.Application.Init();
+		
+		try {
+			TraceLogger.TraceInfo("Creating Terminal.Gui window");
+			var window = new Terminal.Gui.Window("Thaum Interactive Try") {
+				X = 0, Y = 0, Width = Terminal.Gui.Dim.Fill(), Height = Terminal.Gui.Dim.Fill()
+			};
+
+			TraceLogger.TraceInfo("Creating status bar with keyboard shortcuts");
+			// Status bar with shortcuts
+			var statusBar = new Terminal.Gui.StatusBar(new Terminal.Gui.StatusItem[] {
+				new(Terminal.Gui.Key.Space, "~SPACE~ Retry", () => {
+					TraceLogger.TraceOperation("User pressed SPACE - triggering manual retry");
+					_ = Task.Run(async () => await RefreshTryTest(window, filePath, symbolName, customPrompt));
+				}),
+				new(Terminal.Gui.Key.q, "~Q~ Quit", () => {
+					TraceLogger.TraceOperation("User pressed Q - requesting application stop");
+					Terminal.Gui.Application.RequestStop();
+				}),
+				new(Terminal.Gui.Key.Null, "~AUTO~ Starting...", null)
+			});
+
+			TraceLogger.TraceInfo("Creating scroll view and text view components");
+			// Main content area
+			var scrollView = new Terminal.Gui.ScrollView() {
+				X = 0, Y = 0, Width = Terminal.Gui.Dim.Fill(), Height = Terminal.Gui.Dim.Fill() - 1
+			};
+
+			var textView = new Terminal.Gui.TextView() {
+				X = 0, Y = 0, Width = Terminal.Gui.Dim.Fill(), Height = Terminal.Gui.Dim.Fill(),
+				ReadOnly = true,
+				Text = "Loading..."
+			};
+
+			TraceLogger.TraceInfo("Adding components to Terminal.Gui layout");
+			scrollView.Add(textView);
+			window.Add(scrollView);
+			Terminal.Gui.Application.Top.Add(window);
+			Terminal.Gui.Application.Top.Add(statusBar);
+
+			// Setup file watcher for prompt file
+			FileSystemWatcher? promptWatcher = null;
+			string? promptFilePath = null;
+			
+			if (customPrompt != null) {
+				promptFilePath = Path.Combine("prompts", $"{customPrompt}.txt");
+				TraceLogger.TraceInfo($"Setting up file watcher for prompt file: {promptFilePath}");
+				
+				if (File.Exists(promptFilePath)) {
+					TraceLogger.TraceInfo("Prompt file exists, creating FileSystemWatcher");
+					promptWatcher = new FileSystemWatcher(Path.GetDirectoryName(promptFilePath) ?? "prompts", $"{customPrompt}.txt");
+					promptWatcher.Changed += async (sender, e) => {
+						TraceLogger.TraceOperation($"Prompt file changed: {e.FullPath} - triggering auto-retry");
+						Terminal.Gui.Application.MainLoop.Invoke(() => {
+							statusBar.Items[2] = new Terminal.Gui.StatusItem(Terminal.Gui.Key.Null, "~AUTO~ Retrying...", null);
+							Terminal.Gui.Application.Refresh();
+							_ = Task.Run(async () => {
+								TraceLogger.TraceInfo("Starting auto-retry after prompt file change");
+								await Task.Delay(500); // Brief delay to ensure file write is complete
+								await RefreshTryTest(window, filePath, symbolName, customPrompt);
+								Terminal.Gui.Application.MainLoop.Invoke(() => {
+									statusBar.Items[2] = new Terminal.Gui.StatusItem(Terminal.Gui.Key.Null, "~AUTO~ Ready", null);
+									Terminal.Gui.Application.Refresh();
+									TraceLogger.TraceInfo("Auto-retry completed, UI status updated");
+								});
+							});
+						});
+					};
+					promptWatcher.EnableRaisingEvents = true;
+					statusBar.Items[2] = new Terminal.Gui.StatusItem(Terminal.Gui.Key.Null, "~AUTO~ Ready", null);
+					TraceLogger.TraceInfo("FileSystemWatcher enabled for prompt file");
+				} else {
+					TraceLogger.TraceInfo($"Prompt file does not exist: {promptFilePath}");
+				}
+			} else {
+				TraceLogger.TraceInfo("No custom prompt specified, skipping file watcher setup");
+			}
+
+			// Store references for refresh function
+			TraceLogger.TraceInfo("Storing window references for refresh function");
+			window.Data = new { TextView = textView, StatusBar = statusBar };
+
+			// Initial load
+			TraceLogger.TraceInfo("Performing initial content load");
+			await RefreshTryTest(window, filePath, symbolName, customPrompt);
+
+			// Run the application
+			TraceLogger.TraceInfo("Starting Terminal.Gui application main loop");
+			Terminal.Gui.Application.Run();
+			TraceLogger.TraceInfo("Terminal.Gui application main loop exited");
+
+			// Cleanup
+			TraceLogger.TraceInfo("Disposing FileSystemWatcher");
+			promptWatcher?.Dispose();
+		} finally {
+			TraceLogger.TraceInfo("Shutting down Terminal.Gui application");
+			Terminal.Gui.Application.Shutdown();
+			TraceLogger.TraceExit();
+		}
+	}
+
+	private async Task RefreshTryTest(Terminal.Gui.Window window, string filePath, string symbolName, string? customPrompt) {
+		TraceLogger.TraceEnter(parameters: new { filePath, symbolName, customPrompt });
+		
+		using var scope = ScopeTracer.TraceScope("RefreshTryTest");
+		
+		var data = (dynamic)window.Data;
+		var textView = (Terminal.Gui.TextView)data.TextView;
+
+		try {
+			// Start language server
+			TraceLogger.TraceInfo("Detecting language for language server startup");
+			string language = DetectLanguage(Path.GetDirectoryName(filePath) ?? Directory.GetCurrentDirectory());
+			TraceLogger.TraceInfo($"Detected language: {language}");
+			
+			TraceLogger.TraceOperation($"Starting {language} language server");
+			bool started = await _languageServerManager.StartLanguageServerAsync(language, Path.GetDirectoryName(filePath) ?? Directory.GetCurrentDirectory());
+			
+			if (!started) {
+				TraceLogger.TraceInfo($"Failed to start {language} language server");
+				Terminal.Gui.Application.MainLoop.Invoke(() => {
+					textView.Text = $"Failed to start {language} language server";
+					Terminal.Gui.Application.Refresh();
+				});
+				TraceLogger.TraceExit();
+				return;
+			}
+			
+			TraceLogger.TraceInfo($"{language} language server started successfully");
+
+			Terminal.Gui.Application.MainLoop.Invoke(() => {
+				textView.Text = "Loading symbols...";
+				Terminal.Gui.Application.Refresh();
+			});
+
+			// Get symbols from file with timeout
+			TraceLogger.TraceInfo($"Parsing symbols from file: {filePath}");
+			List<CodeSymbol> symbols;
+			using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+			try {
+				symbols = await _languageServerManager.GetDocumentSymbolsAsync(language, filePath).WaitAsync(cts.Token);
+				TraceLogger.TraceInfo($"Successfully parsed {symbols.Count} symbols from file");
+			} catch (OperationCanceledException) {
+				TraceLogger.TraceInfo("Symbol parsing timed out");
+				Terminal.Gui.Application.MainLoop.Invoke(() => {
+					textView.Text = "Symbol parsing timed out. The file might be too large or contain problematic syntax.";
+					Terminal.Gui.Application.Refresh();
+				});
+				TraceLogger.TraceExit();
+				return;
+			}
+			
+			TraceLogger.TraceInfo($"Searching for target symbol: {symbolName}");
+			CodeSymbol? targetSymbol = symbols.FirstOrDefault(s => s.Name == symbolName);
+
+			if (targetSymbol == null) {
+				TraceLogger.TraceInfo($"Target symbol '{symbolName}' not found. Available symbols: {symbols.Count}");
+				var availableSymbols = string.Join("\n", symbols.OrderBy(s => s.Name).Select(s => $"  {s.Name} ({s.Kind})"));
+				Terminal.Gui.Application.MainLoop.Invoke(() => {
+					textView.Text = $"Symbol '{symbolName}' not found in {Path.GetRelativePath(Directory.GetCurrentDirectory(), filePath)}\n\nAvailable symbols:\n{availableSymbols}";
+					Terminal.Gui.Application.Refresh();
+				});
+				TraceLogger.TraceExit();
+				return;
+			}
+			
+			TraceLogger.TraceInfo($"Found target symbol: {symbolName} (Kind: {targetSymbol.Kind})");
+
+			// Get source code
+			TraceLogger.TraceOperation("Extracting source code from target symbol");
+			string sourceCode = await GetSymbolSourceCode(targetSymbol);
+			if (string.IsNullOrEmpty(sourceCode)) {
+				TraceLogger.TraceInfo("Failed to extract source code for symbol");
+				Terminal.Gui.Application.MainLoop.Invoke(() => {
+					textView.Text = "Failed to extract source code for symbol";
+					Terminal.Gui.Application.Refresh();
+				});
+				TraceLogger.TraceExit();
+				return;
+			}
+			TraceLogger.TraceInfo($"Source code extracted successfully (length: {sourceCode.Length} chars)");
+
+			// Determine prompt name
+			string promptName = customPrompt ?? GetDefaultPromptFromEnvironment(targetSymbol);
+			TraceLogger.TraceInfo($"Using prompt: {promptName}");
+			
+			// Build context
+			OptimizationContext context = new OptimizationContext(
+				Level: targetSymbol.Kind == SymbolKind.Function || targetSymbol.Kind == SymbolKind.Method ? 1 : 2,
+				AvailableKeys: new List<string>(),
+				CompressionLevel: CompressionLevel.Compress
+			);
+
+			// Build prompt
+			string prompt = await BuildCustomPromptAsync(promptName, targetSymbol, context, sourceCode);
+
+			var output = new System.Text.StringBuilder();
+			output.AppendLine($"Testing prompt on: {Path.GetRelativePath(Directory.GetCurrentDirectory(), filePath)}::{symbolName}");
+			output.AppendLine($"Using prompt: {promptName}");
+			output.AppendLine();
+			output.AppendLine("═══ GENERATED PROMPT ═══");
+			output.AppendLine(prompt);
+			output.AppendLine();
+			output.AppendLine("═══ LLM RESPONSE ═══");
+
+			// Get model from configuration
+			string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ?? 
+						   throw new InvalidOperationException("LLM__DefaultModel environment variable is required");
+
+			// Setup services
+			IConfigurationRoot configuration = new ConfigurationBuilder()
+				.SetBasePath(Directory.GetCurrentDirectory())
+				.AddJsonFile("appsettings.json", optional: true)
+				.AddEnvironmentVariables()
+				.Build();
+
+			HttpClient httpClient = new HttpClient();
+			ILoggerFactory loggerFactory = new SerilogLoggerFactory();
+			HttpLLM llmProvider = new HttpLLM(httpClient, configuration, loggerFactory.CreateLogger<HttpLLM>());
+
+			// Update text view with current content
+			Terminal.Gui.Application.MainLoop.Invoke(() => {
+				textView.Text = output.ToString();
+				Terminal.Gui.Application.Refresh();
+			});
+
+			// Stream response
+			TraceLogger.TraceOperation($"Starting LLM streaming request with model: {model}");
+			IAsyncEnumerable<string> streamResponse = await llmProvider.StreamCompleteAsync(prompt, new LlmOptions(Temperature: 0.3, MaxTokens: 1024, Model: model));
+
+			int tokenCount = 0;
+			await foreach (string token in streamResponse) {
+				tokenCount++;
+				output.Append(token);
+				Terminal.Gui.Application.MainLoop.Invoke(() => {
+					textView.Text = output.ToString();
+					Terminal.Gui.Application.Refresh();
+				});
+				
+				if (tokenCount % 50 == 0) {
+					TraceLogger.TraceInfo($"Streaming progress: {tokenCount} tokens received");
+				}
+			}
+			
+			TraceLogger.TraceInfo($"LLM streaming completed. Total tokens received: {tokenCount}");
+
+			output.AppendLine();
+			output.AppendLine();
+			output.AppendLine("═══ TEST COMPLETE ═══");
+			
+			TraceLogger.TraceInfo("Updating final UI with complete results");
+			Terminal.Gui.Application.MainLoop.Invoke(() => {
+				textView.Text = output.ToString();
+				Terminal.Gui.Application.Refresh();
+			});
+
+		} catch (Exception ex) {
+			TraceLogger.TraceInfo($"Exception occurred during prompt test: {ex.Message}");
+			Terminal.Gui.Application.MainLoop.Invoke(() => {
+				textView.Text = $"Error during prompt test: {ex.Message}\n\nStack trace:\n{ex.StackTrace}";
+				Terminal.Gui.Application.Refresh();
+			});
+		}
+		
+		TraceLogger.TraceExit();
+	}
+
 
 	private async Task<string> GetSymbolSourceCode(CodeSymbol symbol) {
 		try {
@@ -934,7 +1264,7 @@ public class CliApplication {
 				: "None"
 		};
 
-		ILoggerFactory loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+		ILoggerFactory loggerFactory = new SerilogLoggerFactory();
 		PromptLoader promptLoader  = new PromptLoader(loggerFactory.CreateLogger<PromptLoader>());
 
 		return await promptLoader.FormatPromptAsync(promptName, parameters);
@@ -1533,8 +1863,8 @@ public class CliApplication {
 		Console.WriteLine("  ls-env [--values]      Show .env file detection and merging trace");
 		Console.WriteLine("  ls-cache [pattern]     Browse cached symbol compressions");
 		Console.WriteLine("  ls-lsp [--all] [--cleanup]  Manage auto-downloaded LSP servers");
-		Console.WriteLine("  test-prompt <file> <symbol>  Test prompts on individual symbols");
-		Console.WriteLine("  summarize [path]       Generate codebase optimizations");
+		Console.WriteLine("  try <file> <symbol>    Test prompts on individual symbols");
+		Console.WriteLine("  optimize [path]        Generate codebase optimizations");
 		Console.WriteLine("  help                   Show this help message");
 		Console.WriteLine();
 		Console.WriteLine("Options for 'ls':");
@@ -1556,12 +1886,13 @@ public class CliApplication {
 		Console.WriteLine("  --all, -a              Show detailed information about cached servers");
 		Console.WriteLine("  --cleanup, -c          Remove old LSP server versions");
 		Console.WriteLine();
-		Console.WriteLine("Options for 'test-prompt':");
+		Console.WriteLine("Options for 'try':");
 		Console.WriteLine("  <file_path>            Path to source file");
 		Console.WriteLine("  <symbol_name>          Name of symbol to test");
 		Console.WriteLine("  --prompt <name>        Prompt file name (e.g., compress_function_v2, endgame_function)");
+		Console.WriteLine("  --interactive          Launch interactive TUI with live updates");
 		Console.WriteLine();
-		Console.WriteLine("Options for 'summarize':");
+		Console.WriteLine("Options for 'optimize':");
 		Console.WriteLine("  --path <path>          Project path (default: current directory)");
 		Console.WriteLine("  --lang <language>      Language (python, csharp, javascript, etc.)");
 		Console.WriteLine("  --compression <level>  Compression level: optimize, compress, golf, endgame");
@@ -1584,10 +1915,11 @@ public class CliApplication {
 		Console.WriteLine("  thaum ls /path/to/project --lang python --depth 3");
 		Console.WriteLine("  thaum ls-cache");
 		Console.WriteLine("  thaum ls-cache Handle --keys");
-		Console.WriteLine("  thaum test-prompt CLI/CliApplication.cs BuildHierarchy");
-		Console.WriteLine("  thaum test-prompt CLI/CliApplication.cs BuildHierarchy --prompt endgame_function");
-		Console.WriteLine("  thaum summarize --compression endgame");
-		Console.WriteLine("  thaum summarize /path/to/project -c golf");
+		Console.WriteLine("  thaum try CLI/CliApplication.cs BuildHierarchy");
+		Console.WriteLine("  thaum try CLI/CliApplication.cs BuildHierarchy --prompt endgame_function");
+		Console.WriteLine("  thaum try CLI/CliApplication.cs BuildHierarchy --interactive");
+		Console.WriteLine("  thaum optimize --compression endgame");
+		Console.WriteLine("  thaum optimize /path/to/project -c golf");
 		Console.WriteLine("  thaum ls-env --values");
 		Console.WriteLine();
 		Console.WriteLine("Environment Variable Examples:");
