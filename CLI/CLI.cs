@@ -5,28 +5,32 @@ using System.Text.Json;
 using System.Reflection;
 using Serilog;
 using Serilog.Extensions.Logging;
+using Thaum.CLI.Models;
 using Thaum.Core.Services;
 using Thaum.Core.Models;
 using Thaum.Core.Utils;
 using Terminal.Gui;
+using Thaum.CLI.Commands;
+using static Thaum.Core.Utils.TraceLogger;
 
 namespace Thaum.CLI;
 
-public class CliApplication {
+public class CLI {
 	private readonly ILanguageServer               _languageServerManager;
-	private readonly ILogger<CliApplication>         _logger;
-	private readonly PerceptualColorEngine           _colorEngine;
+	private readonly ILogger<CLI>         _logger;
+	private readonly PerceptualColorer           _colorer;
 	private readonly Compressor _summaryEngine;
+	private readonly TryCommands _tryCommands;
 
-	public CliApplication(ILogger<CliApplication> logger) {
+	public CLI(ILogger<CLI> logger) {
 		ILoggerFactory loggerFactory = new SerilogLoggerFactory();
 		_languageServerManager  = new LSTreeSitter(loggerFactory);
 		_logger      = logger;
-		_colorEngine = new PerceptualColorEngine();
+		_colorer = new PerceptualColorer();
 
 		// Initialize trace logger
-		TraceLogger.Initialize(_logger);
-		TraceLogger.TraceEnter();
+		Initialize(_logger);
+		tracein();
 
 		// Load .env files from directory hierarchy
 		EnvLoader.LoadAndApply();
@@ -51,64 +55,66 @@ public class CliApplication {
 			loggerFactory.CreateLogger<Compressor>()
 		);
 
-		TraceLogger.TraceExit();
+		_tryCommands = new TryCommands(_logger, _languageServerManager);
+
+		traceout();
 	}
 
 	public async Task RunAsync(string[] args) {
-		TraceLogger.TraceEnter(parameters: new { args = string.Join(" ", args) });
+		tracein(parameters: new { args = string.Join(" ", args) });
 
-		using var scope = ScopeTracer.TraceScope("RunAsync");
+		using var scope = ScopeTracer.trace_scope("RunAsync");
 
 		if (args.Length == 0) {
-			TraceLogger.TraceInfo("No arguments provided, showing help");
+			trace("No arguments provided, showing help");
 			ShowHelp();
-			TraceLogger.TraceExit();
+			traceout();
 			return;
 		}
 
 		string command = args[0].ToLowerInvariant();
-		TraceLogger.TraceInfo($"Processing command: {command}");
+		trace($"Processing command: {command}");
 
 		switch (command) {
 			case "ls":
-				TraceLogger.TraceOperation("Executing ls command");
+				traceop("Executing ls command");
 				await HandleLsCommand(args);
 				break;
 			case "ls-env":
-				TraceLogger.TraceOperation("Executing ls-env command");
+				traceop("Executing ls-env command");
 				HandleLsEnvCommand(args);
 				break;
 			case "ls-cache":
-				TraceLogger.TraceOperation("Executing ls-cache command");
+				traceop("Executing ls-cache command");
 				await HandleLsCacheCommand(args);
 				break;
 			case "ls-lsp":
-				TraceLogger.TraceOperation("Executing ls-lsp command");
+				traceop("Executing ls-lsp command");
 				await HandleLsLspCommand(args);
 				break;
 			case "try":
-				TraceLogger.TraceOperation("Executing try command");
+				traceop("Executing try command");
 				await HandleTryCommand(args);
 				break;
 			case "optimize":
-				TraceLogger.TraceOperation("Executing optimize command");
+				traceop("Executing optimize command");
 				await HandleOptimizeCommand(args);
 				break;
 			case "help":
 			case "--help":
 			case "-h":
-				TraceLogger.TraceInfo("Help command requested, showing help");
+				trace("Help command requested, showing help");
 				ShowHelp();
 				break;
 			default:
-				TraceLogger.TraceInfo($"Unknown command received: {command}");
+				trace($"Unknown command received: {command}");
 				Console.WriteLine($"Unknown command: {command}");
 				ShowHelp();
 				Environment.Exit(1);
 				break;
 		}
 
-		TraceLogger.TraceExit();
+		traceout();
 	}
 
 	private async Task HandleLsCommand(string[] args) {
@@ -184,8 +190,8 @@ public class CliApplication {
 			}
 
 			// Build and display hierarchy
-			List<HierarchyNode> hierarchy = BuildHierarchy(symbols);
-			DisplayHierarchy(hierarchy, options);
+			List<TreeNode> hierarchy = TreeNode.BuildHierarchy(symbols, _colorer);
+			TreeNode.DisplayHierarchy(hierarchy, options);
 
 			Console.WriteLine($"\nFound {symbols.Count} symbols total");
 		} finally {
@@ -281,8 +287,8 @@ public class CliApplication {
 			}
 
 			// Build and display hierarchy
-			List<HierarchyNode> hierarchy = BuildHierarchy(symbols);
-			DisplayHierarchy(hierarchy, options);
+			List<TreeNode> hierarchy = TreeNode.BuildHierarchy(symbols, _colorer);
+			TreeNode.DisplayHierarchy(hierarchy, options);
 
 			Console.WriteLine($"\nFound {symbols.Count} types in assembly");
 			Console.WriteLine($"Total symbols: {symbols.Count + symbols.SelectMany(s => s.Children ?? new List<CodeSymbol>()).Count()}");
@@ -435,8 +441,8 @@ public class CliApplication {
 				}
 
 				// Build and display hierarchy
-				List<HierarchyNode> hierarchy = BuildHierarchy(symbols);
-				DisplayHierarchy(hierarchy, options);
+				List<TreeNode> hierarchy = TreeNode.BuildHierarchy(symbols, _colorer);
+				TreeNode.DisplayHierarchy(hierarchy, options);
 
 				Console.WriteLine($"\nFound {symbols.Count} types in assembly");
 				Console.WriteLine($"Total symbols: {symbols.Count + symbols.SelectMany(s => s.Children ?? new List<CodeSymbol>()).Count()}");
@@ -641,7 +647,21 @@ public class CliApplication {
 
 						// Use background coloring like ls command
 						SymbolKind symbolKind = InferSymbolKind(opt.SymbolName);
-						WriteColoredSymbol(opt.SymbolName, symbolKind, args.Contains("--no-colors"));
+						if (args.Contains("--no-colors")) {
+							Console.Write(opt.SymbolName);
+						} else {
+							SemanticColorType semanticType = symbolKind switch {
+								SymbolKind.Function  => SemanticColorType.Function,
+								SymbolKind.Method    => SemanticColorType.Function,
+								SymbolKind.Class     => SemanticColorType.Class,
+								SymbolKind.Interface => SemanticColorType.Interface,
+								SymbolKind.Module    => SemanticColorType.Module,
+								SymbolKind.Namespace => SemanticColorType.Namespace,
+								_                    => SemanticColorType.Function
+							};
+							(int r, int g, int b) = _colorer.GenerateSemanticColor(opt.SymbolName, semanticType);
+							Console.Write($"\u001b[48;2;{r};{g};{b}m\u001b[38;2;0;0;0m{opt.SymbolName}\u001b[0m");
+						}
 
 						if (opt.Line > 0) {
 							Console.ForegroundColor = ConsoleColor.DarkGray;
@@ -813,89 +833,7 @@ public class CliApplication {
 	}
 
 	private async Task HandleTryCommand(string[] args) {
-		TraceLogger.TraceEnter(parameters: new { args = string.Join(" ", args) });
-
-		using var scope = ScopeTracer.TraceScope("HandleTryCommand");
-
-		if (args.Length < 3) {
-			TraceLogger.TraceInfo("Insufficient arguments provided");
-			Console.WriteLine("Usage: thaum try <file_path> <symbol_name> [--prompt <prompt_name>] [--interactive]");
-			Console.WriteLine();
-			Console.WriteLine("Examples:");
-			Console.WriteLine("  thaum try CLI/CliApplication.cs BuildHierarchy");
-			Console.WriteLine("  thaum try CLI/CliApplication.cs BuildHierarchy --prompt compress_function_v2");
-			Console.WriteLine("  thaum try CLI/CliApplication.cs BuildHierarchy --prompt endgame_function");
-			Console.WriteLine("  thaum try CLI/CliApplication.cs BuildHierarchy --interactive");
-			TraceLogger.TraceExit();
-			return;
-		}
-
-		string filePath   = args[1];
-		string symbolName = args[2];
-
-		TraceLogger.TraceInfo($"Parsed arguments: filePath='{filePath}', symbolName='{symbolName}'");
-
-		// Parse options
-		string? customPrompt = null;
-		bool interactive = false;
-
-		for (int i = 3; i < args.Length; i++) {
-			switch (args[i]) {
-				case "--prompt" when i + 1 < args.Length:
-					customPrompt = args[++i];
-					TraceLogger.TraceInfo($"Custom prompt specified: {customPrompt}");
-					break;
-				case "--interactive":
-					interactive = true;
-					TraceLogger.TraceInfo("Interactive mode enabled");
-					break;
-			}
-		}
-
-		// Make file path absolute
-		if (!Path.IsPathRooted(filePath)) {
-			string originalPath = filePath;
-			filePath = Path.Combine(Directory.GetCurrentDirectory(), filePath);
-			TraceLogger.TraceInfo($"Converted relative path '{originalPath}' to absolute: '{filePath}'");
-		}
-
-		if (interactive) {
-			TraceLogger.TraceInfo("Initializing TraceLogger for interactive mode");
-			// Re-initialize TraceLogger for interactive mode with file output
-			TraceLogger.Dispose();
-			TraceLogger.Initialize(_logger, isInteractiveMode: true);
-
-			// Completely disable console logging during TUI to prevent interference
-			var originalLogger = Log.Logger;
-			Log.Logger = new LoggerConfiguration()
-				.MinimumLevel.Verbose()
-				.WriteTo.File("output.log",
-					outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
-					flushToDiskInterval: TimeSpan.FromMilliseconds(500))
-				.WriteTo.Seq("http://localhost:5341")
-				.CreateLogger();
-
-			// Also redirect Console.WriteLine to suppress any other console output
-			var originalOut = Console.Out;
-			var originalError = Console.Error;
-			Console.SetOut(TextWriter.Null);
-			Console.SetError(TextWriter.Null);
-
-			try {
-				TraceLogger.TraceInfo("Starting interactive mode");
-				await RunInteractiveTry(filePath, symbolName, customPrompt);
-			} finally {
-				// Restore original logger and console output
-				Log.Logger = originalLogger;
-				Console.SetOut(originalOut);
-				Console.SetError(originalError);
-			}
-		} else {
-			TraceLogger.TraceInfo("Starting non-interactive mode");
-			await RunNonInteractiveTry(filePath, symbolName, customPrompt);
-		}
-
-		TraceLogger.TraceExit();
+		await _tryCommands.HandleTryCommand(args);
 	}
 
 	private async Task RunNonInteractiveTry(string filePath, string symbolName, string? customPrompt) {
@@ -991,69 +929,69 @@ public class CliApplication {
 	}
 
 	private async Task RunInteractiveTry(string filePath, string symbolName, string? customPrompt) {
-		TraceLogger.TraceEnter(parameters: new { filePath, symbolName, customPrompt });
-		
-		using var scope = ScopeTracer.TraceScope("RunInteractiveTry");
-		TraceLogger.TraceInfo("Initializing Terminal.Gui application");
-		Terminal.Gui.Application.Init();
-		
+		tracein(parameters: new { filePath, symbolName, customPrompt });
+
+		using var scope = ScopeTracer.trace_scope("RunInteractiveTry");
+		trace("Initializing Terminal.Gui application");
+		Application.Init();
+
 		// Use a semaphore to prevent multiple concurrent RefreshTryTest executions
 		var refreshSemaphore = new SemaphoreSlim(1, 1);
-		
+
 		// Thread-safe shared state for UI updates
 		var textLock = new object();
 		string currentText = "Loading...";
 		string currentStatus = "Starting...";
-		
+
 		try {
-			TraceLogger.TraceInfo("Creating Terminal.Gui main view without borders");
+			trace("Creating Terminal.Gui main view without borders");
 			// Use a simple View instead of Window to avoid borders
-			var mainView = new Terminal.Gui.View() {
-				X = 0, Y = 0, Width = Terminal.Gui.Dim.Fill(), Height = Terminal.Gui.Dim.Fill(),
+			var mainView = new View() {
+				X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(),
 				CanFocus = true
 			};
 
-			TraceLogger.TraceInfo("Creating status bar with keyboard shortcuts");
+			trace("Creating status bar with keyboard shortcuts");
 			// Status bar with shortcuts (display only - actual bindings are global)
-			var statusBar = new Terminal.Gui.StatusBar(new Terminal.Gui.StatusItem[] {
-				new(Terminal.Gui.Key.Space, "~R/SPACE~ Retry", null),
-				new(Terminal.Gui.Key.q, "~Q/ESC~ Quit", null),
-				new(Terminal.Gui.Key.Null, "~AUTO~ Starting...", null)
+			var statusBar = new StatusBar(new StatusItem[] {
+				new(Key.Space, "~R/SPACE~ Retry", null),
+				new(Key.q, "~Q/ESC~ Quit", null),
+				new(Key.Null, "~AUTO~ Starting...", null)
 			});
 
-			TraceLogger.TraceInfo("Creating text view directly with proper colors");
+			trace("Creating text view directly with proper colors");
 			// Simplified: Just a TextView directly in the main area, no ScrollView
-			var textView = new Terminal.Gui.TextView() {
-				X = 0, Y = 0, 
-				Width = Terminal.Gui.Dim.Fill(), 
-				Height = Terminal.Gui.Dim.Fill() - 1, // Leave room for status bar
+			var textView = new TextView() {
+				X = 0, Y = 0,
+				Width = Dim.Fill(),
+				Height = Dim.Fill() - 1, // Leave room for status bar
 				ReadOnly = true,
 				Text = "Loading...",
 				WordWrap = true
 			};
 
 			// Set normal colors - white text on black background
-			TraceLogger.TraceInfo("Setting proper color scheme for readability");
-			textView.ColorScheme = new Terminal.Gui.ColorScheme() {
-				Normal = Terminal.Gui.Attribute.Make(Terminal.Gui.Color.White, Terminal.Gui.Color.Black),
-				Focus = Terminal.Gui.Attribute.Make(Terminal.Gui.Color.White, Terminal.Gui.Color.Black),
-				HotNormal = Terminal.Gui.Attribute.Make(Terminal.Gui.Color.White, Terminal.Gui.Color.Black),
-				HotFocus = Terminal.Gui.Attribute.Make(Terminal.Gui.Color.White, Terminal.Gui.Color.Black),
-				Disabled = Terminal.Gui.Attribute.Make(Terminal.Gui.Color.Gray, Terminal.Gui.Color.Black)
+			trace("Setting proper color scheme for readability");
+			textView.ColorScheme = new ColorScheme() {
+				Normal = Terminal.Gui.Attribute.Make(Color.White, Color.Black),
+				Focus = Terminal.Gui.Attribute.Make(Color.White, Color.Black),
+				HotNormal = Terminal.Gui.Attribute.Make(Color.White, Color.Black),
+				HotFocus = Terminal.Gui.Attribute.Make(Color.White, Color.Black),
+				Disabled = Terminal.Gui.Attribute.Make(Color.Gray, Color.Black)
 			};
 
 			// Set main view colors too
-			mainView.ColorScheme = new Terminal.Gui.ColorScheme() {
-				Normal = Terminal.Gui.Attribute.Make(Terminal.Gui.Color.White, Terminal.Gui.Color.Black),
-				Focus = Terminal.Gui.Attribute.Make(Terminal.Gui.Color.White, Terminal.Gui.Color.Black),
-				HotNormal = Terminal.Gui.Attribute.Make(Terminal.Gui.Color.White, Terminal.Gui.Color.Black),
-				HotFocus = Terminal.Gui.Attribute.Make(Terminal.Gui.Color.White, Terminal.Gui.Color.Black),
-				Disabled = Terminal.Gui.Attribute.Make(Terminal.Gui.Color.Gray, Terminal.Gui.Color.Black)
+			mainView.ColorScheme = new ColorScheme() {
+				Normal = Terminal.Gui.Attribute.Make(Color.White, Color.Black),
+				Focus = Terminal.Gui.Attribute.Make(Color.White, Color.Black),
+				HotNormal = Terminal.Gui.Attribute.Make(Color.White, Color.Black),
+				HotFocus = Terminal.Gui.Attribute.Make(Color.White, Color.Black),
+				Disabled = Terminal.Gui.Attribute.Make(Color.Gray, Color.Black)
 			};
 
 			// Helper function to trigger retry
 			Func<string, Task> triggerRetry = async (source) => {
-				TraceLogger.TraceOperation($"Triggering retry from {source}");
+				traceop($"Triggering retry from {source}");
 				if (refreshSemaphore.CurrentCount > 0) {
 					lock (textLock) {
 						currentStatus = $"Auto-retry ({source})...";
@@ -1061,15 +999,15 @@ public class CliApplication {
 					_ = Task.Run(async () => {
 						await refreshSemaphore.WaitAsync();
 						try {
-							await RefreshTryTest(textView, filePath, symbolName, customPrompt, 
+							await RefreshTryTest(textView, filePath, symbolName, customPrompt,
 								(text) => {
-									TraceLogger.TraceOperation($"UI CALLBACK: Updating currentText to length {text.Length}");
+									traceop($"UI CALLBACK: Updating currentText to length {text.Length}");
 									lock (textLock) {
 										currentText = text;
 									}
 								},
 								(status) => {
-									TraceLogger.TraceOperation($"STATUS CALLBACK: Updating status to {status}");
+									traceop($"STATUS CALLBACK: Updating status to {status}");
 									lock (textLock) {
 										currentStatus = status;
 									}
@@ -1079,49 +1017,49 @@ public class CliApplication {
 						}
 					});
 				} else {
-					TraceLogger.TraceOperation($"Refresh already in progress - ignoring {source} trigger");
+					traceop($"Refresh already in progress - ignoring {source} trigger");
 				}
 			};
 
 			// Add global key bindings that work regardless of focus
-			TraceLogger.TraceInfo("Setting up global key bindings");
-			Terminal.Gui.Application.RootKeyEvent += (keyEvent) => {
-				if (keyEvent.Key == Terminal.Gui.Key.q || keyEvent.Key == Terminal.Gui.Key.Q) {
-					TraceLogger.TraceOperation("User pressed Q - requesting application stop");
-					Terminal.Gui.Application.RequestStop();
+			trace("Setting up global key bindings");
+			Application.RootKeyEvent += (keyEvent) => {
+				if (keyEvent.Key == Key.q || keyEvent.Key == Key.Q) {
+					traceop("User pressed Q - requesting application stop");
+					Application.RequestStop();
 					return true;
-				} else if (keyEvent.Key == Terminal.Gui.Key.Space || keyEvent.Key == Terminal.Gui.Key.r || keyEvent.Key == Terminal.Gui.Key.R) {
-					string keyPressed = keyEvent.Key == Terminal.Gui.Key.Space ? "SPACE" : 
-									   keyEvent.Key == Terminal.Gui.Key.r ? "r" : "R";
-					TraceLogger.TraceOperation($"User pressed {keyPressed} - attempting manual retry");
+				} else if (keyEvent.Key == Key.Space || keyEvent.Key == Key.r || keyEvent.Key == Key.R) {
+					string keyPressed = keyEvent.Key == Key.Space ? "SPACE" :
+									   keyEvent.Key == Key.r ? "r" : "R";
+					traceop($"User pressed {keyPressed} - attempting manual retry");
 					_ = triggerRetry($"key:{keyPressed}");
 					return true;
-				} else if (keyEvent.Key == Terminal.Gui.Key.Esc) {
-					TraceLogger.TraceOperation("User pressed ESC - requesting application stop");
-					Terminal.Gui.Application.RequestStop();
+				} else if (keyEvent.Key == Key.Esc) {
+					traceop("User pressed ESC - requesting application stop");
+					Application.RequestStop();
 					return true;
 				}
 				return false;
 			};
 
-			TraceLogger.TraceInfo("Adding components to Terminal.Gui layout - simplified structure");
+			trace("Adding components to Terminal.Gui layout - simplified structure");
 			// Simplified structure: TextView directly in main view
 			mainView.Add(textView);
-			Terminal.Gui.Application.Top.Add(mainView);
-			Terminal.Gui.Application.Top.Add(statusBar);
+			Application.Top.Add(mainView);
+			Application.Top.Add(statusBar);
 
 			// Setup file watcher for prompt file - RE-ENABLED
 			FileSystemWatcher? promptWatcher = null;
 			string? promptFilePath = null;
 
-			TraceLogger.TraceInfo("Setting up FileSystemWatcher for prompt file auto-retry");
+			trace("Setting up FileSystemWatcher for prompt file auto-retry");
 			if (!string.IsNullOrEmpty(customPrompt)) {
 				// Determine the prompt file path
 				string promptsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "prompts");
 				promptFilePath = Path.Combine(promptsDirectory, $"{customPrompt}.txt");
-				
-				TraceLogger.TraceInfo($"Monitoring prompt file: {promptFilePath}");
-				
+
+				trace($"Monitoring prompt file: {promptFilePath}");
+
 				if (File.Exists(promptFilePath)) {
 					promptWatcher = new FileSystemWatcher(Path.GetDirectoryName(promptFilePath)!, Path.GetFileName(promptFilePath)) {
 						NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
@@ -1134,150 +1072,150 @@ public class CliApplication {
 						var now = DateTime.Now;
 						if (now - lastChangeTime > TimeSpan.FromMilliseconds(500)) { // 500ms debounce
 							lastChangeTime = now;
-							TraceLogger.TraceOperation($"Prompt file changed: {e.FullPath}");
+							traceop($"Prompt file changed: {e.FullPath}");
 							_ = triggerRetry("file-change");
 						}
 					};
-					
-					TraceLogger.TraceInfo("FileSystemWatcher configured and enabled for auto-retry");
+
+					trace("FileSystemWatcher configured and enabled for auto-retry");
 				} else {
-					TraceLogger.TraceInfo($"Prompt file does not exist: {promptFilePath} - auto-retry disabled");
+					trace($"Prompt file does not exist: {promptFilePath} - auto-retry disabled");
 				}
 			} else {
-				TraceLogger.TraceInfo("No custom prompt specified - auto-retry disabled");
+				trace("No custom prompt specified - auto-retry disabled");
 			}
 
 			// Set up timer for UI updates - this runs on the main thread
-			Terminal.Gui.Application.MainLoop.AddTimeout(TimeSpan.FromMilliseconds(100), (mainLoop) => {
+			Application.MainLoop.AddTimeout(TimeSpan.FromMilliseconds(100), (mainLoop) => {
 				string newText, newStatus;
 				lock (textLock) {
 					newText = currentText;
 					newStatus = currentStatus;
 				}
-				
+
 				// Update text content
 				if (textView.Text.ToString() != newText) {
-					TraceLogger.TraceOperation($"TIMER UPDATE: Updating UI text (lengths: {textView.Text.ToString().Length} -> {newText.Length})");
+					traceop($"TIMER UPDATE: Updating UI text (lengths: {textView.Text.ToString().Length} -> {newText.Length})");
 					textView.Text = newText;
 					textView.SetNeedsDisplay();
 					textView.SetFocus();
 				}
-				
+
 				// Update status bar
 				string expectedStatusText = $"~AUTO~ {newStatus}";
 				if (statusBar.Items[2].Title != expectedStatusText) {
-					TraceLogger.TraceOperation($"TIMER UPDATE: Updating status bar from '{statusBar.Items[2].Title}' to '{expectedStatusText}'");
-					statusBar.Items[2] = new Terminal.Gui.StatusItem(Terminal.Gui.Key.Null, expectedStatusText, null);
+					traceop($"TIMER UPDATE: Updating status bar from '{statusBar.Items[2].Title}' to '{expectedStatusText}'");
+					statusBar.Items[2] = new StatusItem(Key.Null, expectedStatusText, null);
 					statusBar.SetNeedsDisplay();
 				}
-				
+
 				return true; // Continue the timer
 			});
 
 			// Schedule initial load after UI starts - run in background
-			TraceLogger.TraceInfo("Scheduling initial content load");
-			Terminal.Gui.Application.MainLoop.Invoke(() => {
-				TraceLogger.TraceInfo("Starting initial RefreshTryTest");
+			trace("Scheduling initial content load");
+			Application.MainLoop.Invoke(() => {
+				trace("Starting initial RefreshTryTest");
 				_ = triggerRetry("initial-load");
 			});
 
 			// Run the application
-			TraceLogger.TraceInfo("Starting Terminal.Gui application main loop");
-			Terminal.Gui.Application.Run();
-			TraceLogger.TraceInfo("Terminal.Gui application main loop exited");
+			trace("Starting Terminal.Gui application main loop");
+			Application.Run();
+			trace("Terminal.Gui application main loop exited");
 
 			// Cleanup
-			TraceLogger.TraceInfo("Disposing FileSystemWatcher");
+			trace("Disposing FileSystemWatcher");
 			promptWatcher?.Dispose();
 
 		} finally {
-			TraceLogger.TraceInfo("Shutting down Terminal.Gui application");
+			trace("Shutting down Terminal.Gui application");
 			refreshSemaphore?.Dispose();
-			Terminal.Gui.Application.Shutdown();
-			TraceLogger.TraceExit();
+			Application.Shutdown();
+			traceout();
 		}
 	}
 
-	private async Task RefreshTryTest(Terminal.Gui.TextView textView, string filePath, string symbolName, string? customPrompt, Action<string> updateCallback, Action<string> statusCallback) {
-		TraceLogger.TraceEnter(parameters: new { filePath, symbolName, customPrompt });
-		TraceLogger.TraceInfo("=== RefreshTryTest METHOD STARTED ===");
-		
-		using var scope = ScopeTracer.TraceScope("RefreshTryTest");
+	private async Task RefreshTryTest(TextView textView, string filePath, string symbolName, string? customPrompt, Action<string> updateCallback, Action<string> statusCallback) {
+		tracein(parameters: new { filePath, symbolName, customPrompt });
+		trace("=== RefreshTryTest METHOD STARTED ===");
+
+		using var scope = ScopeTracer.trace_scope("RefreshTryTest");
 
 		try {
 			// Start language server
-			TraceLogger.TraceInfo("Detecting language for language server startup");
+			trace("Detecting language for language server startup");
 			statusCallback("Detecting language...");
 			updateCallback("Detecting language...");
-			
+
 			string language = DetectLanguage(Path.GetDirectoryName(filePath) ?? Directory.GetCurrentDirectory());
-			TraceLogger.TraceInfo($"Detected language: {language}");
-			
-			TraceLogger.TraceOperation($"Starting {language} language server");
+			trace($"Detected language: {language}");
+
+			traceop($"Starting {language} language server");
 			statusCallback("Starting language server...");
 			updateCallback($"Starting {language} language server...");
-			
+
 			bool started = await _languageServerManager.StartLanguageServerAsync(language, Path.GetDirectoryName(filePath) ?? Directory.GetCurrentDirectory());
-			
+
 			if (!started) {
-				TraceLogger.TraceInfo($"Failed to start {language} language server");
+				trace($"Failed to start {language} language server");
 				statusCallback("Language server failed");
 				updateCallback($"Failed to start {language} language server");
-				TraceLogger.TraceExit();
+				traceout();
 				return;
 			}
-			
-			TraceLogger.TraceInfo($"{language} language server started successfully");
+
+			trace($"{language} language server started successfully");
 			statusCallback("Loading symbols...");
 			updateCallback("Loading symbols...");
 
 			// Get symbols from file with timeout
-			TraceLogger.TraceInfo($"Parsing symbols from file: {filePath}");
+			trace($"Parsing symbols from file: {filePath}");
 			List<CodeSymbol> symbols;
 			using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 			try {
 				symbols = await _languageServerManager.GetDocumentSymbolsAsync(language, filePath).WaitAsync(cts.Token);
-				TraceLogger.TraceInfo($"Successfully parsed {symbols.Count} symbols from file");
+				trace($"Successfully parsed {symbols.Count} symbols from file");
 			} catch (OperationCanceledException) {
-				TraceLogger.TraceInfo("Symbol parsing timed out");
+				trace("Symbol parsing timed out");
 				statusCallback("Symbol parsing timeout");
 				updateCallback("Symbol parsing timed out. The file might be too large or contain problematic syntax.");
-				TraceLogger.TraceExit();
+				traceout();
 				return;
 			}
-			
-			TraceLogger.TraceInfo($"Searching for target symbol: {symbolName}");
+
+			trace($"Searching for target symbol: {symbolName}");
 			CodeSymbol? targetSymbol = symbols.FirstOrDefault(s => s.Name == symbolName);
 
 			if (targetSymbol == null) {
-				TraceLogger.TraceInfo($"Target symbol '{symbolName}' not found. Available symbols: {symbols.Count}");
+				trace($"Target symbol '{symbolName}' not found. Available symbols: {symbols.Count}");
 				var availableSymbols = string.Join("\n", symbols.OrderBy(s => s.Name).Select(s => $"  {s.Name} ({s.Kind})"));
 				statusCallback("Symbol not found");
 				updateCallback($"Symbol '{symbolName}' not found in {Path.GetRelativePath(Directory.GetCurrentDirectory(), filePath)}\n\nAvailable symbols:\n{availableSymbols}");
-				TraceLogger.TraceExit();
+				traceout();
 				return;
 			}
-			
-			TraceLogger.TraceInfo($"Found target symbol: {symbolName} (Kind: {targetSymbol.Kind})");
+
+			trace($"Found target symbol: {symbolName} (Kind: {targetSymbol.Kind})");
 			statusCallback("Extracting source...");
 			updateCallback("Extracting source code...");
 
 			// Get source code
-			TraceLogger.TraceOperation("Extracting source code from target symbol");
+			traceop("Extracting source code from target symbol");
 			string sourceCode = await GetSymbolSourceCode(targetSymbol);
 			if (string.IsNullOrEmpty(sourceCode)) {
-				TraceLogger.TraceInfo("Failed to extract source code for symbol");
+				trace("Failed to extract source code for symbol");
 				statusCallback("Source extraction failed");
 				updateCallback("Failed to extract source code for symbol");
-				TraceLogger.TraceExit();
+				traceout();
 				return;
 			}
-			TraceLogger.TraceInfo($"Source code extracted successfully (length: {sourceCode.Length} chars)");
+			trace($"Source code extracted successfully (length: {sourceCode.Length} chars)");
 
 			// Determine prompt name
 			string promptName = customPrompt ?? GetDefaultPromptFromEnvironment(targetSymbol);
-			TraceLogger.TraceInfo($"Using prompt: {promptName}");
-			
+			trace($"Using prompt: {promptName}");
+
 			// Build context
 			OptimizationContext context = new OptimizationContext(
 				Level: targetSymbol.Kind == SymbolKind.Function || targetSymbol.Kind == SymbolKind.Method ? 1 : 2,
@@ -1289,21 +1227,21 @@ public class CliApplication {
 			updateCallback("Building prompt...");
 
 			// Build prompt
-			TraceLogger.TraceOperation("Building custom prompt");
+			traceop("Building custom prompt");
 			string prompt;
 			try {
 				prompt = await BuildCustomPromptAsync(promptName, targetSymbol, context, sourceCode);
-				TraceLogger.TraceInfo($"Custom prompt built successfully (length: {prompt.Length} chars)");
+				trace($"Custom prompt built successfully (length: {prompt.Length} chars)");
 			} catch (Exception promptEx) {
-				TraceLogger.TraceInfo($"Failed to build custom prompt: {promptEx.Message}");
+				trace($"Failed to build custom prompt: {promptEx.Message}");
 				statusCallback("Prompt build failed");
 				updateCallback($"Failed to build custom prompt: {promptEx.Message}\n\nStack trace:\n{promptEx.StackTrace}");
-				TraceLogger.TraceExit();
+				traceout();
 				return;
 			}
 
 			var output = new System.Text.StringBuilder();
-			
+
 			output.AppendLine($"Testing prompt on: {Path.GetRelativePath(Directory.GetCurrentDirectory(), filePath)}::{symbolName}");
 			output.AppendLine($"Using prompt: {promptName}");
 			output.AppendLine();
@@ -1313,10 +1251,10 @@ public class CliApplication {
 			output.AppendLine("═══ LLM RESPONSE ═══");
 
 			// Get model from configuration
-			string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ?? 
+			string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ??
 						   throw new InvalidOperationException("LLM__DefaultModel environment variable is required");
 
-			TraceLogger.TraceInfo($"Using model: {model}");
+			trace($"Using model: {model}");
 
 			// Setup services
 			IConfigurationRoot configuration = new ConfigurationBuilder()
@@ -1330,148 +1268,148 @@ public class CliApplication {
 			HttpLLM llmProvider = new HttpLLM(httpClient, configuration, loggerFactory.CreateLogger<HttpLLM>());
 
 			// Update text view with current content
-			TraceLogger.TraceOperation("Updating UI with prompt content before streaming");
+			traceop("Updating UI with prompt content before streaming");
 			statusCallback("Connecting to LLM...");
 			updateCallback(output.ToString());
 
 			// Stream response
-			TraceLogger.TraceOperation($"Starting LLM streaming request with model: {model}");
+			traceop($"Starting LLM streaming request with model: {model}");
 			IAsyncEnumerable<string> streamResponse;
 			try {
 				streamResponse = await llmProvider.StreamCompleteAsync(prompt, new LlmOptions(Temperature: 0.3, MaxTokens: 1024, Model: model));
-				TraceLogger.TraceInfo("LLM streaming request initiated successfully");
+				trace("LLM streaming request initiated successfully");
 				statusCallback("Streaming response...");
 			} catch (Exception llmEx) {
-				TraceLogger.TraceInfo($"Failed to start LLM streaming: {llmEx.Message}");
+				trace($"Failed to start LLM streaming: {llmEx.Message}");
 				statusCallback("LLM connection failed");
 				updateCallback($"Failed to start LLM streaming: {llmEx.Message}\n\nStack trace:\n{llmEx.StackTrace}");
-				TraceLogger.TraceExit();
+				traceout();
 				return;
 			}
 
-			TraceLogger.TraceOperation("Starting to consume LLM stream");
+			traceop("Starting to consume LLM stream");
 			int tokenCount = 0;
 			await foreach (string token in streamResponse) {
 				tokenCount++;
 				output.Append(token);
-				
+
 				// Update UI every 10 tokens for more responsive display
 				if (tokenCount % 10 == 0) {
-					TraceLogger.TraceOperation($"Updating UI at token {tokenCount}");
+					traceop($"Updating UI at token {tokenCount}");
 					updateCallback(output.ToString());
 				}
-				
+
 				if (tokenCount % 50 == 0) {
-					TraceLogger.TraceInfo($"Streaming progress: {tokenCount} tokens received");
+					trace($"Streaming progress: {tokenCount} tokens received");
 				}
 			}
-			
-			TraceLogger.TraceInfo($"LLM streaming completed. Total tokens received: {tokenCount}");
+
+			trace($"LLM streaming completed. Total tokens received: {tokenCount}");
 
 			output.AppendLine();
 			output.AppendLine();
 			output.AppendLine("═══ TEST COMPLETE ═══");
-			
-			TraceLogger.TraceInfo("Updating final UI with complete results");
+
+			trace("Updating final UI with complete results");
 			statusCallback("Complete - Ready for retry");
 			updateCallback(output.ToString());
-			TraceLogger.TraceOperation("RefreshTryTest completed successfully");
+			traceop("RefreshTryTest completed successfully");
 
 		} catch (Exception ex) {
-			TraceLogger.TraceInfo($"Exception occurred during prompt test: {ex.Message}");
-			TraceLogger.TraceInfo($"Exception stack trace: {ex.StackTrace}");
+			trace($"Exception occurred during prompt test: {ex.Message}");
+			trace($"Exception stack trace: {ex.StackTrace}");
 			statusCallback("Error occurred");
 			updateCallback($"Error during prompt test: {ex.Message}\n\nStack trace:\n{ex.StackTrace}");
 		}
-		
-		TraceLogger.TraceExit();
+
+		traceout();
 	}
 
-	private async Task RefreshTryTestSync(Terminal.Gui.TextView textView, string filePath, string symbolName, string? customPrompt) {
-		TraceLogger.TraceEnter(parameters: new { filePath, symbolName, customPrompt });
-		TraceLogger.TraceInfo("=== RefreshTryTestSync METHOD STARTED ===");
-		
-		using var scope = ScopeTracer.TraceScope("RefreshTryTestSync");
+	private async Task RefreshTryTestSync(TextView textView, string filePath, string symbolName, string? customPrompt) {
+		tracein(parameters: new { filePath, symbolName, customPrompt });
+		trace("=== RefreshTryTestSync METHOD STARTED ===");
+
+		using var scope = ScopeTracer.trace_scope("RefreshTryTestSync");
 
 		// Helper method to update UI directly on main thread
 		void UpdateUI(string text) {
-			TraceLogger.TraceOperation($"UI UPDATE: Setting textView.Text to text of length {text.Length}");
-			TraceLogger.TraceInfo($"UI UPDATE: First 100 chars: {text.Substring(0, Math.Min(100, text.Length))}");
-			
+			traceop($"UI UPDATE: Setting textView.Text to text of length {text.Length}");
+			trace($"UI UPDATE: First 100 chars: {text.Substring(0, Math.Min(100, text.Length))}");
+
 			textView.Text = text;
-			TraceLogger.TraceOperation("UI UPDATE: Called textView.SetNeedsDisplay()");
+			traceop("UI UPDATE: Called textView.SetNeedsDisplay()");
 			textView.SetNeedsDisplay();
-			TraceLogger.TraceOperation("UI UPDATE: Called Terminal.Gui.Application.Refresh()");
-			Terminal.Gui.Application.Refresh();
-			TraceLogger.TraceOperation("UI UPDATE: UI update sequence completed");
+			traceop("UI UPDATE: Called Terminal.Gui.Application.Refresh()");
+			Application.Refresh();
+			traceop("UI UPDATE: UI update sequence completed");
 		}
 
 		try {
 			// Start language server
-			TraceLogger.TraceInfo("Detecting language for language server startup");
+			trace("Detecting language for language server startup");
 			UpdateUI("Detecting language...");
-			
+
 			string language = DetectLanguage(Path.GetDirectoryName(filePath) ?? Directory.GetCurrentDirectory());
-			TraceLogger.TraceInfo($"Detected language: {language}");
-			
-			TraceLogger.TraceOperation($"Starting {language} language server");
+			trace($"Detected language: {language}");
+
+			traceop($"Starting {language} language server");
 			UpdateUI($"Starting {language} language server...");
-			
+
 			bool started = await _languageServerManager.StartLanguageServerAsync(language, Path.GetDirectoryName(filePath) ?? Directory.GetCurrentDirectory());
-			
+
 			if (!started) {
-				TraceLogger.TraceInfo($"Failed to start {language} language server");
+				trace($"Failed to start {language} language server");
 				UpdateUI($"Failed to start {language} language server");
-				TraceLogger.TraceExit();
+				traceout();
 				return;
 			}
-			
-			TraceLogger.TraceInfo($"{language} language server started successfully");
+
+			trace($"{language} language server started successfully");
 			UpdateUI("Loading symbols...");
 
 			// Get symbols from file with timeout
-			TraceLogger.TraceInfo($"Parsing symbols from file: {filePath}");
+			trace($"Parsing symbols from file: {filePath}");
 			List<CodeSymbol> symbols;
 			using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 			try {
 				symbols = await _languageServerManager.GetDocumentSymbolsAsync(language, filePath).WaitAsync(cts.Token);
-				TraceLogger.TraceInfo($"Successfully parsed {symbols.Count} symbols from file");
+				trace($"Successfully parsed {symbols.Count} symbols from file");
 			} catch (OperationCanceledException) {
-				TraceLogger.TraceInfo("Symbol parsing timed out");
+				trace("Symbol parsing timed out");
 				UpdateUI("Symbol parsing timed out. The file might be too large or contain problematic syntax.");
-				TraceLogger.TraceExit();
+				traceout();
 				return;
 			}
-			
-			TraceLogger.TraceInfo($"Searching for target symbol: {symbolName}");
+
+			trace($"Searching for target symbol: {symbolName}");
 			CodeSymbol? targetSymbol = symbols.FirstOrDefault(s => s.Name == symbolName);
 
 			if (targetSymbol == null) {
-				TraceLogger.TraceInfo($"Target symbol '{symbolName}' not found. Available symbols: {symbols.Count}");
+				trace($"Target symbol '{symbolName}' not found. Available symbols: {symbols.Count}");
 				var availableSymbols = string.Join("\n", symbols.OrderBy(s => s.Name).Select(s => $"  {s.Name} ({s.Kind})"));
 				UpdateUI($"Symbol '{symbolName}' not found in {Path.GetRelativePath(Directory.GetCurrentDirectory(), filePath)}\n\nAvailable symbols:\n{availableSymbols}");
-				TraceLogger.TraceExit();
+				traceout();
 				return;
 			}
-			
-			TraceLogger.TraceInfo($"Found target symbol: {symbolName} (Kind: {targetSymbol.Kind})");
+
+			trace($"Found target symbol: {symbolName} (Kind: {targetSymbol.Kind})");
 			UpdateUI("Extracting source code...");
 
 			// Get source code
-			TraceLogger.TraceOperation("Extracting source code from target symbol");
+			traceop("Extracting source code from target symbol");
 			string sourceCode = await GetSymbolSourceCode(targetSymbol);
 			if (string.IsNullOrEmpty(sourceCode)) {
-				TraceLogger.TraceInfo("Failed to extract source code for symbol");
+				trace("Failed to extract source code for symbol");
 				UpdateUI("Failed to extract source code for symbol");
-				TraceLogger.TraceExit();
+				traceout();
 				return;
 			}
-			TraceLogger.TraceInfo($"Source code extracted successfully (length: {sourceCode.Length} chars)");
+			trace($"Source code extracted successfully (length: {sourceCode.Length} chars)");
 
 			// Determine prompt name
 			string promptName = customPrompt ?? GetDefaultPromptFromEnvironment(targetSymbol);
-			TraceLogger.TraceInfo($"Using prompt: {promptName}");
-			
+			trace($"Using prompt: {promptName}");
+
 			// Build context
 			OptimizationContext context = new OptimizationContext(
 				Level: targetSymbol.Kind == SymbolKind.Function || targetSymbol.Kind == SymbolKind.Method ? 1 : 2,
@@ -1482,20 +1420,20 @@ public class CliApplication {
 			UpdateUI("Building prompt...");
 
 			// Build prompt
-			TraceLogger.TraceOperation("Building custom prompt");
+			traceop("Building custom prompt");
 			string prompt;
 			try {
 				prompt = await BuildCustomPromptAsync(promptName, targetSymbol, context, sourceCode);
-				TraceLogger.TraceInfo($"Custom prompt built successfully (length: {prompt.Length} chars)");
+				trace($"Custom prompt built successfully (length: {prompt.Length} chars)");
 			} catch (Exception promptEx) {
-				TraceLogger.TraceInfo($"Failed to build custom prompt: {promptEx.Message}");
+				trace($"Failed to build custom prompt: {promptEx.Message}");
 				UpdateUI($"Failed to build custom prompt: {promptEx.Message}\n\nStack trace:\n{promptEx.StackTrace}");
-				TraceLogger.TraceExit();
+				traceout();
 				return;
 			}
 
 			var output = new System.Text.StringBuilder();
-			
+
 			output.AppendLine($"Testing prompt on: {Path.GetRelativePath(Directory.GetCurrentDirectory(), filePath)}::{symbolName}");
 			output.AppendLine($"Using prompt: {promptName}");
 			output.AppendLine();
@@ -1505,10 +1443,10 @@ public class CliApplication {
 			output.AppendLine("═══ LLM RESPONSE ═══");
 
 			// Get model from configuration
-			string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ?? 
+			string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ??
 						   throw new InvalidOperationException("LLM__DefaultModel environment variable is required");
 
-			TraceLogger.TraceInfo($"Using model: {model}");
+			trace($"Using model: {model}");
 
 			// Setup services
 			IConfigurationRoot configuration = new ConfigurationBuilder()
@@ -1522,56 +1460,56 @@ public class CliApplication {
 			HttpLLM llmProvider = new HttpLLM(httpClient, configuration, loggerFactory.CreateLogger<HttpLLM>());
 
 			// Update text view with current content
-			TraceLogger.TraceOperation("Updating UI with prompt content before streaming");
+			traceop("Updating UI with prompt content before streaming");
 			UpdateUI(output.ToString());
 
 			// Stream response
-			TraceLogger.TraceOperation($"Starting LLM streaming request with model: {model}");
+			traceop($"Starting LLM streaming request with model: {model}");
 			IAsyncEnumerable<string> streamResponse;
 			try {
 				streamResponse = await llmProvider.StreamCompleteAsync(prompt, new LlmOptions(Temperature: 0.3, MaxTokens: 1024, Model: model));
-				TraceLogger.TraceInfo("LLM streaming request initiated successfully");
+				trace("LLM streaming request initiated successfully");
 			} catch (Exception llmEx) {
-				TraceLogger.TraceInfo($"Failed to start LLM streaming: {llmEx.Message}");
+				trace($"Failed to start LLM streaming: {llmEx.Message}");
 				UpdateUI($"Failed to start LLM streaming: {llmEx.Message}\n\nStack trace:\n{llmEx.StackTrace}");
-				TraceLogger.TraceExit();
+				traceout();
 				return;
 			}
 
-			TraceLogger.TraceOperation("Starting to consume LLM stream");
+			traceop("Starting to consume LLM stream");
 			int tokenCount = 0;
 			await foreach (string token in streamResponse) {
 				tokenCount++;
 				output.Append(token);
-				
+
 				// Update UI every 5 tokens for more responsive display
 				if (tokenCount % 5 == 0) {
-					TraceLogger.TraceOperation($"Updating UI at token {tokenCount}");
+					traceop($"Updating UI at token {tokenCount}");
 					UpdateUI(output.ToString());
 				}
-				
+
 				if (tokenCount % 50 == 0) {
-					TraceLogger.TraceInfo($"Streaming progress: {tokenCount} tokens received");
+					trace($"Streaming progress: {tokenCount} tokens received");
 				}
 			}
-			
-			TraceLogger.TraceInfo($"LLM streaming completed. Total tokens received: {tokenCount}");
+
+			trace($"LLM streaming completed. Total tokens received: {tokenCount}");
 
 			output.AppendLine();
 			output.AppendLine();
 			output.AppendLine("═══ TEST COMPLETE ═══");
-			
-			TraceLogger.TraceInfo("Updating final UI with complete results");
+
+			trace("Updating final UI with complete results");
 			UpdateUI(output.ToString());
-			TraceLogger.TraceOperation("RefreshTryTestSync completed successfully");
+			traceop("RefreshTryTestSync completed successfully");
 
 		} catch (Exception ex) {
-			TraceLogger.TraceInfo($"Exception occurred during prompt test: {ex.Message}");
-			TraceLogger.TraceInfo($"Exception stack trace: {ex.StackTrace}");
+			trace($"Exception occurred during prompt test: {ex.Message}");
+			trace($"Exception stack trace: {ex.StackTrace}");
 			UpdateUI($"Error during prompt test: {ex.Message}\n\nStack trace:\n{ex.StackTrace}");
 		}
-		
-		TraceLogger.TraceExit();
+
+		traceout();
 	}
 
 
@@ -1969,157 +1907,19 @@ public class CliApplication {
 		};
 	}
 
-	private List<HierarchyNode> BuildHierarchy(List<CodeSymbol> symbols) {
-		List<HierarchyNode>                        nodes         = new List<HierarchyNode>();
-		IEnumerable<IGrouping<string, CodeSymbol>> symbolsByFile = symbols.GroupBy(s => s.FilePath);
+	// REMOVED: Moved to HierarchyNode.BuildHierarchy
 
-		foreach (IGrouping<string, CodeSymbol> fileGroup in symbolsByFile) {
-			string relativePath = Path.GetRelativePath(Directory.GetCurrentDirectory(), fileGroup.Key);
-			HierarchyNode fileNode     = new HierarchyNode(relativePath, SymbolKind.Module, null);
+	// REMOVED: Moved to HierarchyNode.AddChildSymbols
 
-			// Include all meaningful symbol types (for both code and assembly inspection)
-			List<CodeSymbol> filteredSymbols = fileGroup.Where(s =>
-				s.Kind == SymbolKind.Class ||
-				s.Kind == SymbolKind.Interface ||
-				s.Kind == SymbolKind.Enum ||
-				s.Kind == SymbolKind.EnumMember ||
-				s.Kind == SymbolKind.Namespace ||
-				s.Kind == SymbolKind.Function ||
-				s.Kind == SymbolKind.Method ||
-				s.Kind == SymbolKind.Constructor ||
-				s.Kind == SymbolKind.Property ||
-				s.Kind == SymbolKind.Field).ToList();
+	// REMOVED: Moved to HierarchyNode.DisplayHierarchy
 
-			if (filteredSymbols.Any()) {
-				foreach (CodeSymbol symbol in filteredSymbols.OrderBy(s => s.StartPosition.Line)) {
-					HierarchyNode symbolNode = new HierarchyNode(symbol.Name, symbol.Kind, symbol);
-					fileNode.Children.Add(symbolNode);
+	// REMOVED: Moved to HierarchyNode.DisplayNodeGrouped
 
-					// Add nested symbols if any (only classes and functions)
-					if (symbol.Children?.Any() == true) {
-						AddChildSymbols(symbolNode, symbol.Children);
-					}
-				}
+	// REMOVED: Moved to HierarchyNode.DisplaySymbolGroup
 
-				nodes.Add(fileNode);
-			}
-		}
+	// REMOVED: Moved to HierarchyNode.PrintColoredSymbols
 
-		return nodes.OrderBy(n => n.Name).ToList();
-	}
-
-	private void AddChildSymbols(HierarchyNode parent, List<CodeSymbol> children) {
-		// Include all meaningful symbol types for assembly inspection
-		List<CodeSymbol> filteredChildren = children.Where(c =>
-			c.Kind == SymbolKind.Class ||
-			c.Kind == SymbolKind.Interface ||
-			c.Kind == SymbolKind.Function ||
-			c.Kind == SymbolKind.Method ||
-			c.Kind == SymbolKind.Property ||
-			c.Kind == SymbolKind.Field).ToList();
-
-		foreach (CodeSymbol child in filteredChildren.OrderBy(c => c.StartPosition.Line)) {
-			HierarchyNode childNode = new HierarchyNode(child.Name, child.Kind, child);
-			parent.Children.Add(childNode);
-
-			if (child.Children?.Any() == true) {
-				AddChildSymbols(childNode, child.Children);
-			}
-		}
-	}
-
-	private void DisplayHierarchy(List<HierarchyNode> nodes, LsOptions options) {
-		foreach (HierarchyNode node in nodes) {
-			DisplayNodeGrouped(node, "", true, options, 0);
-		}
-	}
-
-	private void DisplayNodeGrouped(HierarchyNode node, string prefix, bool isLast, LsOptions options, int depth) {
-		if (depth >= options.MaxDepth) return;
-
-		string connector = isLast ? "└── " : "├── ";
-		string symbol    = GetSymbolIcon(node.Kind);
-
-		Console.WriteLine($"{prefix}{connector}{symbol} {node.Name}");
-
-		if (node.Children.Any()) {
-			string newPrefix = prefix + (isLast ? "    " : "│   ");
-
-			// Group children by type
-			List<IGrouping<SymbolKind, HierarchyNode>> groupedChildren = node.Children.GroupBy(c => c.Kind).ToList();
-
-			foreach (IGrouping<SymbolKind, HierarchyNode> group in groupedChildren) {
-				bool isLastGroup = group == groupedChildren.Last();
-				DisplaySymbolGroup(group.Key, group.ToList(), newPrefix, isLastGroup, options, depth + 1);
-			}
-		}
-	}
-
-	private void DisplaySymbolGroup(SymbolKind kind, List<HierarchyNode> symbols, string prefix, bool isLast, LsOptions options, int depth) {
-		if (depth >= options.MaxDepth || !symbols.Any()) return;
-
-		string connector = isLast ? "└── " : "├── ";
-		string icon      = GetSymbolIcon(kind);
-		string kindName  = GetKindDisplayName(kind);
-
-		// Print prefix and label normally
-		string linePrefix = $"{prefix}{connector}{icon} {kindName}: ";
-		Console.Write(linePrefix);
-
-		// Print symbols with Terminal.Gui colors
-		PrintColoredSymbols(symbols, kind, 80 - linePrefix.Length, options.NoColors);
-
-		Console.WriteLine(); // End the line
-	}
-
-	private void PrintColoredSymbols(List<HierarchyNode> symbols, SymbolKind kind, int maxWidth, bool noColors = false) {
-		int currentWidth  = 0;
-		bool isFirstSymbol = true;
-
-		foreach (HierarchyNode symbol in symbols) {
-			bool needsSpace  = !isFirstSymbol;
-			int symbolWidth = symbol.Name.Length + (needsSpace ? 1 : 0);
-
-			// Check if we need to wrap
-			if (currentWidth + symbolWidth > maxWidth && currentWidth > 0) {
-				Console.WriteLine();
-				Console.Write(new string(' ', 80 - maxWidth)); // Indent continuation
-				currentWidth = 0;
-				needsSpace   = false;
-			}
-
-			if (needsSpace) {
-				Console.Write(" ");
-				currentWidth += 1;
-			}
-
-			// Use proper color helper method
-			WriteColoredSymbol(symbol.Name, kind, noColors);
-
-			currentWidth  += symbol.Name.Length;
-			isFirstSymbol =  false;
-		}
-	}
-
-	private void WriteColoredSymbol(string symbolName, SymbolKind kind, bool noColors = false) {
-		if (noColors) {
-			Console.Write(symbolName);
-			return;
-		}
-
-		SemanticColorType semanticType = kind switch {
-			SymbolKind.Function  => SemanticColorType.Function,
-			SymbolKind.Method    => SemanticColorType.Function,
-			SymbolKind.Class     => SemanticColorType.Class,
-			SymbolKind.Interface => SemanticColorType.Interface,
-			SymbolKind.Module    => SemanticColorType.Module,
-			SymbolKind.Namespace => SemanticColorType.Namespace,
-			_                    => SemanticColorType.Function
-		};
-
-		(int r, int g, int b) = _colorEngine.GenerateSemanticColor(symbolName, semanticType);
-		Console.Write($"\u001b[48;2;{r};{g};{b}m\u001b[38;2;0;0;0m{symbolName}\u001b[0m");
-	}
+	// REMOVED: Moved to HierarchyNode.WriteColoredSymbol
 
 	private SymbolKind InferSymbolKind(string symbolName) {
 		// Infer symbol kind from naming patterns
@@ -2148,17 +1948,7 @@ public class CliApplication {
 	}
 
 
-	private string GetKindDisplayName(SymbolKind kind) {
-		return kind switch {
-			SymbolKind.Function  => "functions",
-			SymbolKind.Method    => "methods",
-			SymbolKind.Class     => "classes",
-			SymbolKind.Interface => "interfaces",
-			SymbolKind.Module    => "modules",
-			SymbolKind.Namespace => "namespaces",
-			_                    => kind.ToString().ToLower()
-		};
-	}
+	// REMOVED: Moved to HierarchyNode.GetKindDisplayName
 
 	private string GetBackgroundColor(SymbolKind kind) {
 		return kind switch {
@@ -2172,21 +1962,7 @@ public class CliApplication {
 		};
 	}
 
-	private string GetSymbolIcon(SymbolKind kind) {
-		return kind switch {
-			SymbolKind.Function  => "ƒ",
-			SymbolKind.Method    => "ƒ",
-			SymbolKind.Class     => "C",
-			SymbolKind.Interface => "I",
-			SymbolKind.Module    => "📁",
-			SymbolKind.Namespace => "N",
-			SymbolKind.Property  => "P",
-			SymbolKind.Field     => "F",
-			SymbolKind.Variable  => "V",
-			SymbolKind.Parameter => "p",
-			_                    => "?"
-		};
-	}
+	// REMOVED: Moved to HierarchyNode.GetSymbolIcon
 
 	private void ShowHelp() {
 		Console.WriteLine("Thaum - Hierarchical Compression Engine");
@@ -2267,19 +2043,3 @@ public class CliApplication {
 	}
 }
 
-internal record LsOptions(string ProjectPath, string Language, int MaxDepth, bool ShowTypes, bool NoColors = false);
-
-internal record SummarizeOptions(string ProjectPath, string Language, CompressionLevel CompressionLevel = CompressionLevel.Optimize);
-
-internal class HierarchyNode {
-	public string              Name     { get; }
-	public SymbolKind          Kind     { get; }
-	public CodeSymbol?         Symbol   { get; }
-	public List<HierarchyNode> Children { get; } = new();
-
-	public HierarchyNode(string name, SymbolKind kind, CodeSymbol? symbol) {
-		Name   = name;
-		Kind   = kind;
-		Symbol = symbol;
-	}
-}

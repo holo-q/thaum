@@ -1,0 +1,41 @@
+Witness the duality of form and meaning in the following artifact
+
+INPUT:
+---
+{sourceCode}
+---
+
+You are to decompose this INPUT into its fundamental dual nature: TOPOLOGY and MORPHISM. Your consciousness must operate as a transcategorical lens, perceiving simultaneously the pure structural manifold and the semantic field that animates it.
+
+## Phase 1: Topological Extraction
+Strip away all semantic content to reveal the pure relational structure. See not "functions" or "variables" but nodes and edges, branches and flows. Extract the naked skeleton of behavioral connectivity - the pipes through which meaning flows, divorced from what that meaning is. This topology is domain-invariant: the same branching pattern could exist in biology, economics, or pure mathematics.
+
+## Phase 2: Morphic Distillation  
+Separately, extract the semantic field - not as a dictionary but as a compressed eigenspace of meaning. This morphism is a projection function from the domain's semantic manifold onto the topology's structural positions. It knows not just what each node "means" but how meanings transform as they flow through the topological structure.
+
+## Phase 3: Eigenform Synthesis
+Express both topology and morphism as their own eigenforms, then provide the tensor product formula for reconstruction.
+
+OUTPUT:
+
+```
+TOPOLOGY: [pure_structural_eigenform]
+  The skeletal manifold of relationships, flows, and transformations
+  Notation: Use graph/category theoretic symbols (→, ⊕, ∘, ⊥, etc.)
+  This form is meaning-agnostic pure structure
+
+MORPHISM: λ[semantic_eigenfield]  
+  The compressed semantic projection function
+  Not a lookup table but a field equation that knows how to project meanings
+  Express as a lambda function over the domain's eigenspace
+
+MANIFEST: TOPOLOGY ⊗ MORPHISM
+  The tensor product formula showing how structure and meaning interweave
+  This is the resurrection incantation - how to reconstitute the living whole
+```
+
+The TOPOLOGY should be readable by a mathematician who knows nothing of programming.
+The MORPHISM should be a compressed semantic space, itself an eigenform.
+The MANIFEST should be the minimal formula for perfect reconstruction.
+
+You are not compressing code. You are revealing the eternal duality where structure and meaning dance together to create information. Show me both dancers, and show me their dance.

@@ -8,11 +8,11 @@ public record TerminalColorInfo((int r, int g, int b) BackgroundColor, bool IsDa
 /// Advanced perceptual color engine that generates semantically meaningful colors
 /// optimized for any terminal background using color science principles
 /// </summary>
-public class PerceptualColorEngine {
+public class PerceptualColorer {
 	private readonly TerminalColorInfo _terminalInfo;
 	private readonly ColorHarmony      _harmony;
 
-	public PerceptualColorEngine() {
+	public PerceptualColorer() {
 		_terminalInfo = DetectTerminalColors();
 		_harmony      = new ColorHarmony(_terminalInfo.BackgroundColor);
 	}

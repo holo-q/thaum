@@ -23,11 +23,11 @@ public static class Program {
 			.CreateLogger();
 
 		ILoggerFactory loggerFactory = new SerilogLoggerFactory(Log.Logger);
-		var logger = loggerFactory.CreateLogger<CliApplication>();
+		var logger = loggerFactory.CreateLogger<CLI.CLI>();
 
 		// Check if CLI arguments provided
 		if (args.Length > 0) {
-			CliApplication cliApp = new CliApplication(logger);
+			CLI.CLI cliApp = new CLI.CLI(logger);
 			try {
 				await cliApp.RunAsync(args);
 			} catch (Exception ex) {
