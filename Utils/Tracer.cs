@@ -171,18 +171,18 @@ public static class Tracer {
 	}
 
 	public static void traceln(string source, string target, string status = "") {
-		ln(tracefmt(source, target, status));
+		println(tracefmt(source, target, status));
 	}
 
 	public static void traceheader(string title) {
-		ln();
-		ln(tracehdr(title));
-		ln();
+		println();
+		println(tracehdr(title));
+		println();
 	}
 
 	public static void traceprogress(string operation, int current, int total) {
 		double percentage = (double)current / total * 100;
-		ln(traceprog(operation, current, total, percentage));
+		println(traceprog(operation, current, total, percentage));
 	}
 
 	private static int GetTerminalWidth() {
@@ -197,7 +197,7 @@ public static class Tracer {
 		Console.Write(obj?.ToString() ?? "");
 	}
 
-	public static void ln(object? obj = null) {
+	public static void println(object? obj = null) {
 		Console.WriteLine(obj?.ToString() ?? "");
 	}
 

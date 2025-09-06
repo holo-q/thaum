@@ -8,14 +8,14 @@ class TestLogger {
 		var logger        = loggerFactory.CreateLogger<TestLogger>();
 
 		// Test normal mode
-		ln("Testing normal mode:");
+		println("Testing normal mode:");
 		Tracer.Initialize(logger, false);
 		Tracer.tracein();
 		Tracer.trace("This should go to console");
 		Tracer.traceout();
 
 		// Test interactive mode
-		ln("\nTesting interactive mode:");
+		println("\nTesting interactive mode:");
 		Tracer.Dispose();
 		Tracer.Initialize(logger, true);
 		Tracer.tracein();
@@ -23,6 +23,6 @@ class TestLogger {
 		Tracer.traceout();
 		Tracer.Dispose();
 
-		ln("Done! Check for interactive.log file.");
+		println("Done! Check for interactive.log file.");
 	}
 }

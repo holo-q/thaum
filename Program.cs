@@ -25,8 +25,8 @@ public static class Program {
 				var errorMsg = $"Error: {ex.Message}";
 				var stackMsg = $"Stack trace: {ex.StackTrace}";
 
-				ln(errorMsg);
-				ln(stackMsg);
+				println(errorMsg);
+				println(stackMsg);
 
 				// Also log to Serilog file
 				Log.Fatal(ex, "Application crashed");
@@ -41,8 +41,8 @@ public static class Program {
 				Log.CloseAndFlush();
 			}
 		} else {
-			ln("TUI mode not implemented yet. Use CLI commands.");
-			ln("Run 'dotnet run help' for usage information.");
+			println("TUI mode not implemented yet. Use CLI commands.");
+			println("Run 'dotnet run help' for usage information.");
 		}
 	}
 }

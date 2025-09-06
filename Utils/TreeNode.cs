@@ -76,7 +76,7 @@ public class TreeNode {
 		string connector = isLast ? "└── " : "├── ";
 		string symbol    = GetSymbolIcon(Kind);
 
-		ln($"{prefix}{connector}{symbol} {Name}");
+		println($"{prefix}{connector}{symbol} {Name}");
 
 		if (Children.Any()) {
 			string newPrefix = prefix + (isLast ? "    " : "│   ");
@@ -105,7 +105,7 @@ public class TreeNode {
 		// Print symbols with Terminal.Gui colors
 		PrintColoredSymbols(symbols, kind, 80 - linePrefix.Length, options.NoColors);
 
-		ln(); // End the line
+		println(); // End the line
 	}
 
 	private void PrintColoredSymbols(List<TreeNode> symbols, SymbolKind kind, int maxWidth, bool noColors = false) {
@@ -118,7 +118,7 @@ public class TreeNode {
 
 			// Check if we need to wrap
 			if (currentWidth + symbolWidth > maxWidth && currentWidth > 0) {
-				ln();
+				println();
 				Console.Write(new string(' ', 80 - maxWidth)); // Indent continuation
 				currentWidth = 0;
 				needsSpace   = false;

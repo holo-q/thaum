@@ -75,27 +75,27 @@ public class LSPDownloader {
 		string executableName;
 
 		// Debug platform detection
-		ln($"DEBUG: Windows: {RuntimeInformation.IsOSPlatform(OSPlatform.Windows)}");
-		ln($"DEBUG: Linux: {RuntimeInformation.IsOSPlatform(OSPlatform.Linux)}");
-		ln($"DEBUG: OSX: {RuntimeInformation.IsOSPlatform(OSPlatform.OSX)}");
-		ln($"DEBUG: OS: {RuntimeInformation.OSDescription}");
+		println($"DEBUG: Windows: {RuntimeInformation.IsOSPlatform(OSPlatform.Windows)}");
+		println($"DEBUG: Linux: {RuntimeInformation.IsOSPlatform(OSPlatform.Linux)}");
+		println($"DEBUG: OSX: {RuntimeInformation.IsOSPlatform(OSPlatform.OSX)}");
+		println($"DEBUG: OS: {RuntimeInformation.OSDescription}");
 
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
 			downloadUrl    = "https://github.com/OmniSharp/omnisharp-roslyn/releases/download/v1.39.14/omnisharp-win-x64.zip";
 			executableName = "OmniSharp.exe";
-			ln("DEBUG: Selected Windows");
+			println("DEBUG: Selected Windows");
 		} else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
 			downloadUrl    = "https://github.com/OmniSharp/omnisharp-roslyn/releases/download/v1.39.14/omnisharp-osx-x64.tar.gz";
 			executableName = "run"; // OSX also uses the run script
-			ln("DEBUG: Selected OSX");
+			println("DEBUG: Selected OSX");
 		} else // Linux
 		{
 			downloadUrl    = "https://github.com/OmniSharp/omnisharp-roslyn/releases/download/v1.39.14/omnisharp-linux-x64-net6.0.tar.gz";
 			executableName = "OmniSharp"; // .NET 6.0 version has direct executable
-			ln("DEBUG: Selected Linux (.NET 6.0)");
+			println("DEBUG: Selected Linux (.NET 6.0)");
 		}
 
-		ln($"DEBUG: Final URL: {downloadUrl}");
+		println($"DEBUG: Final URL: {downloadUrl}");
 
 		return new LspServerInfo {
 			Name           = "OmniSharp",
@@ -332,9 +332,9 @@ public class LSPDownloader {
 		public void ReportComplete(string name, bool success) {
 			lock (_lock) {
 				if (success) {
-					ln($"\r✅ {name}: Download complete!                    ");
+					println($"\r✅ {name}: Download complete!                    ");
 				} else {
-					ln($"\r❌ {name}: Download failed!                      ");
+					println($"\r❌ {name}: Download failed!                      ");
 				}
 				_last = -1;
 			}

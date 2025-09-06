@@ -13,32 +13,5 @@ namespace Thaum.CLI;
 /// where progressive refinement achieves maximum compression
 /// </summary>
 public partial class CLI {
-	private async Task CMD_optimize(string[] args) {
-		CompressorOptions options = ParseSummarizeOptions(args);
-		ln($"Starting hierarchical optimization of {options.ProjectPath} ({options.Language})...");
-		ln();
-
-		try {
-			DateTime        startTime = DateTime.UtcNow;
-			SymbolHierarchy hierarchy = await _compressor.ProcessCodebaseAsync(options.ProjectPath, options.Language, options.CompressionLevel);
-			TimeSpan        duration  = DateTime.UtcNow - startTime;
-
-			// Display extracted keys
-			traceheader("EXTRACTED KEYS");
-			foreach (KeyValuePair<string, string> key in hierarchy.ExtractedKeys) {
-				traceln(key.Key, key.Value.Length > 80 ? $"{key.Value[..77]}..." : key.Value, "KEY");
-			}
-
-			traceheader("OPTIMIZATION COMPLETE");
-			traceln("Duration", $"{duration.TotalSeconds:F2} seconds", "TIME");
-			traceln("Root Symbols", $"{hierarchy.RootSymbols.Count} symbols", "COUNT");
-			traceln("Keys Generated", $"{hierarchy.ExtractedKeys.Count} keys", "COUNT");
-			ln();
-			ln("Hierarchical optimization completed successfully!");
-		} catch (Exception ex) {
-			ln($"Error during optimization: {ex.Message}");
-			_logger.LogError(ex, "Optimization failed");
-			Environment.Exit(1);
-		}
-	}
+	// Old CMD_optimize method removed - now handled by CMD_optimize_internal via System.CommandLine
 }

@@ -19,7 +19,7 @@ internal class AssemblyCommands {
 	}
 
 	public async Task HandleAssemblyListing(Assembly assembly, LsOptions options) {
-		ln($"Scanning assembly {assembly.GetName().Name}...");
+		println($"Scanning assembly {assembly.GetName().Name}...");
 
 		try {
 			List<CodeSymbol> symbols = [];
@@ -101,7 +101,7 @@ internal class AssemblyCommands {
 			}
 
 			if (!symbols.Any()) {
-				ln("No symbols found in assembly.");
+				println("No symbols found in assembly.");
 				return;
 			}
 
@@ -109,10 +109,10 @@ internal class AssemblyCommands {
 			List<TreeNode> hierarchy = TreeNode.BuildHierarchy(symbols, _colorer);
 			TreeNode.DisplayHierarchy(hierarchy, options);
 
-			ln($"\nFound {symbols.Count} types in assembly");
-			ln($"Total symbols: {symbols.Count + symbols.SelectMany(s => s.Children ?? new List<CodeSymbol>()).Count()}");
+			println($"\nFound {symbols.Count} types in assembly");
+			println($"Total symbols: {symbols.Count + symbols.SelectMany(s => s.Children ?? new List<CodeSymbol>()).Count()}");
 		} catch (Exception ex) {
-			ln($"Error loading assembly: {ex.Message}");
+			println($"Error loading assembly: {ex.Message}");
 			_logger.LogError(ex, "Failed to load assembly {AssemblyName}", assembly.GetName().Name);
 			Environment.Exit(1);
 		}
@@ -121,7 +121,7 @@ internal class AssemblyCommands {
 	}
 
 	public async Task HandleLoadedAssemblyListing(string assemblyNamePattern, LsOptions options) {
-		ln($"Searching for loaded assemblies matching '{assemblyNamePattern}'...");
+		println($"Searching for loaded assemblies matching '{assemblyNamePattern}'...");
 
 		try {
 			// Get all loaded assemblies
@@ -134,18 +134,18 @@ internal class AssemblyCommands {
 				.ToList();
 
 			if (!matchedAssemblies.Any()) {
-				ln($"No loaded assemblies found matching '{assemblyNamePattern}'");
-				ln("\nAvailable loaded assemblies:");
+				println($"No loaded assemblies found matching '{assemblyNamePattern}'");
+				println("\nAvailable loaded assemblies:");
 				foreach (var asm in assemblies.OrderBy(a => a.GetName().Name)) {
 					if (asm.GetName().Name != null)
-						ln($"  - {asm.GetName().Name}");
+						println($"  - {asm.GetName().Name}");
 				}
 				return;
 			}
 
 			foreach (Assembly assembly in matchedAssemblies) {
-				ln($"\nAssembly: {assembly.GetName().Name} v{assembly.GetName().Version}");
-				ln(new string('=', 60));
+				println($"\nAssembly: {assembly.GetName().Name} v{assembly.GetName().Version}");
+				println(new string('=', 60));
 
 				List<CodeSymbol> symbols = new List<CodeSymbol>();
 
@@ -254,7 +254,7 @@ internal class AssemblyCommands {
 				}
 
 				if (!symbols.Any()) {
-					ln("No symbols found in assembly.");
+					println("No symbols found in assembly.");
 					continue;
 				}
 
@@ -262,11 +262,11 @@ internal class AssemblyCommands {
 				List<TreeNode> hierarchy = TreeNode.BuildHierarchy(symbols, _colorer);
 				TreeNode.DisplayHierarchy(hierarchy, options);
 
-				ln($"\nFound {symbols.Count} types in assembly");
-				ln($"Total symbols: {symbols.Count + symbols.SelectMany(s => s.Children ?? new List<CodeSymbol>()).Count()}");
+				println($"\nFound {symbols.Count} types in assembly");
+				println($"Total symbols: {symbols.Count + symbols.SelectMany(s => s.Children ?? new List<CodeSymbol>()).Count()}");
 			}
 		} catch (Exception ex) {
-			ln($"Error inspecting loaded assemblies: {ex.Message}");
+			println($"Error inspecting loaded assemblies: {ex.Message}");
 			_logger.LogError(ex, "Failed to inspect loaded assembly {AssemblyName}", assemblyNamePattern);
 		}
 

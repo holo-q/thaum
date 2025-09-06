@@ -19,7 +19,7 @@ public record LsOptions(string ProjectPath, string Language, int MaxDepth, bool 
 /// </summary>
 public partial class CLI {
 	[RequiresUnreferencedCode("Calls System.Reflection.Assembly.GetReferencedAssemblies()")]
-	private async Task CMD_ls(string[] args) {
+	public async Task CMD_ls(string[] args) {
 		LsOptions opts = ParseLsOptions(args);
 
 		// First, always try to load assemblies that we reference
@@ -56,41 +56,41 @@ public partial class CLI {
 		// Also check if it's a DLL/EXE that doesn't exist yet (for better error message)
 		if (opts.ProjectPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ||
 		    opts.ProjectPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) {
-			ln($"Error: Could not find assembly file: {opts.ProjectPath}");
-			ln($"Current directory: {Directory.GetCurrentDirectory()}");
+			println($"Error: Could not find assembly file: {opts.ProjectPath}");
+			println($"Current directory: {Directory.GetCurrentDirectory()}");
 			return;
 		}
 
 		// If we reach here and the path doesn't exist, list available assemblies to help debug
 		if (!Directory.Exists(opts.ProjectPath) && !File.Exists(opts.ProjectPath)) {
-			ln($"Path '{opts.ProjectPath}' not found.");
-			ln("\nAvailable loaded assemblies:");
+			println($"Path '{opts.ProjectPath}' not found.");
+			println("\nAvailable loaded assemblies:");
 			foreach (var asm in AppDomain.CurrentDomain.GetAssemblies().OrderBy(a => a.GetName().Name)) {
 				var name = asm.GetName().Name;
-				ln($"  - {name}");
+				println($"  - {name}");
 			}
-			ln("\nTry 'thaum ls <assembly-name>' where <assembly-name> is one of the above.");
+			println("\nTry 'thaum ls <assembly-name>' where <assembly-name> is one of the above.");
 			return;
 		}
-		ln($"Scanning {opts.ProjectPath} for {opts.Language} symbols...");
+		println($"Scanning {opts.ProjectPath} for {opts.Language} symbols...");
 
 		// Get symbols
 		List<CodeSymbol> symbols = await _crawler.CrawlDir(opts.ProjectPath);
 
 		if (!symbols.Any()) {
-			ln("No symbols found.");
+			println("No symbols found.");
 			return;
 		}
 
 		// Build and display hierarchy
 		List<TreeNode> hierarchy = TreeNode.BuildHierarchy(symbols, _colorer);
 		TreeNode.DisplayHierarchy(hierarchy, opts);
-		ln($"\nFound {symbols.Count} symbols total");
+		println($"\nFound {symbols.Count} symbols total");
 	}
 
 	[RequiresUnreferencedCode("Calls System.Reflection.Assembly.GetTypes()")]
 	private async Task CMD_ls_assembly(Assembly assembly, LsOptions options) {
-		ln($"Scanning assembly {assembly.GetName().Name}...");
+		println($"Scanning assembly {assembly.GetName().Name}...");
 
 		try {
 			List<CodeSymbol> symbols = [];
@@ -172,21 +172,66 @@ public partial class CLI {
 			}
 
 			if (!symbols.Any()) {
-				ln("No symbols found in assembly.");
+				println("No symbols found in assembly.");
 				return;
 			}
 
 			// Build and display hierarchy
 			List<TreeNode> tree = TreeNode.BuildHierarchy(symbols, _colorer);
 			TreeNode.DisplayHierarchy(tree, options);
-			ln($"\nFound {symbols.Count} types in assembly");
-			ln($"Total symbols: {symbols.Count + symbols.SelectMany(s => s.Children ?? []).Count()}");
+			println($"\nFound {symbols.Count} types in assembly");
+			println($"Total symbols: {symbols.Count + symbols.SelectMany(s => s.Children ?? []).Count()}");
 		} catch (Exception ex) {
-			ln($"Error loading assembly: {ex.Message}");
+			println($"Error loading assembly: {ex.Message}");
 			_logger.LogError(ex, "Failed to load assembly {AssemblyName}", assembly.GetName().Name);
 			Environment.Exit(1);
 		}
 
 		await Task.CompletedTask;
+	}
+
+	public LsOptions ParseLsOptions(string[] args) {
+		string projectPath = Directory.GetCurrentDirectory();
+		string language    = "auto";
+		int    maxDepth    = 10;
+		bool   showTypes   = false;
+		bool   noColors    = false;
+
+		// Check if first arg is a path/assembly specifier
+		if (args.Length > 1 && !args[1].StartsWith("--")) {
+			projectPath = args[1];
+		}
+
+		for (int i = 1; i < args.Length; i++) {
+			switch (args[i]) {
+				case "--path" when i + 1 < args.Length:
+					projectPath = args[++i];
+					break;
+				case "--lang" when i + 1 < args.Length:
+					language = args[++i];
+					break;
+				case "--depth" when i + 1 < args.Length:
+					maxDepth = int.Parse(args[++i]);
+					break;
+				case "--types":
+					showTypes = true;
+					break;
+				case "--no-colors":
+					noColors = true;
+					break;
+				default:
+					// Skip non-flag args that aren't the first positional argument
+					break;
+			}
+		}
+
+		// Auto-detect language if not specified (skip for assembly inspection and non-existent paths)
+		if (language == "auto" &&
+		    !projectPath.StartsWith("assembly:", StringComparison.OrdinalIgnoreCase) &&
+		    Directory.Exists(projectPath)) {
+			language = LangUtil.DetectLanguageFromDirectory(projectPath);
+		}
+
+		return new LsOptions(projectPath, language, maxDepth, showTypes, noColors);
 	}
 }

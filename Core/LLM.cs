@@ -9,7 +9,7 @@ public abstract class LLM {
 	public abstract Task<IAsyncEnumerable<string>> StreamCompleteAsync(string     prompt,       LLMOptions? options = null);
 
 	public async Task CallPrompt(string prompt, string title, System.Text.StringBuilder? captureOutput = null) {
-		ln($"═══ {title} OUTPUT ═══");
+		println($"═══ {title} OUTPUT ═══");
 
 		try {
 			// TODO extract to Glb
@@ -19,10 +19,10 @@ public abstract class LLM {
 				Write(token);
 				captureOutput?.Append(token);
 			}
-			ln();
-			ln();
+			println();
+			println();
 		} catch (Exception ex) {
-			ln($"Error calling LLM: {ex.Message}");
+			println($"Error calling LLM: {ex.Message}");
 		}
 	}
 }

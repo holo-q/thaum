@@ -12,12 +12,12 @@ namespace Thaum.CLI;
 public partial class CLI {
 	private static void CMD_ls_env(string[] args) {
 		bool showValues = args.Contains("--values") || args.Contains("-v");
-		ln("Environment file detection and loading trace:");
-		ln();
+		println("Environment file detection and loading trace:");
+		println();
 
 		EnvLoader.EnvLoadResult result = EnvLoader.LoadEnvironmentFiles();
 		EnvLoader.PrintLoadTrace(result, showValues);
-		ln();
-		ln($"Environment variables successfully loaded and available for configuration.");
+		println();
+		println($"Environment variables successfully loaded and available for configuration.");
 	}
 }

@@ -9,24 +9,24 @@ using static Thaum.Core.Utils.Tracer;
 namespace Thaum.CLI;
 
 public partial class CLI {
-	private async Task CMD_try(string[] args) {
+	public async Task CMD_try(string[] args) {
 		await HandleTryCommand(args);
 	}
 
-	private async Task CMD_try_lsp(string[] args) {
+	public async Task CMD_try_lsp(string[] args) {
 		bool showAll = args.Contains("--all") || args.Contains("-a");
 		bool cleanup = args.Contains("--cleanup") || args.Contains("-c");
-		ln("🔧 Thaum LSP Server Management");
-		ln("==============================");
-		ln();
+		println("🔧 Thaum LSP Server Management");
+		println("==============================");
+		println();
 
 		try {
 			LSPDownloader downloader = new LSPDownloader();
 
 			if (cleanup) {
-				ln("🧹 Cleaning up old LSP server installations...");
+				println("🧹 Cleaning up old LSP server installations...");
 				await downloader.CleanupOldServersAsync();
-				ln("✅ Cleanup complete!");
+				println("✅ Cleanup complete!");
 				return;
 			}
 
@@ -35,22 +35,22 @@ public partial class CLI {
 				"Thaum",
 				"lsp-servers"
 			);
-			ln($"📁 Cache Directory: {cacheDir}");
-			ln();
+			println($"📁 Cache Directory: {cacheDir}");
+			println();
 
 			if (!Directory.Exists(cacheDir)) {
-				ln("No LSP servers cached yet.");
-				ln("Run 'dotnet run -- ls <project> --lang <language>' to download servers.");
+				println("No LSP servers cached yet.");
+				println("Run 'dotnet run -- ls <project> --lang <language>' to download servers.");
 				return;
 			}
 
 			string[] languages = Directory.GetDirectories(cacheDir);
 			if (!languages.Any()) {
-				ln("No LSP servers cached yet.");
+				println("No LSP servers cached yet.");
 				return;
 			}
-			ln("🌐 Cached LSP Servers:");
-			ln();
+			println("🌐 Cached LSP Servers:");
+			println();
 
 			foreach (string lang in languages.OrderBy(Path.GetFileName)) {
 				string langName    = Path.GetFileName(lang);
@@ -66,26 +66,26 @@ public partial class CLI {
 				ForegroundColor = ConsoleColor.Green;
 				Write($"  📦 {langName.ToUpper()}");
 				ResetColor();
-				ln($" (v{version.Trim()}) - Installed: {installDate}");
+				println($" (v{version.Trim()}) - Installed: {installDate}");
 
 				if (showAll) {
 					string[] files     = Directory.GetFiles(lang, "*", SearchOption.AllDirectories);
 					long     totalSize = files.Sum(f => new FileInfo(f).Length);
-					ln($"      Size: {totalSize / 1024 / 1024:F1} MB");
-					ln($"      Files: {files.Length}");
-					ln($"      Path: {lang}");
-					ln();
+					println($"      Size: {totalSize / 1024 / 1024:F1} MB");
+					println($"      Files: {files.Length}");
+					println($"      Path: {lang}");
+					println();
 				}
 			}
 
 			if (!showAll) {
-				ln();
-				ln("💡 Use --all to see detailed information");
-				ln("💡 Use --cleanup to remove old versions");
+				println();
+				println("💡 Use --all to see detailed information");
+				println("💡 Use --cleanup to remove old versions");
 			}
 		} catch (Exception ex) {
 			ForegroundColor = ConsoleColor.Red;
-			ln($"❌ Error: {ex.Message}");
+			println($"❌ Error: {ex.Message}");
 			ResetColor();
 		}
 	}
@@ -95,22 +95,33 @@ public partial class CLI {
 
 		using var scope = trace_scope("HandleTryCommand");
 
-		if (args.Length < 3) {
+		if (args.Length < 2) {
 			trace("Insufficient arguments provided");
-			ln("Usage: thaum try <file_path> <symbol_name> [--prompt <prompt_name>] [--interactive] [--n <rollout_count>]");
-			ln();
-			ln("Examples:");
-			ln("  thaum try CLI/CliApplication.cs BuildHierarchy");
-			ln("  thaum try CLI/CliApplication.cs BuildHierarchy --prompt compress_function_v5");
-			ln("  thaum try CLI/CliApplication.cs BuildHierarchy --interactive");
-			ln("  thaum try CLI/CliApplication.cs BuildHierarchy --n 5");
-			ln("  thaum try CLI/CliApplication.cs BuildHierarchy --prompt compress_function_v5 --n 3");
+			println("Usage: thaum try <file_path>::<symbol_name> [--prompt <prompt_name>] [--interactive] [--n <rollout_count>]");
+			println();
+			println("Examples:");
+			println("  thaum try CLI/CliApplication.cs::BuildHierarchy");
+			println("  thaum try CLI/CliApplication.cs::BuildHierarchy --prompt compress_function_v5");
+			println("  thaum try CLI/CliApplication.cs::BuildHierarchy --interactive");
+			println("  thaum try CLI/CliApplication.cs::BuildHierarchy --n 5");
+			println("  thaum try CLI/CliApplication.cs::BuildHierarchy --prompt compress_function_v5 --n 3");
 			traceout();
 			return;
 		}
 
-		string filePath   = args[1];
-		string symbolName = args[2];
+		// Parse file::symbol syntax
+		string pathSpec = args[1];
+		if (!pathSpec.Contains("::")) {
+			trace("Invalid path specification: missing '::' separator");
+			println("Error: Path must be specified as <file_path>::<symbol_name>");
+			println("Example: CLI/CliApplication.cs::BuildHierarchy");
+			traceout();
+			return;
+		}
+
+		string[] pathParts = pathSpec.Split("::", 2);
+		string filePath   = pathParts[0];
+		string symbolName = pathParts[1];
 
 		trace($"Parsed arguments: filePath='{filePath}', symbolName='{symbolName}'");
 
@@ -120,7 +131,7 @@ public partial class CLI {
 		bool    interactive  = false;
 		int     rolloutCount = 1;
 
-		for (int i = 3; i < args.Length; i++) {
+		for (int i = 2; i < args.Length; i++) {
 			switch (args[i]) {
 				case "--prompt" when i + 1 < args.Length:
 					customPrompt = args[++i];
@@ -134,7 +145,7 @@ public partial class CLI {
 					if (int.TryParse(args[++i], out rolloutCount) && rolloutCount > 0) {
 						trace($"Multiple rollouts specified: {rolloutCount}");
 					} else {
-						ln("Error: --n requires a positive integer value");
+						println("Error: --n requires a positive integer value");
 						traceout();
 						return;
 					}
@@ -206,35 +217,35 @@ public partial class CLI {
 		trace("Starting non-interactive mode");
 
 		if (!File.Exists(filepath)) {
-			ln($"Error: File not found: {filepath}");
+			println($"Error: File not found: {filepath}");
 			return;
 		}
 
 		try {
-			ln($"Testing prompt on: {Path.GetRelativePath(Directory.GetCurrentDirectory(), filepath)}::{targetName}");
-			ln(customPrompt != null ? $"Custom Prompt: {customPrompt}" : "Using default prompt from environment configuration");
-			ln();
+			println($"Testing prompt on: {Path.GetRelativePath(Directory.GetCurrentDirectory(), filepath)}::{targetName}");
+			println(customPrompt != null ? $"Custom Prompt: {customPrompt}" : "Using default prompt from environment configuration");
+			println();
 
 			// Get symbols from file
 			List<CodeSymbol> symbols      = await _crawler.CrawlFile(filepath);
 			CodeSymbol?      targetSymbol = symbols.FirstOrDefault(s => s.Name == targetName);
 
 			if (targetSymbol == null) {
-				ln($"Symbol '{targetName}' not found in {Path.GetRelativePath(Directory.GetCurrentDirectory(), filepath)}");
-				ln();
-				ln("Available symbols:");
+				println($"Symbol '{targetName}' not found in {Path.GetRelativePath(Directory.GetCurrentDirectory(), filepath)}");
+				println();
+				println("Available symbols:");
 				foreach (CodeSymbol sym in symbols.OrderBy(s => s.Name)) {
-					ln($"  {sym.Name} ({sym.Kind})");
+					println($"  {sym.Name} ({sym.Kind})");
 				}
 				return;
 			}
-			ln($"Found symbol: {targetSymbol.Name} ({targetSymbol.Kind})");
-			ln();
+			println($"Found symbol: {targetSymbol.Name} ({targetSymbol.Kind})");
+			println();
 
 			// Get source code
 			string src = await _crawler.GetCode(targetSymbol);
 			if (string.IsNullOrEmpty(src)) {
-				ln("Failed to extract source code for symbol");
+				println("Failed to extract source code for symbol");
 				return;
 			}
 
@@ -243,19 +254,19 @@ public partial class CLI {
 
 			if (nRollouts == 1) {
 				// Single compression
-				ln($"Using prompt: {promptName}");
-				ln();
+				println($"Using prompt: {promptName}");
+				println();
 				Prompter prompter = new Prompter(new HttpLLM(new HttpClient(), GLB.AppConfig));
 				await prompter.Compress(src, promptName, targetSymbol);
 			} else {
 				// Multiple rollouts with fusion
-				ln($"Multiple rollouts ({nRollouts}) with fusion");
-				ln($"Using prompt: {promptName}");
-				ln();
+				println($"Multiple rollouts ({nRollouts}) with fusion");
+				println($"Using prompt: {promptName}");
+				println();
 				await _prompter.CompressWithFusion(src, promptName, targetSymbol, nRollouts);
 			}
 		} catch (Exception ex) {
-			ln($"Error during prompt test: {ex.Message}");
+			println($"Error during prompt test: {ex.Message}");
 			Environment.Exit(1);
 		}
 	}

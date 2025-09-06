@@ -15,8 +15,8 @@
         <AssemblyName>thaum</AssemblyName>
         <RootNamespace>Thaum</RootNamespace>
         <NoWarn>$(NoWarn)</NoWarn>
-        <WarningsAsErrors/>
-        <WarningsNotAsErrors/>
+        <WarningsAsErrors />
+        <WarningsNotAsErrors />
         <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
         <DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
@@ -38,52 +38,53 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Terminal.Gui" Version="1.15.0"/>
-        <PackageReference Include="OmniSharp.Extensions.LanguageProtocol" Version="0.19.9"/>
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1"/>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1"/>
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1"/>
-        <PackageReference Include="Serilog" Version="4.1.0"/>
-        <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0"/>
-        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0"/>
-        <PackageReference Include="Serilog.Sinks.File" Version="6.0.0"/>
-        <PackageReference Include="Serilog.Sinks.Seq" Version="8.0.0"/>
-        <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0"/>
-        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1"/>
-        <PackageReference Include="System.Text.Json" Version="8.0.5"/>
-        <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10"/>
-        <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1"/>
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0"/>
-        <PackageReference Include="xunit" Version="2.9.2"/>
-        <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2"/>
-        <PackageReference Include="NSubstitute" Version="5.3.0"/>
-        <PackageReference Include="FluentAssertions" Version="7.0.0"/>
-        <ProjectReference Include="TreeSitter/src/TreeSitter.csproj"/>
+        <PackageReference Include="System.CommandLine" Version="2.0.0-beta7.25380.108" />
+        <PackageReference Include="Terminal.Gui" Version="1.15.0" />
+        <PackageReference Include="OmniSharp.Extensions.LanguageProtocol" Version="0.19.9" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
+        <PackageReference Include="Serilog" Version="4.1.0" />
+        <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+        <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+        <PackageReference Include="Serilog.Sinks.Seq" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
+        <PackageReference Include="System.Text.Json" Version="8.0.5" />
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+        <PackageReference Include="xunit" Version="2.9.2" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+        <PackageReference Include="NSubstitute" Version="5.3.0" />
+        <PackageReference Include="FluentAssertions" Version="7.0.0" />
+        <ProjectReference Include="TreeSitter/src/TreeSitter.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-        <TrimmerRootAssembly Include="Terminal.Gui"/>
-        <TrimmerRootAssembly Include="OmniSharp.Extensions.LanguageProtocol"/>
+        <TrimmerRootAssembly Include="Terminal.Gui" />
+        <TrimmerRootAssembly Include="OmniSharp.Extensions.LanguageProtocol" />
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Remove="test_treesitter.cs"/>
-        <Compile Remove="reference/**"/>
-        <None Remove="reference/**"/>
-        <Content Remove="reference/**"/>
-        <EmbeddedResource Remove="reference/**"/>
-        <Compile Remove="TreeSitter/tree-sitter-native/**"/>
-        <None Remove="TreeSitter/tree-sitter-native/**"/>
-        <Content Remove="TreeSitter/tree-sitter-native/**"/>
-        <EmbeddedResource Remove="TreeSitter/tree-sitter-native/**"/>
-        <Compile Remove="TreeSitter/tests/**"/>
-        <None Remove="TreeSitter/tests/**"/>
-        <Content Remove="TreeSitter/tests/**"/>
-        <EmbeddedResource Remove="TreeSitter/tests/**"/>
-        <Compile Remove="TreeSitter/examples/**"/>
-        <None Remove="TreeSitter/examples/**"/>
-        <Content Remove="TreeSitter/examples/**"/>
-        <EmbeddedResource Remove="TreeSitter/examples/**"/>
+        <Compile Remove="test_treesitter.cs" />
+        <Compile Remove="reference/**" />
+        <None Remove="reference/**" />
+        <Content Remove="reference/**" />
+        <EmbeddedResource Remove="reference/**" />
+        <Compile Remove="TreeSitter/tree-sitter-native/**" />
+        <None Remove="TreeSitter/tree-sitter-native/**" />
+        <Content Remove="TreeSitter/tree-sitter-native/**" />
+        <EmbeddedResource Remove="TreeSitter/tree-sitter-native/**" />
+        <Compile Remove="TreeSitter/tests/**" />
+        <None Remove="TreeSitter/tests/**" />
+        <Content Remove="TreeSitter/tests/**" />
+        <EmbeddedResource Remove="TreeSitter/tests/**" />
+        <Compile Remove="TreeSitter/examples/**" />
+        <None Remove="TreeSitter/examples/**" />
+        <Content Remove="TreeSitter/examples/**" />
+        <EmbeddedResource Remove="TreeSitter/examples/**" />
     </ItemGroup>
 
 </Project>
