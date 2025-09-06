@@ -37,13 +37,13 @@ public class TreeSitterCrawler : CodeCrawler {
 
 	public override async Task<List<CodeSymbol>> CrawlDir(string dirpath) {
 		// Auto-detect language based on files in directory
-		string language = LanguageUtil.DetectLanguageFromDirectory(dirpath);
+		string language = LangUtil.DetectLanguageFromDirectory(dirpath);
 		return await CrawlDir(language, dirpath);
 	}
 
 	public override async Task<List<CodeSymbol>> CrawlFile(string filepath) {
 		// Auto-detect language based on file extension
-		string language = LanguageUtil.DetectLanguageFromFile(filepath);
+		string language = LangUtil.DetectLanguageFromFile(filepath);
 		return await ExtractSymbolsFromFile(filepath, language);
 	}
 
@@ -63,7 +63,7 @@ public class TreeSitterCrawler : CodeCrawler {
 		try {
 			// Find all source files for the language using language-agnostic approach
 			List<string> sourceFiles = Directory.GetFiles(dirpath, "*.*", SearchOption.AllDirectories)
-				.Where(f => LanguageUtil.IsSourceFileForLanguage(f, lang))
+				.Where(f => LangUtil.IsSourceFileForLanguage(f, lang))
 				.ToList();
 
 			_logger.LogDebug("Found {Count} {Language} files to parse", sourceFiles.Count, lang);

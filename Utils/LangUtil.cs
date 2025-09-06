@@ -6,7 +6,7 @@ namespace Thaum.Utils;
 /// utility provides ambient language detection without ceremony eliminating redundant detection
 /// logic across crawlers where centralized detection ensures consistency
 /// </summary>
-public static class LanguageUtil {
+public static class LangUtil {
 	/// <summary>
 	/// Detects language from file extension where .cs maps to c-sharp where .py maps to python
 	/// where the mapping follows common conventions where fallback ensures reasonable default

@@ -3,6 +3,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
+using Thaum.CLI;
 using Thaum.CLI.Models;
 using Thaum.Core.Models;
 using Thaum.Utils;
@@ -17,7 +18,7 @@ namespace Thaum.Core.Services;
 /// </summary>
 public class Cache : ICache {
 	private readonly ILogger<Cache>        _logger;
-	private readonly SqliteConnection      _connection;
+	private readonly SqliteConnection      _con;
 	private readonly JsonSerializerOptions _jsonOptions;
 
 	/// <summary>
@@ -37,8 +38,8 @@ public class Cache : ICache {
 		string dbPath           = Path.Combine(cacheDir, "cache.db");
 		string connectionString = $"Data Source={dbPath}";
 
-		_connection = new SqliteConnection(connectionString);
-		_connection.Open();
+		_con = new SqliteConnection(connectionString);
+		_con.Open();
 
 		_jsonOptions = new JsonSerializerOptions {
 			PropertyNamingPolicy   = JsonNamingPolicy.CamelCase,
@@ -68,21 +69,21 @@ public class Cache : ICache {
 		                                      );
 		                                      """;
 
-		using (SqliteCommand command = new SqliteCommand(CREATE_BASIC_TABLE_SQL, _connection)) {
+		using (SqliteCommand command = new SqliteCommand(CREATE_BASIC_TABLE_SQL, _con)) {
 			command.ExecuteNonQuery();
 		}
 
 		// Check if new columns exist, and add them if they don't
-		string  checkColumnsSql = "PRAGMA table_info(cache_entries)";
-		bool hasPromptName   = false;
-		bool hasPromptHash   = false;
-		bool hasModelName    = false;
-		bool hasProviderName = false;
+		string checkColumnsSql = "PRAGMA table_info(cache_entries)";
+		bool   hasPromptName   = false;
+		bool   hasPromptHash   = false;
+		bool   hasModelName    = false;
+		bool   hasProviderName = false;
 
-		using (SqliteCommand command = new SqliteCommand(checkColumnsSql, _connection))
+		using (SqliteCommand command = new SqliteCommand(checkColumnsSql, _con))
 		using (SqliteDataReader reader = command.ExecuteReader()) {
 			while (reader.Read()) {
-				string columnName                                     = reader.GetString(1); // column name is at index 1
+				string columnName                                  = reader.GetString(1); // column name is at index 1
 				if (columnName == "prompt_name") hasPromptName     = true;
 				if (columnName == "prompt_hash") hasPromptHash     = true;
 				if (columnName == "model_name") hasModelName       = true;
@@ -92,22 +93,22 @@ public class Cache : ICache {
 
 		// Add missing columns
 		if (!hasPromptName) {
-			using SqliteCommand command = new SqliteCommand("ALTER TABLE cache_entries ADD COLUMN prompt_name TEXT", _connection);
+			using SqliteCommand command = new SqliteCommand("ALTER TABLE cache_entries ADD COLUMN prompt_name TEXT", _con);
 			command.ExecuteNonQuery();
 		}
 
 		if (!hasPromptHash) {
-			using SqliteCommand command = new SqliteCommand("ALTER TABLE cache_entries ADD COLUMN prompt_hash TEXT", _connection);
+			using SqliteCommand command = new SqliteCommand("ALTER TABLE cache_entries ADD COLUMN prompt_hash TEXT", _con);
 			command.ExecuteNonQuery();
 		}
 
 		if (!hasModelName) {
-			using SqliteCommand command = new SqliteCommand("ALTER TABLE cache_entries ADD COLUMN model_name TEXT", _connection);
+			using SqliteCommand command = new SqliteCommand("ALTER TABLE cache_entries ADD COLUMN model_name TEXT", _con);
 			command.ExecuteNonQuery();
 		}
 
 		if (!hasProviderName) {
-			using SqliteCommand command = new SqliteCommand("ALTER TABLE cache_entries ADD COLUMN provider_name TEXT", _connection);
+			using SqliteCommand command = new SqliteCommand("ALTER TABLE cache_entries ADD COLUMN provider_name TEXT", _con);
 			command.ExecuteNonQuery();
 		}
 
@@ -121,7 +122,7 @@ public class Cache : ICache {
 		                               );
 		                               """;
 
-		using (SqliteCommand command = new SqliteCommand(createPromptsTableSql, _connection)) {
+		using (SqliteCommand command = new SqliteCommand(createPromptsTableSql, _con)) {
 			command.ExecuteNonQuery();
 		}
 
@@ -136,7 +137,7 @@ public class Cache : ICache {
 		                          CREATE INDEX IF NOT EXISTS idx_prompt_name_lookup ON prompts(name);
 		                          """;
 
-		using (SqliteCommand command = new SqliteCommand(createIndexesSql, _connection)) {
+		using (SqliteCommand command = new SqliteCommand(createIndexesSql, _con)) {
 			command.ExecuteNonQuery();
 		}
 
@@ -159,7 +160,7 @@ public class Cache : ICache {
 			             AND (expires_at IS NULL OR expires_at > @now)
 			             """;
 
-			await using SqliteCommand command = new SqliteCommand(sql, _connection);
+			await using SqliteCommand command = new SqliteCommand(sql, _con);
 			command.Parameters.AddWithValue("@key", key);
 			command.Parameters.AddWithValue("@now", now);
 
@@ -212,7 +213,7 @@ public class Cache : ICache {
 			             VALUES (@key, @value, @typeName, @now, @expiresAt, @now, @promptName, @promptHash, @modelName, @providerName)
 			             """;
 
-			await using SqliteCommand command = new SqliteCommand(sql, _connection);
+			await using SqliteCommand command = new SqliteCommand(sql, _con);
 			command.Parameters.AddWithValue("@key", key);
 			command.Parameters.AddWithValue("@value", json);
 			command.Parameters.AddWithValue("@typeName", typeName);
@@ -237,7 +238,7 @@ public class Cache : ICache {
 		try {
 			string sql = "DELETE FROM cache_entries WHERE key = @key";
 
-			await using SqliteCommand command = new SqliteCommand(sql, _connection);
+			await using SqliteCommand command = new SqliteCommand(sql, _con);
 			command.Parameters.AddWithValue("@key", key);
 
 			int rowsAffected = await command.ExecuteNonQueryAsync();
@@ -263,7 +264,7 @@ public class Cache : ICache {
 
 			string sql = "DELETE FROM cache_entries WHERE key LIKE @pattern";
 
-			await using SqliteCommand command = new SqliteCommand(sql, _connection);
+			await using SqliteCommand command = new SqliteCommand(sql, _con);
 			command.Parameters.AddWithValue("@pattern", likePattern);
 
 			int rowsAffected = await command.ExecuteNonQueryAsync();
@@ -279,8 +280,8 @@ public class Cache : ICache {
 		try {
 			string sql = "DELETE FROM cache_entries";
 
-			await using SqliteCommand command      = new SqliteCommand(sql, _connection);
-			int             rowsAffected = await command.ExecuteNonQueryAsync();
+			await using SqliteCommand command      = new SqliteCommand(sql, _con);
+			int                       rowsAffected = await command.ExecuteNonQueryAsync();
 
 			_logger.LogInformation("Cleared {Count} cache entries", rowsAffected);
 		} catch (Exception ex) {
@@ -300,7 +301,7 @@ public class Cache : ICache {
 			             LIMIT 1
 			             """;
 
-			await using SqliteCommand command = new SqliteCommand(sql, _connection);
+			await using SqliteCommand command = new SqliteCommand(sql, _con);
 			command.Parameters.AddWithValue("@key", key);
 			command.Parameters.AddWithValue("@now", now);
 
@@ -316,7 +317,7 @@ public class Cache : ICache {
 		try {
 			string sql = "SELECT COUNT(*) FROM cache_entries";
 
-			await using SqliteCommand command = new SqliteCommand(sql, _connection);
+			await using SqliteCommand command = new SqliteCommand(sql, _con);
 			object?                   result  = await command.ExecuteScalarAsync();
 
 			return Convert.ToInt64(result);
@@ -338,13 +339,13 @@ public class Cache : ICache {
 			// Remove expired entries
 			string cleanupSql = "DELETE FROM cache_entries WHERE expires_at IS NOT NULL AND expires_at <= @now";
 
-			await using SqliteCommand cleanupCommand = new SqliteCommand(cleanupSql, _connection);
+			await using SqliteCommand cleanupCommand = new SqliteCommand(cleanupSql, _con);
 			cleanupCommand.Parameters.AddWithValue("@now", now);
 			int expiredCount = await cleanupCommand.ExecuteNonQueryAsync();
 
 			// Vacuum database to reclaim space
-			string             vacuumSql     = "VACUUM";
-			await using SqliteCommand vacuumCommand = new SqliteCommand(vacuumSql, _connection);
+			string                    vacuumSql     = "VACUUM";
+			await using SqliteCommand vacuumCommand = new SqliteCommand(vacuumSql, _con);
 			await vacuumCommand.ExecuteNonQueryAsync();
 
 			_logger.LogInformation("Cache compaction completed: removed {ExpiredCount} expired entries", expiredCount);
@@ -358,7 +359,7 @@ public class Cache : ICache {
 		try {
 			string sql = "UPDATE cache_entries SET last_accessed = @timestamp WHERE key = @key";
 
-			await using SqliteCommand command = new SqliteCommand(sql, _connection);
+			await using SqliteCommand command = new SqliteCommand(sql, _con);
 			command.Parameters.AddWithValue("@key", key);
 			command.Parameters.AddWithValue("@timestamp", timestamp);
 
@@ -378,7 +379,7 @@ public class Cache : ICache {
 		try {
 			// Generate hash for the prompt content
 			string promptHash = GeneratePromptHash(promptContent);
-			long now        = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+			long   now        = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
 			// Insert or ignore (if hash already exists, we don't need to store it again)
 			string sql = """
@@ -387,7 +388,7 @@ public class Cache : ICache {
 			             VALUES (@hash, @name, @content, @now)
 			             """;
 
-			await using SqliteCommand command = new SqliteCommand(sql, _connection);
+			await using SqliteCommand command = new SqliteCommand(sql, _con);
 			command.Parameters.AddWithValue("@hash", promptHash);
 			command.Parameters.AddWithValue("@name", promptName);
 			command.Parameters.AddWithValue("@content", promptContent);
@@ -412,7 +413,7 @@ public class Cache : ICache {
 		try {
 			string sql = "SELECT name, content FROM prompts WHERE hash = @hash";
 
-			await using SqliteCommand command = new SqliteCommand(sql, _connection);
+			await using SqliteCommand command = new SqliteCommand(sql, _con);
 			command.Parameters.AddWithValue("@hash", promptHash);
 
 			await using SqliteDataReader reader = await command.ExecuteReaderAsync();
@@ -443,7 +444,7 @@ public class Cache : ICache {
 			             ORDER BY ce.last_accessed DESC
 			             """;
 
-			await using SqliteCommand command = new SqliteCommand(sql, _connection);
+			await using SqliteCommand    command = new SqliteCommand(sql, _con);
 			await using SqliteDataReader reader  = await command.ExecuteReaderAsync();
 
 			List<CacheEntryInfo> entries = new List<CacheEntryInfo>();
@@ -472,8 +473,8 @@ public class Cache : ICache {
 
 	public void Dispose() {
 		try {
-			_connection?.Close();
-			_connection?.Dispose();
+			_con?.Close();
+			_con?.Dispose();
 		} catch (Exception ex) {
 			_logger.LogError(ex, "Error disposing cache service");
 		}
@@ -484,10 +485,10 @@ public class Cache : ICache {
 
 		// This is a bit hacky since SqliteCacheService doesn't expose a query method
 		// We'll need to add this functionality
-		string cacheDbPath = Path.Combine("cache", "cache.db");
-		if (!File.Exists(cacheDbPath)) return results;
+		string dbpath = Path.Combine("cache", "cache.db");
+		if (!File.Exists(dbpath)) return results;
 
-		await using SqliteConnection con = new SqliteConnection($"Data Source={cacheDbPath}");
+		await using SqliteConnection con = new SqliteConnection($"Data Source={dbpath}");
 		await con.OpenAsync();
 
 		string query = """

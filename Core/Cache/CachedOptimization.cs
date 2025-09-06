@@ -1,6 +1,6 @@
-namespace Thaum.CLI.Models;
+namespace Thaum.CLI;
 
-internal record CachedOptimization {
+public record CachedOptimization {
 	public string         SymbolName   { get; init; } = "";
 	public string         FilePath     { get; init; } = "";
 	public int            Line         { get; init; }

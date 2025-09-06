@@ -6,6 +6,8 @@ using static Thaum.Core.Utils.TraceLogger;
 
 namespace Thaum.Core.Services;
 
+internal record CompressorOptions(string ProjectPath, string Language, CompressionLevel CompressionLevel = CompressionLevel.Optimize);
+
 /// <summary>
 /// Context for hierarchical compression where Level indicates depth (1=function 2=class) where
 /// AvailableKeys contains discovered semantic patterns from previous phases where each level

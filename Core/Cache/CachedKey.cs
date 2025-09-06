@@ -1,6 +1,6 @@
-namespace Thaum.CLI.Models;
+namespace Thaum.CLI;
 
-internal record CachedKey {
+public record CachedKey {
 	public int            Level        { get; init; }
 	public string         Pattern      { get; init; } = "";
 	public string?        PromptName   { get; init; }

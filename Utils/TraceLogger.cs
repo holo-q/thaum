@@ -122,11 +122,11 @@ public static class TraceLogger {
 			_memberName     = memberName;
 			_sourceFilePath = sourceFilePath;
 
-			TraceLogger.trace($"SCOPE ENTER: {scopeName}", _memberName, _sourceFilePath);
+			trace($"SCOPE ENTER: {scopeName}", _memberName, _sourceFilePath);
 		}
 
 		public void Dispose() {
-			TraceLogger.trace($"SCOPE EXIT: {_scopeName}", _memberName, _sourceFilePath);
+			trace($"SCOPE EXIT: {_scopeName}", _memberName, _sourceFilePath);
 		}
 	}
 

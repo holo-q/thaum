@@ -16,9 +16,9 @@ public static class GLB {
 	public static string DefaultModel => Environment.GetEnvironmentVariable("LLM__DefaultModel") ?? "moonshotai/kimi-2";
 
 	/// <summary>
-	/// Provides default LLM options for compression operations where temperature 0.3 maintains
-	/// consistency while allowing creativity where max tokens 1024 balances completeness with
-	/// efficiency where these defaults emerge from empirical tuning rather than arbitrary choice
+	/// Provides default LLM options for compression operations where temperature 0.3 maintains consistency while allowing creativity
+	/// where max tokens 1024 balances completeness with efficiency
+	/// where these defaults emerge from empirical tuning rather than arbitrary choice
 	/// </summary>
 	public static LLMOptions Compress_Defaults(string model) {
 		LLMOptions llmOpts = new LLMOptions(
@@ -65,9 +65,9 @@ public static class GLB {
 	}
 
 	/// <summary>
-	/// Maps symbol names to semantic icons through pattern recognition where naming conventions
-	/// reveal intent where Async gets lightning where Get reads where Set writes where Handle
-	/// controls where each icon creates instant visual recognition of method purpose
+	/// Maps symbol names to semantic icons through pattern recognition where naming conventions reveal intent
+	/// where Async gets lightning, where Get reads, where Set writes, where Handle controls
+	/// where each icon creates instant visual recognition of method purpose
 	/// </summary>
 	public static string GetSymbolTypeIcon(string symbolName) {
 		// Simple heuristics to determine symbol type
