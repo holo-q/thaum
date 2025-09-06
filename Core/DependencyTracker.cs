@@ -57,7 +57,7 @@ public abstract class DependencyTracker {
 		try {
 			string? projectPath = FindProjectPath(filePath);
 			if (projectPath == null || !_projectGraphs.TryGetValue(projectPath, out ProjectDependencyGraph? graph)) {
-				return new List<string>();
+				return [];
 			}
 
 			List<string> dependents = graph.GetDependents(filePath);
@@ -66,7 +66,7 @@ public abstract class DependencyTracker {
 			return dependents;
 		} catch (Exception ex) {
 			_logger.LogError(ex, "Error getting dependents for {FilePath}", filePath);
-			return new List<string>();
+			return [];
 		}
 	}
 
@@ -74,7 +74,7 @@ public abstract class DependencyTracker {
 		try {
 			string? projectPath = FindProjectPath(filePath);
 			if (projectPath == null || !_projectGraphs.TryGetValue(projectPath, out ProjectDependencyGraph? graph)) {
-				return new List<string>();
+				return [];
 			}
 
 			List<string> dependencies = graph.GetDependencies(filePath);
@@ -83,7 +83,7 @@ public abstract class DependencyTracker {
 			return dependencies;
 		} catch (Exception ex) {
 			_logger.LogError(ex, "Error getting dependencies for {FilePath}", filePath);
-			return new List<string>();
+			return [];
 		}
 	}
 
@@ -165,7 +165,7 @@ internal class ProjectDependencyGraph {
 		// Update reverse mapping (dependents)
 		foreach (string dep in dependencies) {
 			_dependents.AddOrUpdate(dep,
-				new HashSet<string> { filePath },
+				[filePath],
 				(_, existing) => {
 					existing.Add(filePath);
 					return existing;
@@ -176,13 +176,13 @@ internal class ProjectDependencyGraph {
 	public List<string> GetDependencies(string filePath) {
 		return _dependencies.TryGetValue(filePath, out HashSet<string>? deps)
 			? deps.ToList()
-			: new List<string>();
+			: [];
 	}
 
 	public List<string> GetDependents(string filePath) {
 		return _dependents.TryGetValue(filePath, out HashSet<string>? deps)
 			? deps.ToList()
-			: new List<string>();
+			: [];
 	}
 
 	public void RemoveFile(string filePath) {
@@ -220,7 +220,7 @@ internal class PythonDependencyAnalyzer : IDependencyAnalyzer {
 	private static readonly Regex ImportRegex = new(@"^\s*(?:from\s+(\S+)\s+)?import\s+(.+)$", RegexOptions.Multiline);
 
 	public async Task<List<string>> GetDependenciesAsync(string filePath) {
-		HashSet<string> dependencies = new HashSet<string>();
+		HashSet<string> dependencies = [];
 
 		try {
 			string content = await File.ReadAllTextAsync(filePath);
@@ -252,7 +252,7 @@ internal class CSharpDependencyAnalyzer : IDependencyAnalyzer {
 	private static readonly Regex UsingRegex = new(@"^\s*using\s+([^;]+);", RegexOptions.Multiline);
 
 	public async Task<List<string>> GetDependenciesAsync(string filePath) {
-		HashSet<string> dependencies = new HashSet<string>();
+		HashSet<string> dependencies = [];
 
 		try {
 			string content = await File.ReadAllTextAsync(filePath);
@@ -276,7 +276,7 @@ internal class JavaScriptDependencyAnalyzer : IDependencyAnalyzer {
 	private static readonly Regex ImportRegex = new(@"^\s*(?:import\s+.+\s+from\s+['""]([^'""]+)['""]|require\s*\(\s*['""]([^'""]+)['""]\s*\))", RegexOptions.Multiline);
 
 	public async Task<List<string>> GetDependenciesAsync(string filePath) {
-		HashSet<string> dependencies = new HashSet<string>();
+		HashSet<string> dependencies = [];
 
 		try {
 			string content = await File.ReadAllTextAsync(filePath);
@@ -304,7 +304,7 @@ internal class RustDependencyAnalyzer : IDependencyAnalyzer {
 	private static readonly Regex UseRegex = new(@"^\s*use\s+([^;]+);", RegexOptions.Multiline);
 
 	public async Task<List<string>> GetDependenciesAsync(string filePath) {
-		HashSet<string> dependencies = new HashSet<string>();
+		HashSet<string> dependencies = [];
 
 		try {
 			string content = await File.ReadAllTextAsync(filePath);
@@ -312,7 +312,7 @@ internal class RustDependencyAnalyzer : IDependencyAnalyzer {
 
 			foreach (Match match in matches) {
 				string useStatement = match.Groups[1].Value.Trim();
-				string rootModule   = useStatement.Split(new[] { "::", "." }, StringSplitOptions.RemoveEmptyEntries)[0];
+				string rootModule   = useStatement.Split(["::", "."], StringSplitOptions.RemoveEmptyEntries)[0];
 				dependencies.Add(rootModule);
 			}
 		} catch (Exception) {
@@ -327,7 +327,7 @@ internal class GoDependencyAnalyzer : IDependencyAnalyzer {
 	private static readonly Regex ImportRegex = new(@"^\s*import\s+(?:\(\s*|\s*[""']([^""']+)[""'])", RegexOptions.Multiline);
 
 	public async Task<List<string>> GetDependenciesAsync(string filePath) {
-		HashSet<string> dependencies = new HashSet<string>();
+		HashSet<string> dependencies = [];
 
 		try {
 			string content = await File.ReadAllTextAsync(filePath);
@@ -351,7 +351,7 @@ internal class GenericDependencyAnalyzer : IDependencyAnalyzer {
 	public async Task<List<string>> GetDependenciesAsync(string filePath) {
 		// Fallback analyzer that doesn't extract dependencies
 		await Task.CompletedTask;
-		return new List<string>();
+		return [];
 	}
 }
 

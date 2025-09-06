@@ -49,8 +49,8 @@ internal class AssemblyCommands {
 						Name: method.Name,
 						Kind: SymbolKind.Method,
 						FilePath: assembly.Location,
-						StartPosition: new Position(0, 0),
-						EndPosition: new Position(0, 0)
+						StartCodeLoc: new CodeLoc(0, 0),
+						EndCodeLoc: new CodeLoc(0, 0)
 					);
 					typeChildren.Add(methodSymbol);
 				}
@@ -62,8 +62,8 @@ internal class AssemblyCommands {
 						Name: property.Name,
 						Kind: SymbolKind.Property,
 						FilePath: assembly.Location,
-						StartPosition: new Position(0, 0),
-						EndPosition: new Position(0, 0)
+						StartCodeLoc: new CodeLoc(0, 0),
+						EndCodeLoc: new CodeLoc(0, 0)
 					);
 					typeChildren.Add(propertySymbol);
 				}
@@ -79,8 +79,8 @@ internal class AssemblyCommands {
 						Name: field.Name,
 						Kind: SymbolKind.Field,
 						FilePath: assembly.Location,
-						StartPosition: new Position(0, 0),
-						EndPosition: new Position(0, 0)
+						StartCodeLoc: new CodeLoc(0, 0),
+						EndCodeLoc: new CodeLoc(0, 0)
 					);
 					typeChildren.Add(fieldSymbol);
 				}
@@ -89,8 +89,8 @@ internal class AssemblyCommands {
 					Name: type.Name,
 					Kind: typeKind,
 					FilePath: assembly.Location,
-					StartPosition: new Position(0, 0),
-					EndPosition: new Position(0, 0),
+					StartCodeLoc: new CodeLoc(0, 0),
+					EndCodeLoc: new CodeLoc(0, 0),
 					Children: typeChildren.Any() ? typeChildren : null
 				);
 
@@ -187,8 +187,8 @@ internal class AssemblyCommands {
 								Name: methodName,
 								Kind: SymbolKind.Method,
 								FilePath: assembly.Location,
-								StartPosition: new Position(0, 0),
-								EndPosition: new Position(0, 0)
+								StartCodeLoc: new CodeLoc(0, 0),
+								EndCodeLoc: new CodeLoc(0, 0)
 							);
 							typeChildren.Add(methodSymbol);
 						}
@@ -205,8 +205,8 @@ internal class AssemblyCommands {
 								Name: propertyInfo,
 								Kind: SymbolKind.Property,
 								FilePath: assembly.Location,
-								StartPosition: new Position(0, 0),
-								EndPosition: new Position(0, 0)
+								StartCodeLoc: new CodeLoc(0, 0),
+								EndCodeLoc: new CodeLoc(0, 0)
 							);
 							typeChildren.Add(propertySymbol);
 						}
@@ -227,8 +227,8 @@ internal class AssemblyCommands {
 								Name: fieldInfo,
 								Kind: SymbolKind.Field,
 								FilePath: assembly.Location,
-								StartPosition: new Position(0, 0),
-								EndPosition: new Position(0, 0)
+								StartCodeLoc: new CodeLoc(0, 0),
+								EndCodeLoc: new CodeLoc(0, 0)
 							);
 							typeChildren.Add(fieldSymbol);
 						}
@@ -243,8 +243,8 @@ internal class AssemblyCommands {
 						Name: typeName,
 						Kind: typeKind,
 						FilePath: assembly.Location,
-						StartPosition: new Position(0, 0),
-						EndPosition: new Position(0, 0),
+						StartCodeLoc: new CodeLoc(0, 0),
+						EndCodeLoc: new CodeLoc(0, 0),
 						Children: typeChildren.Any() ? typeChildren : null
 					);
 

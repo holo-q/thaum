@@ -23,7 +23,7 @@ namespace Thaum.Core.Services;
 [JsonSerializable(typeof(SymbolHierarchy))]
 [JsonSerializable(typeof(OptimizationContext))]
 [JsonSerializable(typeof(CompressionLevel))]
-[JsonSerializable(typeof(LlmOptions))]
+[JsonSerializable(typeof(LLMOptions))]
 [JsonSerializable(typeof(string))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
 [JsonSerializable(typeof(List<string>))]

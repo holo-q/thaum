@@ -12,16 +12,16 @@ public record FileChangeEvent(
 );
 
 public class FSWatcher : IDisposable {
-	private readonly ILanguageServer                            _languageServerManager;
+	private readonly CodeCrawler                            _codeCrawlerManager;
 	private readonly DependencyTracker                            _dependencyTracker;
 	private readonly ILogger<FSWatcher>    _logger;
 	private readonly ConcurrentDictionary<string, ProjectWatcher> _watchers = new();
 
 	public FSWatcher(
-		ILanguageServer                         languageServerManager,
+		CodeCrawler                         crawler,
 		DependencyTracker                         dependencyTracker,
 		ILogger<FSWatcher> logger) {
-		_languageServerManager        = languageServerManager;
+		_codeCrawlerManager        = crawler;
 		_dependencyTracker = dependencyTracker;
 		_logger            = logger;
 	}
@@ -33,7 +33,7 @@ public class FSWatcher : IDisposable {
 		}
 
 		try {
-			ProjectWatcher watcher = new ProjectWatcher(projectPath, language, _languageServerManager, _dependencyTracker, _logger);
+			ProjectWatcher watcher = new ProjectWatcher(projectPath, language, _codeCrawlerManager, _dependencyTracker, _logger);
 			_watchers[projectPath] = watcher;
 
 			await watcher.StartAsync();
@@ -104,7 +104,7 @@ public class FSWatcher : IDisposable {
 internal class ProjectWatcher : IDisposable {
 	private readonly string                           _projectPath;
 	private readonly string                           _language;
-	private readonly ILanguageServer                _languageServerManager;
+	private readonly CodeCrawler                _codeCrawlerManager;
 	private readonly DependencyTracker                _dependencyTracker;
 	private readonly ILogger                          _logger;
 	private readonly FileSystemWatcher                _fileWatcher;
@@ -114,12 +114,12 @@ internal class ProjectWatcher : IDisposable {
 	public ProjectWatcher(
 		string            projectPath,
 		string            language,
-		ILanguageServer languageServerManager,
+		CodeCrawler crawler,
 		DependencyTracker dependencyTracker,
 		ILogger           logger) {
 		_projectPath       = projectPath;
 		_language          = language;
-		_languageServerManager        = languageServerManager;
+		_codeCrawlerManager        = crawler;
 		_dependencyTracker = dependencyTracker;
 		_logger            = logger;
 
@@ -163,7 +163,7 @@ internal class ProjectWatcher : IDisposable {
 				return new List<CodeSymbol>();
 			}
 
-			return await _languageServerManager.GetDocumentSymbolsAsync(_language, filePath);
+			return await _codeCrawlerManager.CrawlFile(filePath);
 		} catch (Exception ex) {
 			_logger.LogError(ex, "Error getting affected symbols for {FilePath}", filePath);
 			return new List<CodeSymbol>();

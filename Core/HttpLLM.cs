@@ -3,43 +3,44 @@ using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Thaum.Utils;
 
 namespace Thaum.Core.Services;
 
-public class HttpLLM : ILLM {
-	private readonly HttpClient               _httpClient;
-	private readonly IConfiguration           _configuration;
+// TODO there seems to be a lot of code duplication here
+
+public class HttpLLM : LLM {
+	private readonly HttpClient       _client;
+	private readonly IConfiguration   _configuration;
 	private readonly ILogger<HttpLLM> _logger;
 
-	public HttpLLM(HttpClient httpClient, IConfiguration configuration, ILogger<HttpLLM> logger) {
-		_httpClient    = httpClient;
+	public HttpLLM(HttpClient client, IConfiguration configuration) {
+		_client        = client;
 		_configuration = configuration;
-		_logger        = logger;
-
-		// Note: Headers are set per-provider in individual methods to avoid conflicts
+		_logger        = Logging.For<HttpLLM>();
 	}
 
-	public async Task<string> CompleteAsync(string prompt, LlmOptions? options = null) {
-		options ??= new LlmOptions();
+	public override async Task<string> CompleteAsync(string prompt, LLMOptions? options = null) {
+		options ??= new LLMOptions();
 
 		string provider = _configuration["LLM:Provider"] ?? throw new InvalidOperationException("LLM:Provider configuration is required");
 
 		return provider.ToLowerInvariant() switch {
-			"openai"     => await CompleteOpenAIAsync(prompt, options),
-			"anthropic"  => await CompleteAnthropicAsync(prompt, options),
+			"openai"     => await CompleteOpenAI(prompt, options),
+			"anthropic"  => await CompleteAnthropic(prompt, options),
 			"ollama"     => await CompleteOllamaAsync(prompt, options),
 			"openrouter" => await CompleteOpenRouterAsync(prompt, options),
 			_            => throw new NotSupportedException($"Provider {provider} not supported")
 		};
 	}
 
-	public async Task<string> CompleteWithSystemAsync(string systemPrompt, string userPrompt, LlmOptions? options = null) {
-		options ??= new LlmOptions();
+	public override async Task<string> CompleteWithSystemAsync(string systemPrompt, string userPrompt, LLMOptions? options = null) {
+		options ??= new LLMOptions();
 
 		string provider = _configuration["LLM:Provider"] ?? throw new InvalidOperationException("LLM:Provider configuration is required");
 
 		return provider.ToLowerInvariant() switch {
-			"openai"     => await CompleteOpenAIWithSystemAsync(systemPrompt, userPrompt, options),
+			"openai"     => await CompleteOpenAIWithSystem(systemPrompt, userPrompt, options),
 			"anthropic"  => await CompleteAnthropicWithSystemAsync(systemPrompt, userPrompt, options),
 			"ollama"     => await CompleteOllamaWithSystemAsync(systemPrompt, userPrompt, options),
 			"openrouter" => await CompleteOpenRouterWithSystemAsync(systemPrompt, userPrompt, options),
@@ -47,8 +48,8 @@ public class HttpLLM : ILLM {
 		};
 	}
 
-	public async Task<IAsyncEnumerable<string>> StreamCompleteAsync(string prompt, LlmOptions? options = null) {
-		options ??= new LlmOptions();
+	public override async Task<IAsyncEnumerable<string>> StreamCompleteAsync(string prompt, LLMOptions? options = null) {
+		options ??= new LLMOptions();
 
 		string provider = _configuration["LLM:Provider"] ?? throw new InvalidOperationException("LLM:Provider configuration is required");
 
@@ -61,49 +62,49 @@ public class HttpLLM : ILLM {
 		};
 	}
 
-	private async Task<string> CompleteOpenAIAsync(string prompt, LlmOptions options) {
+	private async Task<string> CompleteOpenAI(string prompt, LLMOptions options) {
 		OpenAIRequest request = new OpenAIRequest {
 			Model = options.Model,
-			Messages = new[] {
+			Messages = [
 				new OpenAIMessage { Role = "user", Content = prompt }
-			},
+			],
 			Temperature = options.Temperature,
 			MaxTokens   = options.MaxTokens,
 			Stop        = options.StopSequences?.ToArray()
 		};
 
-		return await SendOpenAIRequestAsync(request);
+		return await SendOpenAIRequest(request);
 	}
 
-	private async Task<string> CompleteOpenAIWithSystemAsync(string systemPrompt, string userPrompt, LlmOptions options) {
+	private async Task<string> CompleteOpenAIWithSystem(string systemPrompt, string userPrompt, LLMOptions options) {
 		OpenAIRequest request = new OpenAIRequest {
 			Model = options.Model,
-			Messages = new[] {
+			Messages = [
 				new OpenAIMessage { Role = "system", Content = systemPrompt },
 				new OpenAIMessage { Role = "user", Content   = userPrompt }
-			},
+			],
 			Temperature = options.Temperature,
 			MaxTokens   = options.MaxTokens,
 			Stop        = options.StopSequences?.ToArray()
 		};
 
-		return await SendOpenAIRequestAsync(request);
+		return await SendOpenAIRequest(request);
 	}
 
-	private async Task<string> SendOpenAIRequestAsync(OpenAIRequest request) {
-		string baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenAI provider");
-		string json    = JsonSerializer.Serialize(request, JsonOptions.Default);
+	private async Task<string> SendOpenAIRequest(OpenAIRequest request) {
+		string        baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenAI provider");
+		string        json    = JsonSerializer.Serialize(request, JsonOptions.Default);
 		StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
 		// Set OpenAI-specific headers
-		_httpClient.DefaultRequestHeaders.Remove("Authorization");
+		_client.DefaultRequestHeaders.Remove("Authorization");
 		string? apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? _configuration["LLM:ApiKey"];
 		if (!string.IsNullOrEmpty(apiKey)) {
-			_httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+			_client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
 		}
 
 		try {
-			HttpResponseMessage response = await _httpClient.PostAsync($"{baseUrl}/chat/completions", content);
+			HttpResponseMessage response = await _client.PostAsync($"{baseUrl}/chat/completions", content);
 			response.EnsureSuccessStatusCode();
 
 			string          responseJson   = await response.Content.ReadAsStringAsync();
@@ -116,30 +117,30 @@ public class HttpLLM : ILLM {
 		}
 	}
 
-	private async Task<string> CompleteAnthropicAsync(string prompt, LlmOptions options) {
+	private async Task<string> CompleteAnthropic(string prompt, LLMOptions options) {
 		AnthropicRequest request = new AnthropicRequest {
 			Model = options.Model.Replace("gpt-4", "claude-3-sonnet-20240229"),
-			Messages = new[] {
+			Messages = [
 				new AnthropicMessage { Role = "user", Content = prompt }
-			},
+			],
 			Temperature = options.Temperature,
 			MaxTokens   = options.MaxTokens
 		};
 
-		string baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for Anthropic provider");
-		string json    = JsonSerializer.Serialize(request, JsonOptions.Default);
+		string        baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for Anthropic provider");
+		string        json    = JsonSerializer.Serialize(request, JsonOptions.Default);
 		StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
 		// Add Anthropic-specific headers
-		_httpClient.DefaultRequestHeaders.Remove("x-api-key");
+		_client.DefaultRequestHeaders.Remove("x-api-key");
 		string? apiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ?? _configuration["LLM:ApiKey"];
 		if (!string.IsNullOrEmpty(apiKey)) {
-			_httpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
-			_httpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+			_client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+			_client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
 		}
 
 		try {
-			HttpResponseMessage response = await _httpClient.PostAsync($"{baseUrl}/messages", content);
+			HttpResponseMessage response = await _client.PostAsync($"{baseUrl}/messages", content);
 			response.EnsureSuccessStatusCode();
 
 			string             responseJson      = await response.Content.ReadAsStringAsync();
@@ -152,31 +153,31 @@ public class HttpLLM : ILLM {
 		}
 	}
 
-	private async Task<string> CompleteAnthropicWithSystemAsync(string systemPrompt, string userPrompt, LlmOptions options) {
+	private async Task<string> CompleteAnthropicWithSystemAsync(string systemPrompt, string userPrompt, LLMOptions options) {
 		AnthropicRequest request = new AnthropicRequest {
 			Model  = options.Model.Replace("gpt-4", "claude-3-sonnet-20240229"),
 			System = systemPrompt,
-			Messages = new[] {
+			Messages = [
 				new AnthropicMessage { Role = "user", Content = userPrompt }
-			},
+			],
 			Temperature = options.Temperature,
 			MaxTokens   = options.MaxTokens
 		};
 
-		string baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for Anthropic provider");
-		string json    = JsonSerializer.Serialize(request, JsonOptions.Default);
+		string        baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for Anthropic provider");
+		string        json    = JsonSerializer.Serialize(request, JsonOptions.Default);
 		StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
 		// Add Anthropic-specific headers
-		_httpClient.DefaultRequestHeaders.Remove("x-api-key");
+		_client.DefaultRequestHeaders.Remove("x-api-key");
 		string? apiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ?? _configuration["LLM:ApiKey"];
 		if (!string.IsNullOrEmpty(apiKey)) {
-			_httpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
-			_httpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+			_client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+			_client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
 		}
 
 		try {
-			HttpResponseMessage response = await _httpClient.PostAsync($"{baseUrl}/messages", content);
+			HttpResponseMessage response = await _client.PostAsync($"{baseUrl}/messages", content);
 			response.EnsureSuccessStatusCode();
 
 			string             responseJson      = await response.Content.ReadAsStringAsync();
@@ -189,7 +190,7 @@ public class HttpLLM : ILLM {
 		}
 	}
 
-	private async Task<string> CompleteOllamaAsync(string prompt, LlmOptions options) {
+	private async Task<string> CompleteOllamaAsync(string prompt, LLMOptions options) {
 		OllamaRequest request = new OllamaRequest {
 			Model  = options.Model,
 			Prompt = prompt,
@@ -200,12 +201,12 @@ public class HttpLLM : ILLM {
 			}
 		};
 
-		string baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for Ollama provider");
-		string json    = JsonSerializer.Serialize(request, JsonOptions.Default);
+		string        baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for Ollama provider");
+		string        json    = JsonSerializer.Serialize(request, JsonOptions.Default);
 		StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
 		try {
-			HttpResponseMessage response = await _httpClient.PostAsync($"{baseUrl}/api/generate", content);
+			HttpResponseMessage response = await _client.PostAsync($"{baseUrl}/api/generate", content);
 			response.EnsureSuccessStatusCode();
 
 			string          responseJson   = await response.Content.ReadAsStringAsync();
@@ -218,18 +219,18 @@ public class HttpLLM : ILLM {
 		}
 	}
 
-	private async Task<string> CompleteOllamaWithSystemAsync(string systemPrompt, string userPrompt, LlmOptions options) {
+	private async Task<string> CompleteOllamaWithSystemAsync(string systemPrompt, string userPrompt, LLMOptions options) {
 		string fullPrompt = $"System: {systemPrompt}\n\nUser: {userPrompt}";
 		return await CompleteOllamaAsync(fullPrompt, options);
 	}
 
-	private async Task<string> CompleteOpenRouterAsync(string prompt, LlmOptions options) {
+	private async Task<string> CompleteOpenRouterAsync(string prompt, LLMOptions options) {
 		string? model = options.Model;
 		OpenAIRequest request = new OpenAIRequest {
 			Model = model,
-			Messages = new[] {
+			Messages = [
 				new OpenAIMessage { Role = "user", Content = prompt }
-			},
+			],
 			Temperature = options.Temperature,
 			MaxTokens   = options.MaxTokens,
 			Stop        = options.StopSequences?.ToArray()
@@ -238,14 +239,14 @@ public class HttpLLM : ILLM {
 		return await SendOpenRouterRequestAsync(request);
 	}
 
-	private async Task<string> CompleteOpenRouterWithSystemAsync(string systemPrompt, string userPrompt, LlmOptions options) {
+	private async Task<string> CompleteOpenRouterWithSystemAsync(string systemPrompt, string userPrompt, LLMOptions options) {
 		string? model = options.Model;
 		OpenAIRequest request = new OpenAIRequest {
 			Model = model,
-			Messages = new[] {
+			Messages = [
 				new OpenAIMessage { Role = "system", Content = systemPrompt },
 				new OpenAIMessage { Role = "user", Content   = userPrompt }
-			},
+			],
 			Temperature = options.Temperature,
 			MaxTokens   = options.MaxTokens,
 			Stop        = options.StopSequences?.ToArray()
@@ -255,27 +256,27 @@ public class HttpLLM : ILLM {
 	}
 
 	private async Task<string> SendOpenRouterRequestAsync(OpenAIRequest request) {
-		string baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenRouter provider");
-		string json    = JsonSerializer.Serialize(request, JsonOptions.Default);
+		string        baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenRouter provider");
+		string        json    = JsonSerializer.Serialize(request, JsonOptions.Default);
 		StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
 		// Add OpenRouter-specific headers
 		string? apiKey  = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY") ?? _configuration["LLM:ApiKey"];
-		string appName = _configuration["LLM:AppName"] ?? "Thaum";
-		string siteUrl = _configuration["LLM:SiteUrl"] ?? "https://github.com/your-repo/thaum";
+		string  appName = _configuration["LLM:AppName"] ?? "Thaum";
+		string  siteUrl = _configuration["LLM:SiteUrl"] ?? "https://github.com/your-repo/thaum";
 
-		_httpClient.DefaultRequestHeaders.Remove("Authorization");
-		_httpClient.DefaultRequestHeaders.Remove("HTTP-Referer");
-		_httpClient.DefaultRequestHeaders.Remove("X-Title");
+		_client.DefaultRequestHeaders.Remove("Authorization");
+		_client.DefaultRequestHeaders.Remove("HTTP-Referer");
+		_client.DefaultRequestHeaders.Remove("X-Title");
 
 		if (!string.IsNullOrEmpty(apiKey)) {
-			_httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+			_client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
 		}
-		_httpClient.DefaultRequestHeaders.Add("HTTP-Referer", siteUrl);
-		_httpClient.DefaultRequestHeaders.Add("X-Title", appName);
+		_client.DefaultRequestHeaders.Add("HTTP-Referer", siteUrl);
+		_client.DefaultRequestHeaders.Add("X-Title", appName);
 
 		try {
-			HttpResponseMessage response = await _httpClient.PostAsync($"{baseUrl}/chat/completions", content);
+			HttpResponseMessage response = await _client.PostAsync($"{baseUrl}/chat/completions", content);
 
 			if (!response.IsSuccessStatusCode) {
 				string errorContent = await response.Content.ReadAsStringAsync();
@@ -293,19 +294,19 @@ public class HttpLLM : ILLM {
 		}
 	}
 
-	private async Task<IAsyncEnumerable<string>> StreamOpenAIAsync(string prompt, LlmOptions options) {
+	private async Task<IAsyncEnumerable<string>> StreamOpenAIAsync(string prompt, LLMOptions options) {
 		OpenAIStreamRequest request = new OpenAIStreamRequest {
 			Model = options.Model,
-			Messages = new[] {
+			Messages = [
 				new OpenAIMessage { Role = "user", Content = prompt }
-			},
+			],
 			Temperature = options.Temperature,
 			MaxTokens   = options.MaxTokens,
 			Stream      = true
 		};
 
-		string baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenAI provider");
-		string json    = JsonSerializer.Serialize(request, JsonOptions.Default);
+		string        baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenAI provider");
+		string        json    = JsonSerializer.Serialize(request, JsonOptions.Default);
 		StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
 		HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/chat/completions") {
@@ -318,19 +319,19 @@ public class HttpLLM : ILLM {
 			httpRequest.Headers.Add("Authorization", $"Bearer {apiKey}");
 		}
 
-		HttpResponseMessage response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
+		HttpResponseMessage response = await _client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
 		response.EnsureSuccessStatusCode();
 
 		return StreamResponseTokens(response);
 	}
 
-	private async Task<IAsyncEnumerable<string>> StreamAnthropicAsync(string prompt, LlmOptions options) {
+	private async Task<IAsyncEnumerable<string>> StreamAnthropicAsync(string prompt, LLMOptions options) {
 		// Anthropic streaming - fallback to batch for now
-		string result = await CompleteAnthropicAsync(prompt, options);
+		string result = await CompleteAnthropic(prompt, options);
 		return AsyncEnumerableFromSingle(result);
 	}
 
-	private async Task<IAsyncEnumerable<string>> StreamOllamaAsync(string prompt, LlmOptions options) {
+	private async Task<IAsyncEnumerable<string>> StreamOllamaAsync(string prompt, LLMOptions options) {
 		OllamaRequest request = new OllamaRequest {
 			Model  = options.Model,
 			Prompt = prompt,
@@ -341,39 +342,39 @@ public class HttpLLM : ILLM {
 			}
 		};
 
-		string baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for Ollama provider");
-		string json    = JsonSerializer.Serialize(request, JsonOptions.Default);
+		string        baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for Ollama provider");
+		string        json    = JsonSerializer.Serialize(request, JsonOptions.Default);
 		StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
 		HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/generate") {
 			Content = content
 		};
-		HttpResponseMessage response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
+		HttpResponseMessage response = await _client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
 		response.EnsureSuccessStatusCode();
 
 		return StreamOllamaTokens(response);
 	}
 
-	private async Task<IAsyncEnumerable<string>> StreamOpenRouterAsync(string prompt, LlmOptions options) {
+	private async Task<IAsyncEnumerable<string>> StreamOpenRouterAsync(string prompt, LLMOptions options) {
 		string? model = options.Model;
 		OpenAIStreamRequest request = new OpenAIStreamRequest {
 			Model = model,
-			Messages = new[] {
+			Messages = [
 				new OpenAIMessage { Role = "user", Content = prompt }
-			},
+			],
 			Temperature = options.Temperature,
 			MaxTokens   = options.MaxTokens,
 			Stream      = true
 		};
 
-		string baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenRouter provider");
-		string json    = JsonSerializer.Serialize(request, JsonOptions.Default);
+		string        baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenRouter provider");
+		string        json    = JsonSerializer.Serialize(request, JsonOptions.Default);
 		StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
 		// Add OpenRouter-specific headers to the request
 		string? apiKey  = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY") ?? _configuration["LLM:ApiKey"];
-		string appName = _configuration["LLM:AppName"] ?? "Thaum";
-		string siteUrl = _configuration["LLM:SiteUrl"] ?? "https://github.com/your-repo/thaum";
+		string  appName = _configuration["LLM:AppName"] ?? "Thaum";
+		string  siteUrl = _configuration["LLM:SiteUrl"] ?? "https://github.com/your-repo/thaum";
 
 		HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/chat/completions") {
 			Content = content
@@ -385,7 +386,7 @@ public class HttpLLM : ILLM {
 		httpRequest.Headers.Add("HTTP-Referer", siteUrl);
 		httpRequest.Headers.Add("X-Title", appName);
 
-		HttpResponseMessage response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
+		HttpResponseMessage response = await _client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
 
 		if (!response.IsSuccessStatusCode) {
 			string errorContent = await response.Content.ReadAsStringAsync();
@@ -397,7 +398,7 @@ public class HttpLLM : ILLM {
 	}
 
 	private static async IAsyncEnumerable<string> StreamResponseTokens(HttpResponseMessage response) {
-		using Stream stream = await response.Content.ReadAsStreamAsync();
+		using Stream       stream = await response.Content.ReadAsStreamAsync();
 		using StreamReader reader = new StreamReader(stream);
 
 		string? line;
@@ -423,7 +424,7 @@ public class HttpLLM : ILLM {
 	}
 
 	private static async IAsyncEnumerable<string> StreamOllamaTokens(HttpResponseMessage response) {
-		using Stream stream = await response.Content.ReadAsStreamAsync();
+		using Stream       stream = await response.Content.ReadAsStreamAsync();
 		using StreamReader reader = new StreamReader(stream);
 
 		string? line;
