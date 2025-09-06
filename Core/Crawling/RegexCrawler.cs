@@ -12,8 +12,8 @@ public class RegexCrawler : Crawler {
 		this._lang = lang;
 	}
 
-	public override async Task<List<CodeSymbol>> CrawlDir(string dirpath) {
-		List<CodeSymbol> symbols = [];
+	public override async Task<CodeMap> CrawlDir(string dirpath, CodeMap? codeMap = null) {
+		codeMap ??= CodeMap.Create();
 
 		try {
 			List<string> sourceFiles = Directory.GetFiles(dirpath, "*.*", SearchOption.AllDirectories)
@@ -23,18 +23,21 @@ public class RegexCrawler : Crawler {
 
 			foreach (string file in sourceFiles) {
 				List<CodeSymbol> fileSymbols = await ExtractSymbol(file);
-				symbols.AddRange(fileSymbols);
+				codeMap.AddSymbols(fileSymbols);
 			}
 		} catch (Exception ex) {
 			_logger.LogError(ex, "Error extracting workspace symbols");
 		}
 
-		return symbols;
+		return codeMap;
 	}
 
-	public override async Task<List<CodeSymbol>> CrawlFile(string filepath) {
-		if (!File.Exists(filepath)) return [];
-		return await ExtractSymbol(filepath);
+	public override async Task<CodeMap> CrawlFile(string filepath, CodeMap? codeMap = null) {
+		codeMap ??= CodeMap.Create();
+		if (!File.Exists(filepath)) return codeMap;
+		var symbols = await ExtractSymbol(filepath);
+		codeMap.AddSymbols(symbols);
+		return codeMap;
 	}
 
 	public override async Task<CodeSymbol?> GetDefinitionFor(string name, CodeLoc location) {

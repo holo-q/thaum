@@ -227,14 +227,14 @@ public partial class CLI {
 			println();
 
 			// Get symbols from file
-			List<CodeSymbol> symbols      = await _crawler.CrawlFile(filepath);
-			CodeSymbol?      targetSymbol = symbols.FirstOrDefault(s => s.Name == targetName);
+			var codeMap = await _crawler.CrawlFile(filepath);
+			CodeSymbol? targetSymbol = codeMap.GetSymbolByName(targetName);
 
 			if (targetSymbol == null) {
 				println($"Symbol '{targetName}' not found in {Path.GetRelativePath(Directory.GetCurrentDirectory(), filepath)}");
 				println();
 				println("Available symbols:");
-				foreach (CodeSymbol sym in symbols.OrderBy(s => s.Name)) {
+				foreach (CodeSymbol sym in codeMap.OrderBy(s => s.Name)) {
 					println($"  {sym.Name} ({sym.Kind})");
 				}
 				return;

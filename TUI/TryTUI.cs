@@ -6,11 +6,11 @@ using ILogger = Microsoft.Extensions.Logging.ILogger;
 namespace Thaum.CLI.Interactive;
 
 public class TryTUI : TUIView {
-	private string       _filePath   = "";
-	private string       _symbolName = "";
-	private string?      _customPrompt;
+	private string   _filePath   = "";
+	private string   _symbolName = "";
+	private string?  _customPrompt;
 	private Crawler? _languageServer;
-	private ILogger?     _logger;
+	private ILogger? _logger;
 
 	public override void Initialize(Terminal.Gui.View container) {
 		// Store parameters passed via TuiConfiguration
@@ -56,11 +56,11 @@ public class TryTUI : TUIView {
 
 			// Get symbols from file with timeout
 			trace($"Parsing symbols from file: {_filePath}");
-			List<CodeSymbol> symbols;
-			using var        cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+			CodeMap   codeMap;
+			using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 			try {
-				symbols = await _languageServer.CrawlFile(_filePath).WaitAsync(cts.Token);
-				trace($"Successfully parsed {symbols.Count} symbols from file");
+				codeMap = await _languageServer.CrawlFile(_filePath).WaitAsync(cts.Token);
+				trace($"Successfully parsed {codeMap.Count} symbols from file");
 			} catch (OperationCanceledException) {
 				trace("Symbol parsing timed out");
 				statusCallback("Symbol parsing timeout");
@@ -70,11 +70,11 @@ public class TryTUI : TUIView {
 			}
 
 			trace($"Searching for target symbol: {_symbolName}");
-			CodeSymbol? targetSymbol = symbols.FirstOrDefault(s => s.Name == _symbolName);
+			CodeSymbol? targetSymbol = codeMap.GetSymbolByName(_symbolName);
 
 			if (targetSymbol == null) {
-				trace($"Target symbol '{_symbolName}' not found. Available symbols: {symbols.Count}");
-				var availableSymbols = string.Join("\n", symbols.OrderBy(s => s.Name).Select(s => $"  {s.Name} ({s.Kind})"));
+				trace($"Target symbol '{_symbolName}' not found. Available symbols: {codeMap.Count}");
+				var availableSymbols = string.Join("\n", codeMap.OrderBy(s => s.Name).Select(s => $"  {s.Name} ({s.Kind})"));
 				statusCallback("Symbol not found");
 				textCallback($"Symbol '{_symbolName}' not found in {Path.GetRelativePath(Directory.GetCurrentDirectory(), _filePath)}\n\nAvailable symbols:\n{availableSymbols}");
 				traceout();
@@ -124,13 +124,6 @@ public class TryTUI : TUIView {
 		    Directory.GetFiles(projectPath, "*.cs", SearchOption.TopDirectoryOnly).Any()) {
 			return "csharp";
 		}
-		if (Directory.GetFiles(projectPath, "package.json", SearchOption.TopDirectoryOnly).Any()) {
-			return "typescript";
-		}
-		return "csharp"; // Default fallback
-	}
-
-	public override void Dispose() {
-		// Cleanup if needed
+		return Directory.GetFiles(projectPath, "package.json", SearchOption.TopDirectoryOnly).Any() ? "typescript" : "csharp"; // Default fallback
 	}
 }

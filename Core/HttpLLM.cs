@@ -133,7 +133,7 @@ public class HttpLLM : LLM {
 
 		// Add Anthropic-specific headers
 		_client.DefaultRequestHeaders.Remove("x-api-key");
-		string? apiKey = GLB.ANTHROPIC_AIP_KEY;
+		string? apiKey = GLB.API_KEY_ANTHROPIC;
 		if (!string.IsNullOrEmpty(apiKey)) {
 			_client.DefaultRequestHeaders.Add("x-api-key", apiKey);
 			_client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
@@ -170,7 +170,7 @@ public class HttpLLM : LLM {
 
 		// Add Anthropic-specific headers
 		_client.DefaultRequestHeaders.Remove("x-api-key");
-		string? apiKey = GLB.ANTHROPIC_AIP_KEY;
+		string? apiKey = GLB.API_KEY_ANTHROPIC;
 		if (!string.IsNullOrEmpty(apiKey)) {
 			_client.DefaultRequestHeaders.Add("x-api-key", apiKey);
 			_client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
@@ -261,7 +261,7 @@ public class HttpLLM : LLM {
 		StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
 		// Add OpenRouter-specific headers
-		string? apiKey  = GLB.OPENROUTER_API_KEY;
+		string? apiKey  = GLB.API_KEY_OPENROUTER;
 		string  appName = _configuration["LLM:AppName"] ?? "Thaum";
 		string  siteUrl = _configuration["LLM:SiteUrl"] ?? "https://github.com/your-repo/thaum";
 
@@ -372,7 +372,7 @@ public class HttpLLM : LLM {
 		StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
 		// Add OpenRouter-specific headers to the request
-		string? apiKey  = GLB.OPENROUTER_API_KEY;
+		string? apiKey  = GLB.API_KEY_OPENROUTER;
 		string  appName = _configuration["LLM:AppName"] ?? "Thaum";
 		string  siteUrl = _configuration["LLM:SiteUrl"] ?? "https://github.com/your-repo/thaum";
 

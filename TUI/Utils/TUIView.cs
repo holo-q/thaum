@@ -2,7 +2,7 @@ using Terminal.Gui;
 
 namespace Thaum.CLI.Interactive;
 
-public abstract class TUIView : IDisposable {
+public abstract class TUIView  {
 	/// <summary>
 	/// Initialize the TUI view with the provided container
 	/// </summary>
@@ -15,6 +15,4 @@ public abstract class TUIView : IDisposable {
 	/// <param name="textCallback">Callback to update text content</param>
 	/// <param name="statusCallback">Callback to update status message</param>
 	public abstract Task RefreshAsync(Action<string> textCallback, Action<string> statusCallback);
-
-	public abstract void Dispose();
 }

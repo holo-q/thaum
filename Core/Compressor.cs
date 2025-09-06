@@ -136,7 +136,8 @@ public class Compressor {
 		traceln("LSP Server", $"{language.ToUpper()}", "INIT");
 
 		traceln("Workspace", "Symbol Discovery", "SCAN");
-		List<CodeSymbol> allSymbols       = await _crawler.CrawlDir(projectPath);
+		var codeMap = await _crawler.CrawlDir(projectPath);
+		List<CodeSymbol> allSymbols = codeMap.ToList();
 		HierarchyBuilder hierarchyBuilder = new HierarchyBuilder();
 
 		// Phase 1: Optimize functions (deepest scope)

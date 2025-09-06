@@ -163,7 +163,8 @@ internal class ProjectWatcher : IDisposable {
 				return new List<CodeSymbol>();
 			}
 
-			return await _crawler.CrawlFile(filePath);
+			var codeMap = await _crawler.CrawlFile(filePath);
+			return codeMap.ToList();
 		} catch (Exception ex) {
 			_logger.LogError(ex, "Error getting affected symbols for {FilePath}", filePath);
 			return new List<CodeSymbol>();

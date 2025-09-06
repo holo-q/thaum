@@ -23,12 +23,18 @@ public class LSPCrawler : Crawler {
 		throw new NotImplementedException(); // TODO
 	}
 
-	public override async Task<List<CodeSymbol>> CrawlDir(string dirpath) {
-		return await _lsp.GetWorkspaceSymbolsAsync();
+	public override async Task<CodeMap> CrawlDir(string dirpath, CodeMap? codeMap = null) {
+		codeMap ??= CodeMap.Create();
+		var symbols = await _lsp.GetWorkspaceSymbolsAsync();
+		codeMap.AddSymbols(symbols);
+		return codeMap;
 	}
 
-	public override async Task<List<CodeSymbol>> CrawlFile(string filepath) {
-		return await _lsp.GetDocumentSymbolsAsync(filepath);
+	public override async Task<CodeMap> CrawlFile(string filepath, CodeMap? codeMap = null) {
+		codeMap ??= CodeMap.Create();
+		var symbols = await _lsp.GetDocumentSymbolsAsync(filepath);
+		codeMap.AddSymbols(symbols);
+		return codeMap;
 	}
 
 	public override async Task<CodeSymbol?> GetDefinitionFor(string name, CodeLoc location) {

@@ -35,7 +35,7 @@ public static class CLI_Commands {
 	/// ls command: List symbols in hierarchical format
 	/// </summary>
 	private static Command CreateLsCommand(CLI cli) {
-		var pathArg = new Argument<string>("path") {
+		var argPath = new Argument<string>("path") {
 			Description         = "Project path or assembly specifier (e.g., 'assembly:TreeSitter')",
 			DefaultValueFactory = _ => Directory.GetCurrentDirectory()
 		};
@@ -58,14 +58,14 @@ public static class CLI_Commands {
 		};
 
 		var cmd = new Command("ls", "List symbols in hierarchical format");
-		cmd.Arguments.Add(pathArg);
+		cmd.Arguments.Add(argPath);
 		cmd.Options.Add(optLang);
 		cmd.Options.Add(optDepth);
 		cmd.Options.Add(optTypes);
 		cmd.Options.Add(optNoColors);
 
 		cmd.SetAction(async (parseResult, cancellationToken) => {
-			var path     = parseResult.GetValue(pathArg)!;
+			var path     = parseResult.GetValue(argPath)!;
 			var lang     = parseResult.GetValue(optLang)!;
 			var depth    = parseResult.GetValue(optDepth);
 			var types    = parseResult.GetValue(optTypes);
@@ -89,7 +89,7 @@ public static class CLI_Commands {
 		var cmd = new Command("ls-env", "Show .env file detection and merging trace");
 		cmd.Options.Add(optValues);
 
-		cmd.SetAction((parseResult, cancellationToken) => {
+		cmd.SetAction((parseResult, _) => {
 			var values = parseResult.GetValue(optValues);
 			cli.CMD_ls_env(values);
 			return Task.CompletedTask;
@@ -107,12 +107,8 @@ public static class CLI_Commands {
 			DefaultValueFactory = _ => ""
 		};
 
-		var optKeys = new Option<bool>("--keys", "-k") {
-			Description = "Show K1/K2 architectural keys"
-		};
-		var optAll = new Option<bool>("--all", "-a") {
-			Description = "Show both optimizations and keys"
-		};
+		var optKeys = new Option<bool>("--keys", "-k") { Description = "Show K1/K2 architectural keys" };
+		var optAll  = new Option<bool>("--all", "-a") { Description  = "Show both optimizations and keys" };
 
 		var cmd = new Command("ls-cache", "Browse cached symbol compressions");
 		cmd.Arguments.Add(patternArg);
@@ -134,12 +130,8 @@ public static class CLI_Commands {
 	/// ls-lsp command: Manage auto-downloaded LSP servers
 	/// </summary>
 	private static Command CreateLsLspCommand(CLI cli) {
-		var optAll = new Option<bool>("--all", "-a") {
-			Description = "Show detailed information about cached servers"
-		};
-		var optCleanup = new Option<bool>("--cleanup", "-c") {
-			Description = "Remove old LSP server versions"
-		};
+		var optAll     = new Option<bool>("--all", "-a") { Description     = "Show detailed information about cached servers" };
+		var optCleanup = new Option<bool>("--cleanup", "-c") { Description = "Remove old LSP server versions" };
 
 		var cmd = new Command("ls-lsp", "Manage auto-downloaded LSP servers");
 		cmd.Options.Add(optAll);
@@ -159,33 +151,25 @@ public static class CLI_Commands {
 	/// try command: Test prompts on individual symbols
 	/// </summary>
 	private static Command CreateTryCommand(CLI cli) {
-		var fileArg = new Argument<string>("file-path") {
-			Description = "Path to source file"
-		};
-		var symbolArg = new Argument<string>("symbol-name") {
-			Description = "Name of symbol to test"
-		};
-		var optPrompt = new Option<string?>("--prompt") {
-			Description = "Prompt file name (e.g., compress_function_v2, endgame_function)"
-		};
-		var optInteractive = new Option<bool>("--interactive") {
-			Description = "Launch interactive TUI with live updates"
-		};
+		var argFile        = new Argument<string>("file-path") { Description   = "Path to source file" };
+		var argSymbol      = new Argument<string>("symbol-name") { Description = "Name of symbol to test" };
+		var optPrompt      = new Option<string?>("--prompt") { Description     = "Prompt file name (e.g., compress_function_v2, endgame_function)" };
+		var optInteractive = new Option<bool>("--interactive") { Description   = "Launch interactive TUI with live updates" };
 		var optN = new Option<int>("--n") {
 			Description         = "Number of rollouts for fusion",
 			DefaultValueFactory = _ => 1
 		};
 
 		var cmd = new Command("try", "Test prompts on individual symbols");
-		cmd.Arguments.Add(fileArg);
-		cmd.Arguments.Add(symbolArg);
+		cmd.Arguments.Add(argFile);
+		cmd.Arguments.Add(argSymbol);
 		cmd.Options.Add(optPrompt);
 		cmd.Options.Add(optInteractive);
 		cmd.Options.Add(optN);
 
 		cmd.SetAction(async (parseResult, cancellationToken) => {
-			var file        = parseResult.GetValue(fileArg)!;
-			var symbol      = parseResult.GetValue(symbolArg)!;
+			var file        = parseResult.GetValue(argFile)!;
+			var symbol      = parseResult.GetValue(argSymbol)!;
 			var prompt      = parseResult.GetValue(optPrompt);
 			var interactive = parseResult.GetValue(optInteractive);
 			var n           = parseResult.GetValue(optN);

@@ -116,8 +116,8 @@ public class MainWindow : Window {
 			try {
 				string? language = DetectLanguage(filePath);
 				if (language != null) {
-					List<CodeSymbol> symbols = await _crawler.CrawlFile(filePath);
-					Application.MainLoop.Invoke(() => _symbolList.UpdateSymbols(symbols));
+					var codeMap = await _crawler.CrawlFile(filePath);
+					Application.MainLoop.Invoke(() => _symbolList.UpdateSymbols(codeMap.ToList()));
 				}
 			} catch (Exception ex) {
 				_logger.LogError(ex, "Error loading symbols for file {FilePath}", filePath);
@@ -225,10 +225,10 @@ public class MainWindow : Window {
 			try {
 				string? language = DetectPrimaryLanguage(_currentProjectPath);
 				if (language != null) {
-					List<CodeSymbol> symbols = await _crawler.CrawlDir(_currentProjectPath);
+					var codeMap = await _crawler.CrawlDir(_currentProjectPath);
 					Application.MainLoop.Invoke(() => {
-						_symbolList.UpdateSymbols(symbols);
-						SetStatusText($"Refreshed {symbols.Count} symbols");
+						_symbolList.UpdateSymbols(codeMap.ToList());
+						SetStatusText($"Refreshed {codeMap.Count} symbols");
 					});
 				}
 			} catch (Exception ex) {

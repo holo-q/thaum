@@ -35,16 +35,19 @@ public class TreeSitterCrawler : Crawler {
 		_languageConfigs = InitializeLanguageConfigs();
 	}
 
-	public override async Task<List<CodeSymbol>> CrawlDir(string dirpath) {
+	public override async Task<CodeMap> CrawlDir(string dirpath, CodeMap? codeMap = null) {
 		// Auto-detect language based on files in directory
 		string language = LangUtil.DetectLanguageFromDirectory(dirpath);
-		return await CrawlDir(language, dirpath);
+		return await CrawlDir(language, dirpath, codeMap);
 	}
 
-	public override async Task<List<CodeSymbol>> CrawlFile(string filepath) {
+	public override async Task<CodeMap> CrawlFile(string filepath, CodeMap? codeMap = null) {
 		// Auto-detect language based on file extension
 		string language = LangUtil.DetectLanguageFromFile(filepath);
-		return await ExtractSymbolsFromFile(filepath, language);
+		codeMap ??= CodeMap.Create();
+		var symbols = await ExtractSymbolsFromFile(filepath, language);
+		codeMap.AddSymbols(symbols);
+		return codeMap;
 	}
 
 	public override async Task<CodeSymbol?> GetDefinitionFor(string name, CodeLoc location) {
@@ -57,8 +60,16 @@ public class TreeSitterCrawler : Crawler {
 
 	public override Task<string> GetCode(CodeSymbol targetSymbol) => throw new NotImplementedException();
 
+	/// <summary>
+	/// Legacy compatibility - crawls directory and returns symbols as list
+	/// </summary>
 	public async Task<List<CodeSymbol>> CrawlDir(string lang, string dirpath) {
-		List<CodeSymbol> symbols = [];
+		var codeMap = await CrawlDir(lang, dirpath, null);
+		return codeMap.ToList();
+	}
+
+	public async Task<CodeMap> CrawlDir(string lang, string dirpath, CodeMap? codeMap = null) {
+		codeMap ??= CodeMap.Create();
 
 		try {
 			// Find all source files for the language using language-agnostic approach
@@ -71,18 +82,18 @@ public class TreeSitterCrawler : Crawler {
 			foreach (string filePath in sourceFiles) {
 				try {
 					List<CodeSymbol> fileSymbols = await ExtractSymbolsFromFile(filePath, lang);
-					symbols.AddRange(fileSymbols);
+					codeMap.AddSymbols(fileSymbols);
 				} catch (Exception ex) {
 					_logger.LogWarning(ex, "Failed to parse file: {FilePath}", filePath);
 				}
 			}
 
-			_logger.LogDebug("Extracted {Count} symbols from {Language} files", symbols.Count, lang);
+			_logger.LogDebug("Extracted {Count} symbols from {Language} files", codeMap.Count, lang);
 		} catch (Exception ex) {
 			_logger.LogError(ex, "Error scanning workspace for {Language} symbols", lang);
 		}
 
-		return symbols;
+		return codeMap;
 	}
 
 	public async Task<List<CodeSymbol>> CrawlFile(string lang, string filePath) {

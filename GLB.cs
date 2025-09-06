@@ -21,32 +21,44 @@ public static class GLB {
 	public static int CompressTokens => 1024;
 	public static int KeyTokens      => 512;
 
-	/// <summary>
-	/// Default model for LLM operations where environment variable LLM__DefaultModel provides
-	/// override capability where fallback ensures reasonable default when environment unconfigured
-	/// </summary>
+	// Standard directories where prompts provides template directory where cache provides storage
+	// where these paths follow platform conventions while maintaining consistency
+	public static string PromptsDir  => Path.Combine(Directory.GetCurrentDirectory(), "prompts");
+	public static string CacheDir    => AppConfig["Cache:Directory"] ?? Path.Combine(Path.GetTempPath(), "Thaum");
+	public static string CacheDbPath => Path.Combine(CacheDir, "cache.db");
+
+	// Standard filenames where interactive log captures TUI sessions where output log handles general logging
+	// where env file provides environment configuration where app settings provides JSON configuration
+	public static string InteractiveLogFile => "interactive.log";
+	public static string OutputLogFile      => "output.log";
+	public static string EnvFileName        => ".env";
+	public static string AppSettingsFile    => "appsettings.json";
+
+	// LLM provider API keys with environment variable access where each provider gets dedicated key access
+	// where fallback to generic LLM:ApiKey maintains backward compatibility
+	public static string? API_KEY_OPENAI     => Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? AppConfig["LLM:ApiKey"];
+	public static string? API_KEY_ANTHROPIC  => Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ?? AppConfig["LLM:ApiKey"];
+	public static string? API_KEY_OPENROUTER => Environment.GetEnvironmentVariable("OPENROUTER_API_KEY") ?? AppConfig["LLM:ApiKey"];
+
+
+	// Default model for LLM operations where environment variable LLM__DefaultModel provides
+	// override capability where fallback ensures reasonable default when environment unconfigured
 	public static string DefaultModel => Environment.GetEnvironmentVariable("LLM__DefaultModel") ?? "moonshotai/kimi-2";
 
+	// Default prompt names for different symbol types where functions use compress_function_v5
+	// where classes use compress_class where these can be overridden via environment variables
+	public static string DefaultFunctionPrompt => Environment.GetEnvironmentVariable("THAUM_DEFAULT_FUNCTION_PROMPT") ?? "compress_function_v5";
+	public static string DefaultClassPrompt    => Environment.GetEnvironmentVariable("THAUM_DEFAULT_CLASS_PROMPT") ?? "compress_class";
+	public static string DefaultKeyPrompt      => Environment.GetEnvironmentVariable("THAUM_DEFAULT_KEY_PROMPT") ?? "compress_key";
 
-	/// <summary>
-	/// Ambient configuration access eliminating ceremonial injection patterns where truly global
-	/// configuration deserves global access where the pattern recognizes that application config
-	/// is genuinely singular where fighting this with DI creates friction without benefit
-	/// </summary>
+	// Ambient configuration access eliminating ceremonial injection patterns where truly global
+	// configuration deserves global access where the pattern recognizes that application config
+	// is genuinely singular where fighting this with DI creates friction without benefit
 	public static IConfigurationRoot AppConfig => new ConfigurationBuilder()
 		.SetBasePath(Directory.GetCurrentDirectory())
 		.AddJsonFile(AppSettingsFile, optional: true)
 		.AddEnvironmentVariables()
 		.Build();
-
-	/// <summary>
-	/// Default prompt names for different symbol types where functions use compress_function_v5
-	/// where classes use compress_class where these can be overridden via environment variables
-	/// </summary>
-	public static string DefaultFunctionPrompt => Environment.GetEnvironmentVariable("THAUM_DEFAULT_FUNCTION_PROMPT") ?? "compress_function_v5";
-
-	public static string DefaultClassPrompt => Environment.GetEnvironmentVariable("THAUM_DEFAULT_CLASS_PROMPT") ?? "compress_class";
-	public static string DefaultKeyPrompt   => Environment.GetEnvironmentVariable("THAUM_DEFAULT_KEY_PROMPT") ?? "compress_key";
 
 	/// <summary>
 	/// Gets default prompt name for symbol type with environment override capability
@@ -97,34 +109,6 @@ public static class GLB {
 		if (symbolName.Contains("Dispose")) return "🗑️";
 		return "🔧";
 	}
-
-	/// <summary>
-	/// Standard directories where prompts provides template directory where cache provides storage
-	/// where these paths follow platform conventions while maintaining consistency
-	/// </summary>
-	public static string PromptsDir => Path.Combine(Directory.GetCurrentDirectory(), "prompts");
-
-	public static string CacheDir    => AppConfig["Cache:Directory"] ?? Path.Combine(Path.GetTempPath(), "Thaum");
-	public static string CacheDbPath => Path.Combine(CacheDir, "cache.db");
-
-	/// <summary>
-	/// Standard filenames where interactive log captures TUI sessions where output log handles general logging
-	/// where env file provides environment configuration where app settings provides JSON configuration
-	/// </summary>
-	public static string InteractiveLogFile => "interactive.log";
-
-	public static string OutputLogFile   => "output.log";
-	public static string EnvFileName     => ".env";
-	public static string AppSettingsFile => "appsettings.json";
-
-	/// <summary>
-	/// LLM provider API keys with environment variable access where each provider gets dedicated key access
-	/// where fallback to generic LLM:ApiKey maintains backward compatibility
-	/// </summary>
-	public static string? API_KEY_OPENAI => Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? AppConfig["LLM:ApiKey"];
-
-	public static string? ANTHROPIC_AIP_KEY  => Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ?? AppConfig["LLM:ApiKey"];
-	public static string? OPENROUTER_API_KEY => Environment.GetEnvironmentVariable("OPENROUTER_API_KEY") ?? AppConfig["LLM:ApiKey"];
 
 	/// <summary>
 	/// Standard timeouts and limits where console width ensures readable output where OSC timeout

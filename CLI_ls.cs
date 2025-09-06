@@ -57,17 +57,17 @@ public partial class CLI {
 		println($"Scanning {options.ProjectPath} for {options.Language} symbols...");
 
 		// Get symbols
-		List<CodeSymbol> symbols = await _crawler.CrawlDir(options.ProjectPath);
+		var codeMap = await _crawler.CrawlDir(options.ProjectPath);
 
-		if (!symbols.Any()) {
+		if (codeMap.Count == 0) {
 			println("No symbols found.");
 			return;
 		}
 
 		// Build and display hierarchy
-		List<TreeNode> hierarchy = TreeNode.BuildHierarchy(symbols, _colorer);
+		List<TreeNode> hierarchy = TreeNode.BuildHierarchy(codeMap.ToList(), _colorer);
 		TreeNode.DisplayHierarchy(hierarchy, options);
-		println($"\nFound {symbols.Count} symbols total");
+		println($"\nFound {codeMap.Count} symbols total");
 	}
 
 	private async Task CMD_ls_dotnet(string assemblyName, LsOptions options) {
