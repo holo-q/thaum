@@ -35,9 +35,17 @@ public class TreeSitterCrawler : CodeCrawler {
 		_languageConfigs = InitializeLanguageConfigs();
 	}
 
-	public override Task<List<CodeSymbol>> CrawlDir(string dirpath) => throw new NotImplementedException();
+	public override async Task<List<CodeSymbol>> CrawlDir(string dirpath) {
+		// Auto-detect language based on files in directory
+		string language = LanguageUtil.DetectLanguageFromDirectory(dirpath);
+		return await CrawlDir(language, dirpath);
+	}
 
-	public override Task<List<CodeSymbol>> CrawlFile(string filepath) => throw new NotImplementedException();
+	public override async Task<List<CodeSymbol>> CrawlFile(string filepath) {
+		// Auto-detect language based on file extension
+		string language = LanguageUtil.DetectLanguageFromFile(filepath);
+		return await ExtractSymbolsFromFile(filepath, language);
+	}
 
 	public override async Task<CodeSymbol?> GetDefinitionFor(string name, CodeLoc location) {
 		throw new InvalidOperationException("The TreeSitter crawler does not support definitions. LSPs are required for this.");
@@ -55,7 +63,7 @@ public class TreeSitterCrawler : CodeCrawler {
 		try {
 			// Find all source files for the language using language-agnostic approach
 			List<string> sourceFiles = Directory.GetFiles(dirpath, "*.*", SearchOption.AllDirectories)
-				.Where(f => IsSourceFileForLanguage(f, lang))
+				.Where(f => LanguageUtil.IsSourceFileForLanguage(f, lang))
 				.ToList();
 
 			_logger.LogDebug("Found {Count} {Language} files to parse", sourceFiles.Count, lang);
@@ -133,7 +141,7 @@ public class TreeSitterCrawler : CodeCrawler {
 	// 	BlockingCollection<CodeChange> changeQueue = new BlockingCollection<CodeChange>();
 	//
 	// 	fileSystemWatcher.Changed += async (sender, e) => {
-	// 		if (IsSourceFileForLanguage(e.FullPath, lang)) {
+	// 		if (LanguageUtil.IsSourceFileForLanguage(e.FullPath, lang)) {
 	// 			List<CodeSymbol> symbols = await ExtractSymbolsFromFile(e.FullPath, lang);
 	// 			foreach (CodeSymbol symbol in symbols) {
 	// 				changeQueue.Add(new CodeChange(e.FullPath, ChangeType.Modified, symbol));
@@ -142,7 +150,7 @@ public class TreeSitterCrawler : CodeCrawler {
 	// 	};
 	//
 	// 	fileSystemWatcher.Created += async (sender, e) => {
-	// 		if (IsSourceFileForLanguage(e.FullPath, lang)) {
+	// 		if (LanguageUtil.IsSourceFileForLanguage(e.FullPath, lang)) {
 	// 			List<CodeSymbol> symbols = await ExtractSymbolsFromFile(e.FullPath, lang);
 	// 			foreach (CodeSymbol symbol in symbols) {
 	// 				changeQueue.Add(new CodeChange(e.FullPath, ChangeType.Added, symbol));
@@ -151,13 +159,13 @@ public class TreeSitterCrawler : CodeCrawler {
 	// 	};
 	//
 	// 	fileSystemWatcher.Deleted += (sender, e) => {
-	// 		if (IsSourceFileForLanguage(e.FullPath, lang)) {
+	// 		if (LanguageUtil.IsSourceFileForLanguage(e.FullPath, lang)) {
 	// 			changeQueue.Add(new CodeChange(e.FullPath, ChangeType.Deleted, null));
 	// 		}
 	// 	};
 	//
 	// 	fileSystemWatcher.Renamed += async (sender, e) => {
-	// 		if (IsSourceFileForLanguage(e.FullPath, lang)) {
+	// 		if (LanguageUtil.IsSourceFileForLanguage(e.FullPath, lang)) {
 	// 			List<CodeSymbol> symbols = await ExtractSymbolsFromFile(e.FullPath, lang);
 	// 			foreach (CodeSymbol symbol in symbols) {
 	// 				changeQueue.Add(new CodeChange(e.FullPath, ChangeType.Renamed, symbol));
@@ -196,20 +204,6 @@ public class TreeSitterCrawler : CodeCrawler {
 		}
 
 		return symbols;
-	}
-
-	private static bool IsSourceFileForLanguage(string filePath, string language) {
-		string extension = Path.GetExtension(filePath).ToLowerInvariant();
-
-		return language.ToLowerInvariant() switch {
-			"python"     => extension == ".py",
-			"c-sharp"    => extension == ".cs",
-			"javascript" => extension is ".js" or ".jsx",
-			"typescript" => extension is ".ts" or ".tsx",
-			"rust"       => extension == ".rs",
-			"go"         => extension == ".go",
-			_            => false
-		};
 	}
 
 	private Dictionary<string, TreeSitterLanguageConfig> InitializeLanguageConfigs() {
