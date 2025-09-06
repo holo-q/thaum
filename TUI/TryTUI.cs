@@ -1,6 +1,6 @@
 using Thaum.Core.Models;
 using Thaum.Core.Services;
-using static Thaum.Core.Utils.TraceLogger;
+using static Thaum.Core.Utils.Tracer;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace Thaum.CLI.Interactive;
@@ -9,7 +9,7 @@ public class TryTUI : TUIView {
 	private string       _filePath   = "";
 	private string       _symbolName = "";
 	private string?      _customPrompt;
-	private CodeCrawler? _languageServer;
+	private Crawler? _languageServer;
 	private ILogger?     _logger;
 
 	public override void Initialize(Terminal.Gui.View container) {
@@ -21,7 +21,7 @@ public class TryTUI : TUIView {
 		if (parameters.TryGetValue("filePath", out var fp)) _filePath              = (string)fp;
 		if (parameters.TryGetValue("symbolName", out var sn)) _symbolName          = (string)sn;
 		if (parameters.TryGetValue("customPrompt", out var cp)) _customPrompt      = (string)cp;
-		if (parameters.TryGetValue("languageServer", out var lsm)) _languageServer = (CodeCrawler)lsm;
+		if (parameters.TryGetValue("languageServer", out var lsm)) _languageServer = (Crawler)lsm;
 		if (parameters.TryGetValue("logger", out var log)) _logger                 = (ILogger)log;
 	}
 

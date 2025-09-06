@@ -1,7 +1,7 @@
 using Thaum.Core.Models;
 using Thaum.Core.Services;
 using static System.Console;
-using static Thaum.Core.Utils.TraceLogger;
+using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.Core;
 
@@ -51,11 +51,10 @@ public class Prompter {
 
 		// Build prompt directly
 		string prompt = await PromptUtil.BuildCustomPromptAsync(promptName, targetSymbol, context, code);
-
-		WriteLine("═══ GENERATED PROMPT ═══");
-		WriteLine(prompt);
-		WriteLine();
-		WriteLine("═══ TESTING LLM RESPONSE ═══");
+		ln("═══ GENERATED PROMPT ═══");
+		ln(prompt);
+		ln();
+		ln("═══ TESTING LLM RESPONSE ═══");
 
 		// Get model from configuration
 		string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ??
@@ -72,9 +71,9 @@ public class Prompter {
 		await foreach (string token in streamResponse) {
 			Write(token);
 		}
-		WriteLine();
-		WriteLine();
-		WriteLine("═══ TEST COMPLETE ═══");
+		ln();
+		ln();
+		ln("═══ TEST COMPLETE ═══");
 	}
 
 	/// <summary>
@@ -115,7 +114,7 @@ public class Prompter {
 		// Run multiple compression rollouts
 		// TODO we can run multiple at once in parallel, all of them in fact - there shouldn't be any limit in theory? we can open as many connections as we want afaik
 		for (int i = 1; i <= nRollouts; i++) {
-			WriteLine($"Running rollout {i}/{nRollouts}...");
+			ln($"Running rollout {i}/{nRollouts}...");
 			string repr = await this.Compress(sourceCode, promptName, targetSymbol, i);
 			representations.Add($"<COMPRESSION_ROLLOUT_{i}>\n{repr}\n</COMPRESSION_ROLLOUT_{i}>");
 		}
@@ -123,16 +122,15 @@ public class Prompter {
 		// Load fusion prompt and apply
 		string fusionPrompt = await LoadPrompt("fusion_v1");
 		if (string.IsNullOrEmpty(fusionPrompt)) {
-			WriteLine("Error: Could not load fusion_v1 prompt");
+			ln("Error: Could not load fusion_v1 prompt");
 			return;
 		}
 
 		// Combine all representations for fusion
 		string allRepresentations = string.Join("\n\n", representations);
 		string finalPrompt        = fusionPrompt.Replace("{representations}", allRepresentations);
-
-		WriteLine("═══ FUSION OUTPUT ═══");
-		WriteLine($"[Fusing {nRollouts} rollouts + original source]");
+		ln("═══ FUSION OUTPUT ═══");
+		ln($"[Fusing {nRollouts} rollouts + original source]");
 
 		// Actually call LLM with fusion prompt
 		await _llm.CallPrompt(finalPrompt, "FUSION");

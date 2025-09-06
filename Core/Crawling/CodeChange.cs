@@ -6,8 +6,7 @@ public record CodeChange(
 	CodeSymbol? Symbol = null
 );
 
-public enum ChangeType
-{
+public enum ChangeType {
 	Added,
 	Modified,
 	Deleted,

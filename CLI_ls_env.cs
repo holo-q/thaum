@@ -1,5 +1,6 @@
 using Thaum.Core.Utils;
 using static System.Console;
+using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.CLI;
 
@@ -11,14 +12,12 @@ namespace Thaum.CLI;
 public partial class CLI {
 	private static void CMD_ls_env(string[] args) {
 		bool showValues = args.Contains("--values") || args.Contains("-v");
-
-		WriteLine("Environment file detection and loading trace:");
-		WriteLine();
+		ln("Environment file detection and loading trace:");
+		ln();
 
 		EnvLoader.EnvLoadResult result = EnvLoader.LoadEnvironmentFiles();
 		EnvLoader.PrintLoadTrace(result, showValues);
-
-		WriteLine();
-		WriteLine($"Environment variables successfully loaded and available for configuration.");
+		ln();
+		ln($"Environment variables successfully loaded and available for configuration.");
 	}
 }

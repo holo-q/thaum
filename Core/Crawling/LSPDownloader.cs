@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 using Thaum.Utils;
+using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.Core.Services;
 
@@ -74,27 +75,27 @@ public class LSPDownloader {
 		string executableName;
 
 		// Debug platform detection
-		Console.WriteLine($"DEBUG: Windows: {RuntimeInformation.IsOSPlatform(OSPlatform.Windows)}");
-		Console.WriteLine($"DEBUG: Linux: {RuntimeInformation.IsOSPlatform(OSPlatform.Linux)}");
-		Console.WriteLine($"DEBUG: OSX: {RuntimeInformation.IsOSPlatform(OSPlatform.OSX)}");
-		Console.WriteLine($"DEBUG: OS: {RuntimeInformation.OSDescription}");
+		ln($"DEBUG: Windows: {RuntimeInformation.IsOSPlatform(OSPlatform.Windows)}");
+		ln($"DEBUG: Linux: {RuntimeInformation.IsOSPlatform(OSPlatform.Linux)}");
+		ln($"DEBUG: OSX: {RuntimeInformation.IsOSPlatform(OSPlatform.OSX)}");
+		ln($"DEBUG: OS: {RuntimeInformation.OSDescription}");
 
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
 			downloadUrl    = "https://github.com/OmniSharp/omnisharp-roslyn/releases/download/v1.39.14/omnisharp-win-x64.zip";
 			executableName = "OmniSharp.exe";
-			Console.WriteLine("DEBUG: Selected Windows");
+			ln("DEBUG: Selected Windows");
 		} else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
 			downloadUrl    = "https://github.com/OmniSharp/omnisharp-roslyn/releases/download/v1.39.14/omnisharp-osx-x64.tar.gz";
 			executableName = "run"; // OSX also uses the run script
-			Console.WriteLine("DEBUG: Selected OSX");
+			ln("DEBUG: Selected OSX");
 		} else // Linux
 		{
 			downloadUrl    = "https://github.com/OmniSharp/omnisharp-roslyn/releases/download/v1.39.14/omnisharp-linux-x64-net6.0.tar.gz";
 			executableName = "OmniSharp"; // .NET 6.0 version has direct executable
-			Console.WriteLine("DEBUG: Selected Linux (.NET 6.0)");
+			ln("DEBUG: Selected Linux (.NET 6.0)");
 		}
 
-		Console.WriteLine($"DEBUG: Final URL: {downloadUrl}");
+		ln($"DEBUG: Final URL: {downloadUrl}");
 
 		return new LspServerInfo {
 			Name           = "OmniSharp",
@@ -331,9 +332,9 @@ public class LSPDownloader {
 		public void ReportComplete(string name, bool success) {
 			lock (_lock) {
 				if (success) {
-					Console.WriteLine($"\r✅ {name}: Download complete!                    ");
+					ln($"\r✅ {name}: Download complete!                    ");
 				} else {
-					Console.WriteLine($"\r❌ {name}: Download failed!                      ");
+					ln($"\r❌ {name}: Download failed!                      ");
 				}
 				_last = -1;
 			}

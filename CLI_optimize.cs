@@ -3,7 +3,7 @@ using Thaum.CLI.Models;
 using Thaum.Core.Models;
 using Thaum.Core.Services;
 using static System.Console;
-using static Thaum.Core.Utils.TraceLogger;
+using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.CLI;
 
@@ -15,9 +15,8 @@ namespace Thaum.CLI;
 public partial class CLI {
 	private async Task CMD_optimize(string[] args) {
 		CompressorOptions options = ParseSummarizeOptions(args);
-
-		WriteLine($"Starting hierarchical optimization of {options.ProjectPath} ({options.Language})...");
-		WriteLine();
+		ln($"Starting hierarchical optimization of {options.ProjectPath} ({options.Language})...");
+		ln();
 
 		try {
 			DateTime        startTime = DateTime.UtcNow;
@@ -34,11 +33,10 @@ public partial class CLI {
 			traceln("Duration", $"{duration.TotalSeconds:F2} seconds", "TIME");
 			traceln("Root Symbols", $"{hierarchy.RootSymbols.Count} symbols", "COUNT");
 			traceln("Keys Generated", $"{hierarchy.ExtractedKeys.Count} keys", "COUNT");
-
-			WriteLine();
-			WriteLine("Hierarchical optimization completed successfully!");
+			ln();
+			ln("Hierarchical optimization completed successfully!");
 		} catch (Exception ex) {
-			WriteLine($"Error during optimization: {ex.Message}");
+			ln($"Error during optimization: {ex.Message}");
 			_logger.LogError(ex, "Optimization failed");
 			Environment.Exit(1);
 		}

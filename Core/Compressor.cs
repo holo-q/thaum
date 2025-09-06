@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using System.Text;
 using Thaum.Core.Models;
 using Thaum.Utils;
-using static Thaum.Core.Utils.TraceLogger;
+using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.Core.Services;
 
@@ -39,18 +39,18 @@ public record OptimizationContext(
 /// </summary>
 public class Compressor {
 	private readonly LLM                 _llm;
-	private readonly CodeCrawler         _codeCrawlerManager;
+	private readonly Crawler         _crawler;
 	private readonly ICache              _cache;
 	private readonly PromptLoader        _promptLoader;
 	private readonly ILogger<Compressor> _logger;
 
 	public Compressor(
 		LLM          llm,
-		CodeCrawler  crawler,
+		Crawler  crawler,
 		ICache       cache,
 		PromptLoader promptLoader) {
 		_llm                = llm;
-		_codeCrawlerManager = crawler;
+		_crawler = crawler;
 		_cache              = cache;
 		_promptLoader       = promptLoader;
 		_logger             = Logging.For<Compressor>();
@@ -146,7 +146,7 @@ public class Compressor {
 		traceln("LSP Server", $"{language.ToUpper()}", "INIT");
 
 		traceln("Workspace", "Symbol Discovery", "SCAN");
-		List<CodeSymbol> allSymbols       = await _codeCrawlerManager.CrawlDir(projectPath);
+		List<CodeSymbol> allSymbols       = await _crawler.CrawlDir(projectPath);
 		HierarchyBuilder hierarchyBuilder = new HierarchyBuilder();
 
 		// Phase 1: Optimize functions (deepest scope)

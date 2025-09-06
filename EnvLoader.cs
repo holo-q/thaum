@@ -73,11 +73,11 @@ public static class EnvLoader {
 
 	private static EnvFile LoadEnvFile(string filePath) {
 		Dictionary<string, string> variables = new Dictionary<string, string>();
-		bool           exists    = File.Exists(filePath);
+		bool                       exists    = File.Exists(filePath);
 
 		if (exists) {
 			try {
-				string content = File.ReadAllText(filePath);
+				string          content = File.ReadAllText(filePath);
 				MatchCollection matches = EnvLineRegex.Matches(content);
 
 				foreach (Match match in matches) {
@@ -116,47 +116,47 @@ public static class EnvLoader {
 	/// Pretty print environment loading results with trace information
 	/// </summary>
 	public static void PrintLoadTrace(EnvLoadResult result, bool showValues = false) {
-		TraceLogger.traceheader("ENVIRONMENT FILE DETECTION");
+		Tracer.traceheader("ENVIRONMENT FILE DETECTION");
 
 		List<EnvFile> foundFiles = result.LoadedFiles.Where(f => f.Exists).ToList();
 
 		if (!foundFiles.Any()) {
-			TraceLogger.traceln("No .env files found", "in directory hierarchy", "INFO");
+			Tracer.traceln("No .env files found", "in directory hierarchy", "INFO");
 		} else {
 			// Show found files with cleaner paths
 			foreach (EnvFile envFile in foundFiles) {
 				string cleanPath = GetCleanPath(envFile.Path);
-				TraceLogger.traceln("Found", cleanPath, "LOAD");
+				Tracer.traceln("Found", cleanPath, "LOAD");
 
 				if (envFile.Variables.Any()) {
 					foreach (KeyValuePair<string, string> kvp in envFile.Variables.OrderBy(x => x.Key)) {
 						if (showValues) {
 							string displayValue = kvp.Value.Length > 40 ? $"{kvp.Value[..37]}..." : kvp.Value;
-							TraceLogger.traceln($"  {kvp.Key}", displayValue, "VAR");
+							Tracer.traceln($"  {kvp.Key}", displayValue, "VAR");
 						} else {
 							// Show key with safe preview using stars
 							string preview = CreateSafePreview(kvp.Value);
-							TraceLogger.traceln($"  {kvp.Key}", preview, "KEY");
+							Tracer.traceln($"  {kvp.Key}", preview, "KEY");
 						}
 					}
 				} else {
-					TraceLogger.traceln($"  Empty file", "no variables", "EMPTY");
+					Tracer.traceln($"  Empty file", "no variables", "EMPTY");
 				}
 			}
 		}
 
-		TraceLogger.traceheader("MERGED ENVIRONMENT");
-		TraceLogger.traceln("Total Variables", $"{result.MergedVariables.Count} variables", "MERGE");
+		Tracer.traceheader("MERGED ENVIRONMENT");
+		Tracer.traceln("Total Variables", $"{result.MergedVariables.Count} variables", "MERGE");
 
 		if (result.MergedVariables.Any()) {
 			foreach (KeyValuePair<string, string> kvp in result.MergedVariables.OrderBy(x => x.Key)) {
 				if (showValues) {
 					string displayValue = kvp.Value.Length > 50 ? $"{kvp.Value[..47]}..." : kvp.Value;
-					TraceLogger.traceln(kvp.Key, displayValue, "ENV");
+					Tracer.traceln(kvp.Key, displayValue, "ENV");
 				} else {
 					// Show key with safe preview using stars
 					string preview = CreateSafePreview(kvp.Value);
-					TraceLogger.traceln(kvp.Key, preview, "ENV");
+					Tracer.traceln(kvp.Key, preview, "ENV");
 				}
 			}
 		}
@@ -188,7 +188,7 @@ public static class EnvLoader {
 		}
 
 		string[] words        = text.Split(',');
-		string currentChunk = "";
+		string   currentChunk = "";
 
 		foreach (string word in words) {
 			string wordWithComma = currentChunk.Length == 0 ? word.Trim() : $",{word}";
@@ -221,12 +221,12 @@ public static class EnvLoader {
 		if (length >= 8) {
 			string start     = value[..Math.Min(4, length / 3)];
 			string end       = value[^Math.Min(4, length / 3)..];
-			int starCount = Math.Max(8, length - start.Length - end.Length);
+			int    starCount = Math.Max(8, length - start.Length - end.Length);
 			return $"{start}{'*'.ToString().PadRight(starCount, '*')}{end}";
 		}
 
 		// For medium length values, show first few chars + stars
-		int visibleChars = Math.Max(1, length / 4);
+		int    visibleChars = Math.Max(1, length / 4);
 		string prefix       = value[..visibleChars];
 		string stars        = "*".PadRight(length - visibleChars, '*');
 		return $"{prefix}{stars}";

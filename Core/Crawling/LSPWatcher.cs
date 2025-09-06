@@ -9,9 +9,9 @@ namespace Thaum.Core.Services;
 /// Handles workspace file system changes for LSP integration
 /// </summary>
 public class LSPWatcher : IDisposable {
-	private readonly ILogger<LSPWatcher>                          _logger;
+	private readonly ILogger<LSPWatcher>                                   _logger;
 	private readonly ConcurrentDictionary<string, SystemFileSystemWatcher> _watchers                = new();
-	private readonly ConcurrentQueue<CodeChange>                         _changeQueue             = new();
+	private readonly ConcurrentQueue<CodeChange>                           _changeQueue             = new();
 	private readonly CancellationTokenSource                               _cancellationTokenSource = new();
 
 	public LSPWatcher(ILogger<LSPWatcher> logger) {

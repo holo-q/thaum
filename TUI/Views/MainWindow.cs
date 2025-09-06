@@ -6,7 +6,7 @@ using Thaum.Core.Services;
 namespace Thaum.UI.Views;
 
 public class MainWindow : Window {
-	private readonly CodeCrawler _codeCrawlerManager;
+	private readonly Crawler _crawler;
 	private readonly Compressor  _compressor;
 	private readonly ILogger     _logger;
 
@@ -21,10 +21,10 @@ public class MainWindow : Window {
 	private SymbolHierarchy? _currentHierarchy;
 
 	public MainWindow(
-		CodeCrawler crawler,
+		Crawler crawler,
 		Compressor  compressor,
 		ILogger     logger) : base("Thaum - LSP Codebase Summarizer") {
-		_codeCrawlerManager = crawler;
+		_crawler = crawler;
 		_compressor         = compressor;
 		_logger             = logger;
 
@@ -116,7 +116,7 @@ public class MainWindow : Window {
 			try {
 				string? language = DetectLanguage(filePath);
 				if (language != null) {
-					List<CodeSymbol> symbols = await _codeCrawlerManager.CrawlFile(filePath);
+					List<CodeSymbol> symbols = await _crawler.CrawlFile(filePath);
 					Application.MainLoop.Invoke(() => _symbolList.UpdateSymbols(symbols));
 				}
 			} catch (Exception ex) {
@@ -225,7 +225,7 @@ public class MainWindow : Window {
 			try {
 				string? language = DetectPrimaryLanguage(_currentProjectPath);
 				if (language != null) {
-					List<CodeSymbol> symbols = await _codeCrawlerManager.CrawlDir(_currentProjectPath);
+					List<CodeSymbol> symbols = await _crawler.CrawlDir(_currentProjectPath);
 					Application.MainLoop.Invoke(() => {
 						_symbolList.UpdateSymbols(symbols);
 						SetStatusText($"Refreshed {symbols.Count} symbols");

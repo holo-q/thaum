@@ -26,7 +26,7 @@ public static class TreeSitterQueries {
 /// accurate symbol extraction even from malformed code where the crawler maintains language configs
 /// for C#/Python/JavaScript/TypeScript/Go/Rust enabling polyglot analysis through unified interface
 /// </summary>
-public class TreeSitterCrawler : CodeCrawler {
+public class TreeSitterCrawler : Crawler {
 	private readonly ILogger<TreeSitterCrawler>                   _logger;
 	private readonly Dictionary<string, TreeSitterLanguageConfig> _languageConfigs;
 

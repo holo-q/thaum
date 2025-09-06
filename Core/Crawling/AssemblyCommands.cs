@@ -3,23 +3,26 @@ using Microsoft.Extensions.Logging;
 using Thaum.CLI.Models;
 using Thaum.Core.Models;
 using Thaum.Core.Utils;
+using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.CLI.Commands;
 
+// TODO this should become a crawler for C# assemblies
+
 internal class AssemblyCommands {
-	private readonly ILogger _logger;
+	private readonly ILogger           _logger;
 	private readonly PerceptualColorer _colorer;
 
 	public AssemblyCommands(ILogger logger, PerceptualColorer colorer) {
-		_logger = logger;
+		_logger  = logger;
 		_colorer = colorer;
 	}
 
 	public async Task HandleAssemblyListing(Assembly assembly, LsOptions options) {
-		Console.WriteLine($"Scanning assembly {assembly.GetName().Name}...");
+		ln($"Scanning assembly {assembly.GetName().Name}...");
 
 		try {
-			List<CodeSymbol> symbols = new List<CodeSymbol>();
+			List<CodeSymbol> symbols = [];
 
 			// Extract types from the assembly
 			Type[] types = assembly.GetTypes();
@@ -98,7 +101,7 @@ internal class AssemblyCommands {
 			}
 
 			if (!symbols.Any()) {
-				Console.WriteLine("No symbols found in assembly.");
+				ln("No symbols found in assembly.");
 				return;
 			}
 
@@ -106,11 +109,10 @@ internal class AssemblyCommands {
 			List<TreeNode> hierarchy = TreeNode.BuildHierarchy(symbols, _colorer);
 			TreeNode.DisplayHierarchy(hierarchy, options);
 
-			Console.WriteLine($"\nFound {symbols.Count} types in assembly");
-			Console.WriteLine($"Total symbols: {symbols.Count + symbols.SelectMany(s => s.Children ?? new List<CodeSymbol>()).Count()}");
-
+			ln($"\nFound {symbols.Count} types in assembly");
+			ln($"Total symbols: {symbols.Count + symbols.SelectMany(s => s.Children ?? new List<CodeSymbol>()).Count()}");
 		} catch (Exception ex) {
-			Console.WriteLine($"Error loading assembly: {ex.Message}");
+			ln($"Error loading assembly: {ex.Message}");
 			_logger.LogError(ex, "Failed to load assembly {AssemblyName}", assembly.GetName().Name);
 			Environment.Exit(1);
 		}
@@ -119,7 +121,7 @@ internal class AssemblyCommands {
 	}
 
 	public async Task HandleLoadedAssemblyListing(string assemblyNamePattern, LsOptions options) {
-		Console.WriteLine($"Searching for loaded assemblies matching '{assemblyNamePattern}'...");
+		ln($"Searching for loaded assemblies matching '{assemblyNamePattern}'...");
 
 		try {
 			// Get all loaded assemblies
@@ -128,22 +130,22 @@ internal class AssemblyCommands {
 			// Filter assemblies by name pattern
 			List<Assembly> matchedAssemblies = assemblies
 				.Where(a => a.GetName().Name != null &&
-				           a.GetName().Name.Contains(assemblyNamePattern, StringComparison.OrdinalIgnoreCase))
+				            a.GetName().Name.Contains(assemblyNamePattern, StringComparison.OrdinalIgnoreCase))
 				.ToList();
 
 			if (!matchedAssemblies.Any()) {
-				Console.WriteLine($"No loaded assemblies found matching '{assemblyNamePattern}'");
-				Console.WriteLine("\nAvailable loaded assemblies:");
+				ln($"No loaded assemblies found matching '{assemblyNamePattern}'");
+				ln("\nAvailable loaded assemblies:");
 				foreach (var asm in assemblies.OrderBy(a => a.GetName().Name)) {
 					if (asm.GetName().Name != null)
-						Console.WriteLine($"  - {asm.GetName().Name}");
+						ln($"  - {asm.GetName().Name}");
 				}
 				return;
 			}
 
 			foreach (Assembly assembly in matchedAssemblies) {
-				Console.WriteLine($"\nAssembly: {assembly.GetName().Name} v{assembly.GetName().Version}");
-				Console.WriteLine(new string('=', 60));
+				ln($"\nAssembly: {assembly.GetName().Name} v{assembly.GetName().Version}");
+				ln(new string('=', 60));
 
 				List<CodeSymbol> symbols = new List<CodeSymbol>();
 
@@ -252,7 +254,7 @@ internal class AssemblyCommands {
 				}
 
 				if (!symbols.Any()) {
-					Console.WriteLine("No symbols found in assembly.");
+					ln("No symbols found in assembly.");
 					continue;
 				}
 
@@ -260,12 +262,11 @@ internal class AssemblyCommands {
 				List<TreeNode> hierarchy = TreeNode.BuildHierarchy(symbols, _colorer);
 				TreeNode.DisplayHierarchy(hierarchy, options);
 
-				Console.WriteLine($"\nFound {symbols.Count} types in assembly");
-				Console.WriteLine($"Total symbols: {symbols.Count + symbols.SelectMany(s => s.Children ?? new List<CodeSymbol>()).Count()}");
+				ln($"\nFound {symbols.Count} types in assembly");
+				ln($"Total symbols: {symbols.Count + symbols.SelectMany(s => s.Children ?? new List<CodeSymbol>()).Count()}");
 			}
-
 		} catch (Exception ex) {
-			Console.WriteLine($"Error inspecting loaded assemblies: {ex.Message}");
+			ln($"Error inspecting loaded assemblies: {ex.Message}");
 			_logger.LogError(ex, "Failed to inspect loaded assembly {AssemblyName}", assemblyNamePattern);
 		}
 

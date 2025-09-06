@@ -4,18 +4,18 @@ using System.Text;
 
 namespace Thaum.Core.Utils;
 
-public static class TraceLogger {
+public static class Tracer {
 	private static ILogger?    _logger;
 	private static FileWriter? _interactiveFileWriter;
-	private static bool        _isInteractiveMode = false;
-	private static int         _terminalWidth = 80;
-	private static string      _operator = "->";
+	private static bool        _isInteractiveMode  = false;
+	private static int         _terminalWidth      = 80;
+	private static string      _operator           = "->";
 	private static int         _fixedOperatorWidth = 4; // operator plus surrounding spaces
 
 	public static void Initialize(ILogger logger, bool isInteractiveMode = false) {
-		_logger            = logger;
-		_isInteractiveMode = isInteractiveMode;
-		_terminalWidth     = GetTerminalWidth();
+		_logger             = logger;
+		_isInteractiveMode  = isInteractiveMode;
+		_terminalWidth      = GetTerminalWidth();
 		_fixedOperatorWidth = _operator.Length + 2;
 
 		if (isInteractiveMode) {
@@ -84,26 +84,6 @@ public static class TraceLogger {
 		_interactiveFileWriter?.Dispose();
 	}
 
-	private class FileWriter : IDisposable {
-		private readonly StreamWriter _writer;
-		private readonly object       _lock = new object();
-
-		public FileWriter(string filePath) {
-			_writer = new StreamWriter(filePath, append: true) {
-				AutoFlush = true
-			};
-		}
-
-		public void WriteLine(string message) {
-			lock (_lock) {
-				_writer.WriteLine(message);
-			}
-		}
-
-		public void Dispose() {
-			_writer?.Dispose();
-		}
-	}
 
 	public static IDisposable trace_scope(
 		string                    scopeName,
@@ -172,7 +152,7 @@ public static class TraceLogger {
 	}
 
 	public static string tracehdr(string title) {
-		int padding      = (_terminalWidth - title.Length - 4) / 2; // 4 for "== =="
+		int    padding      = (_terminalWidth - title.Length - 4) / 2; // 4 for "== =="
 		string leftPadding  = "=".PadRight(Math.Max(0, padding), '=');
 		string rightPadding = "=".PadLeft(Math.Max(0, padding), '=');
 
@@ -181,7 +161,7 @@ public static class TraceLogger {
 
 	public static string traceprog(string operation, int current, int total, double percentage) {
 		string progressInfo   = $"({current}/{total} - {percentage:F1}%)";
-		int availableWidth = _terminalWidth - progressInfo.Length - 1;
+		int    availableWidth = _terminalWidth - progressInfo.Length - 1;
 
 		string truncatedOperation = operation.Length > availableWidth
 			? $"{operation[..(availableWidth - 3)]}..."
@@ -191,18 +171,18 @@ public static class TraceLogger {
 	}
 
 	public static void traceln(string source, string target, string status = "") {
-		Console.WriteLine(tracefmt(source, target, status));
+		ln(tracefmt(source, target, status));
 	}
 
 	public static void traceheader(string title) {
-		Console.WriteLine();
-		Console.WriteLine(tracehdr(title));
-		Console.WriteLine();
+		ln();
+		ln(tracehdr(title));
+		ln();
 	}
 
 	public static void traceprogress(string operation, int current, int total) {
 		double percentage = (double)current / total * 100;
-		Console.WriteLine(traceprog(operation, current, total, percentage));
+		ln(traceprog(operation, current, total, percentage));
 	}
 
 	private static int GetTerminalWidth() {
@@ -210,6 +190,35 @@ public static class TraceLogger {
 			return Console.WindowWidth;
 		} catch {
 			return 80; // Fallback width
+		}
+	}
+
+	public static void print(object? obj = null) {
+		Console.Write(obj?.ToString() ?? "");
+	}
+
+	public static void ln(object? obj = null) {
+		Console.WriteLine(obj?.ToString() ?? "");
+	}
+
+	private class FileWriter : IDisposable {
+		private readonly StreamWriter _writer;
+		private readonly object       _lock = new object();
+
+		public FileWriter(string filePath) {
+			_writer = new StreamWriter(filePath, append: true) {
+				AutoFlush = true
+			};
+		}
+
+		public void WriteLine(string message) {
+			lock (_lock) {
+				_writer.WriteLine(message);
+			}
+		}
+
+		public void Dispose() {
+			_writer?.Dispose();
 		}
 	}
 }

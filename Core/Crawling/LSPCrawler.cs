@@ -11,7 +11,7 @@ namespace Thaum.Core.Services;
 /// <summary>
 /// TODO finish the LSP crawler
 /// </summary>
-public class LSPCrawler : CodeCrawler {
+public class LSPCrawler : Crawler {
 	private readonly ILogger<LSPCrawler> _logger;
 	private readonly LSPDownloader       _downloader;
 	private readonly LSPInstance         _lsp;

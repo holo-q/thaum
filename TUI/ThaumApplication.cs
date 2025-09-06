@@ -6,18 +6,18 @@ using Thaum.UI.Views;
 namespace Thaum.UI;
 
 public class ThaumApplication : IDisposable {
-	private readonly CodeCrawler         _codeCrawlerManager;
-	private readonly Compressor      _compressor;
+	private readonly Crawler               _crawler;
+	private readonly Compressor                _compressor;
 	private readonly ILogger<ThaumApplication> _logger;
 	private          MainWindow?               _mainWindow;
 
 	public ThaumApplication(
-		CodeCrawler         crawler,
-		Compressor      compressor,
+		Crawler               crawler,
+		Compressor                compressor,
 		ILogger<ThaumApplication> logger) {
-		_codeCrawlerManager          = crawler;
-		_compressor = compressor;
-		_logger              = logger;
+		_crawler = crawler;
+		_compressor         = compressor;
+		_logger             = logger;
 	}
 
 	public async Task RunAsync() {
@@ -26,7 +26,7 @@ public class ThaumApplication : IDisposable {
 		try {
 			Application.Init();
 
-			_mainWindow = new MainWindow(_codeCrawlerManager, _compressor, _logger);
+			_mainWindow = new MainWindow(_crawler, _compressor, _logger);
 
 			Application.Top.Add(_mainWindow);
 

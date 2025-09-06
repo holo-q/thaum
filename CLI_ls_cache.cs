@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using Thaum.Core;
 using Thaum.Core.Models;
 using Thaum.Core.Services;
+using static Thaum.Core.Utils.Tracer;
 using Thaum.Core.Utils;
 using Thaum.Utils;
 using static System.Console;
@@ -59,12 +60,12 @@ public partial class CLI {
 
 		// Header with colors
 		ForegroundColor = ConsoleColor.Cyan;
-		WriteLine("🔍 Thaum Cache Browser - Hierarchical Compressed Symbol Representations");
+		ln("🔍 Thaum Cache Browser - Hierarchical Compressed Symbol Representations");
 		ResetColor();
 		ForegroundColor = ConsoleColor.DarkCyan;
-		WriteLine(new string('═', consoleWidth));
+		ln(new string('═', consoleWidth));
 		ResetColor();
-		WriteLine();
+		ln();
 
 		try {
 			Cache cache = new Cache(GLB.AppConfig);
@@ -81,9 +82,9 @@ public partial class CLI {
 
 			if (optimizations.Any()) {
 				ForegroundColor = ConsoleColor.Green;
-				WriteLine($"📦 CACHED OPTIMIZATIONS ({optimizations.Count} symbols)");
+				ln($"📦 CACHED OPTIMIZATIONS ({optimizations.Count} symbols)");
 				ResetColor();
-				WriteLine();
+				ln();
 
 				// Group by file path for hierarchical organization
 				List<IGrouping<string, CachedOptimization>> groupedByFile = optimizations
@@ -94,7 +95,7 @@ public partial class CLI {
 				foreach (IGrouping<string, CachedOptimization> fileGroup in groupedByFile) {
 					// File header with color
 					ForegroundColor = ConsoleColor.Blue;
-					WriteLine($"📁 {fileGroup.Key}");
+					ln($"📁 {fileGroup.Key}");
 					ResetColor();
 
 					// One line per symbol with compression, prompt info, and model info
@@ -185,13 +186,13 @@ public partial class CLI {
 
 						// Truncate compression if too long, otherwise show full
 						if (opt.Compression.Length > remainingSpace) {
-							WriteLine($"{opt.Compression[..(remainingSpace - 3)]}...");
+							ln($"{opt.Compression[..(remainingSpace - 3)]}...");
 						} else {
-							WriteLine(opt.Compression);
+							ln(opt.Compression);
 						}
 						ResetColor();
 					}
-					WriteLine(); // Space between files
+					ln(); // Space between files
 				}
 			}
 
@@ -206,13 +207,13 @@ public partial class CLI {
 
 				if (keyEntries.Any()) {
 					ForegroundColor = ConsoleColor.DarkCyan;
-					WriteLine(new string('═', consoleWidth));
+					ln(new string('═', consoleWidth));
 					ForegroundColor = ConsoleColor.Green;
-					WriteLine("🔑 EXTRACTED ARCHITECTURAL KEYS");
+					ln("🔑 EXTRACTED ARCHITECTURAL KEYS");
 					ForegroundColor = ConsoleColor.DarkCyan;
-					WriteLine(new string('═', consoleWidth));
+					ln(new string('═', consoleWidth));
 					ResetColor();
-					WriteLine();
+					ln();
 
 					foreach (CachedKey key in keyEntries.OrderBy(x => x.Level)) {
 						ForegroundColor = ConsoleColor.Green;
@@ -268,25 +269,25 @@ public partial class CLI {
 						int remainingSpace = consoleWidth - usedSpace - 1; // -1 for margin
 
 						if (key.Pattern.Length > remainingSpace) {
-							WriteLine($"{key.Pattern[..(remainingSpace - 3)]}...");
+							ln($"{key.Pattern[..(remainingSpace - 3)]}...");
 						} else {
-							WriteLine(key.Pattern);
+							ln(key.Pattern);
 						}
 						ResetColor();
 					}
-					WriteLine();
+					ln();
 				}
 			}
 
 			if (!optimizations.Any() && !showKeys) {
 				ForegroundColor = ConsoleColor.DarkYellow;
-				WriteLine("⚠️  No cached optimizations found. Run 'summarize' first to populate cache.");
-				WriteLine("💡 Example: thaum summarize --compression endgame");
+				ln("⚠️  No cached optimizations found. Run 'summarize' first to populate cache.");
+				ln("💡 Example: thaum summarize --compression endgame");
 				ResetColor();
 			}
 		} catch (Exception ex) {
 			ForegroundColor = ConsoleColor.Red;
-			WriteLine($"❌ Error reading cache: {ex.Message}");
+			ln($"❌ Error reading cache: {ex.Message}");
 			ResetColor();
 			Environment.Exit(1);
 		}

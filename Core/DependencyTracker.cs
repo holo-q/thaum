@@ -223,7 +223,7 @@ internal class PythonDependencyAnalyzer : IDependencyAnalyzer {
 		HashSet<string> dependencies = [];
 
 		try {
-			string content = await File.ReadAllTextAsync(filePath);
+			string          content = await File.ReadAllTextAsync(filePath);
 			MatchCollection matches = ImportRegex.Matches(content);
 
 			foreach (Match match in matches) {
@@ -255,7 +255,7 @@ internal class CSharpDependencyAnalyzer : IDependencyAnalyzer {
 		HashSet<string> dependencies = [];
 
 		try {
-			string content = await File.ReadAllTextAsync(filePath);
+			string          content = await File.ReadAllTextAsync(filePath);
 			MatchCollection matches = UsingRegex.Matches(content);
 
 			foreach (Match match in matches) {
@@ -279,7 +279,7 @@ internal class JavaScriptDependencyAnalyzer : IDependencyAnalyzer {
 		HashSet<string> dependencies = [];
 
 		try {
-			string content = await File.ReadAllTextAsync(filePath);
+			string          content = await File.ReadAllTextAsync(filePath);
 			MatchCollection matches = ImportRegex.Matches(content);
 
 			foreach (Match match in matches) {
@@ -307,7 +307,7 @@ internal class RustDependencyAnalyzer : IDependencyAnalyzer {
 		HashSet<string> dependencies = [];
 
 		try {
-			string content = await File.ReadAllTextAsync(filePath);
+			string          content = await File.ReadAllTextAsync(filePath);
 			MatchCollection matches = UseRegex.Matches(content);
 
 			foreach (Match match in matches) {
@@ -330,7 +330,7 @@ internal class GoDependencyAnalyzer : IDependencyAnalyzer {
 		HashSet<string> dependencies = [];
 
 		try {
-			string content = await File.ReadAllTextAsync(filePath);
+			string          content = await File.ReadAllTextAsync(filePath);
 			MatchCollection matches = ImportRegex.Matches(content);
 
 			foreach (Match match in matches) {

@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using static Thaum.Core.Utils.TraceLogger;
+using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.CLI.Interactive;
 
@@ -214,7 +214,6 @@ public class TUIHost<TView> where TView : TUIView, new() {
 			trace("Disposing FileSystemWatcher");
 			fileWatcher?.Dispose();
 			tuiView.Dispose();
-
 		} finally {
 			trace("Shutting down Terminal.Gui application");
 			refreshSemaphore?.Dispose();

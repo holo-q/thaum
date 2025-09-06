@@ -1,4 +1,5 @@
 using static System.Console;
+using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.Core.Services;
 
@@ -8,7 +9,7 @@ public abstract class LLM {
 	public abstract Task<IAsyncEnumerable<string>> StreamCompleteAsync(string     prompt,       LLMOptions? options = null);
 
 	public async Task CallPrompt(string prompt, string title, System.Text.StringBuilder? captureOutput = null) {
-		WriteLine($"═══ {title} OUTPUT ═══");
+		ln($"═══ {title} OUTPUT ═══");
 
 		try {
 			// TODO extract to Glb
@@ -18,10 +19,10 @@ public abstract class LLM {
 				Write(token);
 				captureOutput?.Append(token);
 			}
-			WriteLine();
-			WriteLine();
+			ln();
+			ln();
 		} catch (Exception ex) {
-			WriteLine($"Error calling LLM: {ex.Message}");
+			ln($"Error calling LLM: {ex.Message}");
 		}
 	}
 }

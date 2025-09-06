@@ -6,8 +6,8 @@ public record CodeSymbol(
 	string            Name,
 	SymbolKind        Kind,
 	string            FilePath,
-	CodeLoc          StartCodeLoc,
-	CodeLoc          EndCodeLoc,
+	CodeLoc           StartCodeLoc,
+	CodeLoc           EndCodeLoc,
 	string?           Summary      = null,
 	string?           ExtractedKey = null,
 	List<CodeSymbol>? Children     = null,
@@ -45,4 +45,3 @@ public record SymbolHierarchy(
 	Dictionary<string, string> ExtractedKeys,
 	DateTime                   LastUpdated
 );
-

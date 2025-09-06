@@ -1,6 +1,7 @@
 using Serilog;
 using Thaum.Core.Utils;
 using Thaum.Utils;
+using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum;
 
@@ -24,8 +25,8 @@ public static class Program {
 				var errorMsg = $"Error: {ex.Message}";
 				var stackMsg = $"Stack trace: {ex.StackTrace}";
 
-				Console.WriteLine(errorMsg);
-				Console.WriteLine(stackMsg);
+				ln(errorMsg);
+				ln(stackMsg);
 
 				// Also log to Serilog file
 				Log.Fatal(ex, "Application crashed");
@@ -35,13 +36,13 @@ public static class Program {
 				Environment.Exit(1);
 			} finally {
 				// Ensure trace logger resources are cleaned up
-				TraceLogger.Dispose();
+				Tracer.Dispose();
 				// Ensure Serilog flushes and disposes properly
 				Log.CloseAndFlush();
 			}
 		} else {
-			Console.WriteLine("TUI mode not implemented yet. Use CLI commands.");
-			Console.WriteLine("Run 'dotnet run help' for usage information.");
+			ln("TUI mode not implemented yet. Use CLI commands.");
+			ln("Run 'dotnet run help' for usage information.");
 		}
 	}
 }

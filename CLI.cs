@@ -8,7 +8,7 @@ using Thaum.Core.Services;
 using Thaum.Core.Models;
 using Thaum.Core.Utils;
 using static System.Console;
-using static Thaum.Core.Utils.TraceLogger;
+using static Thaum.Core.Utils.Tracer;
 using System.Diagnostics.CodeAnalysis;
 using Thaum.Core;
 using Thaum.Utils;
@@ -25,7 +25,7 @@ public partial class CLI {
 	private readonly LLM               _llm;
 	private readonly ILogger<CLI>      _logger;
 	private readonly PerceptualColorer _colorer;
-	private readonly CodeCrawler       _crawler;
+	private readonly Crawler       _crawler;
 	private readonly Prompter          _prompter;
 	private readonly Compressor        _compressor;
 
@@ -111,7 +111,7 @@ public partial class CLI {
 				break;
 			default:
 				trace($"Unknown command received: {command}");
-				WriteLine($"Unknown command: {command}");
+				ln($"Unknown command: {command}");
 				CMD_help();
 				Environment.Exit(1);
 				break;

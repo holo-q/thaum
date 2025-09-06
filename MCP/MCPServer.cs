@@ -26,8 +26,8 @@ public abstract class McpRequestEventArgs : EventArgs {
 
 // Simplified MCP server placeholder until MCP package compatibility is resolved
 public class MCPServer : IDisposable {
-	private readonly Compressor        _compressor;
-	private readonly CodeCrawler    _codeCrawlerManager;
+	private readonly Compressor         _compressor;
+	private readonly Crawler        _crawler;
 	private readonly ICache             _cache;
 	private readonly ILogger<MCPServer> _logger;
 
@@ -40,14 +40,14 @@ public class MCPServer : IDisposable {
 	public event EventHandler<McpRequestEventArgs>? RequestReceived;
 
 	public MCPServer(
-		Compressor        compressor,
-		CodeCrawler    crawler,
+		Compressor         compressor,
+		Crawler        crawler,
 		ICache             cache,
 		ILogger<MCPServer> logger) {
-		_compressor            = compressor;
-		_codeCrawlerManager = crawler;
-		_cache                 = cache;
-		_logger                = logger;
+		_compressor         = compressor;
+		_crawler = crawler;
+		_cache              = cache;
+		_logger             = logger;
 	}
 
 	public async Task StartAsync(int port = 0) {

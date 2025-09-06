@@ -13,33 +13,33 @@ public static class LangUtil {
 	/// </summary>
 	public static string DetectLanguageFromFile(string filepath) {
 		string extension = Path.GetExtension(filepath).ToLowerInvariant();
-		
+
 		return extension switch {
-			".py"            => "python",
-			".cs"            => "c-sharp",
-			".js" or ".jsx"  => "javascript",
-			".ts" or ".tsx"  => "typescript",
-			".rs"            => "rust",
-			".go"            => "go",
-			".java"          => "java",
+			".py"                     => "python",
+			".cs"                     => "c-sharp",
+			".js" or ".jsx"           => "javascript",
+			".ts" or ".tsx"           => "typescript",
+			".rs"                     => "rust",
+			".go"                     => "go",
+			".java"                   => "java",
 			".cpp" or ".cc" or ".cxx" => "cpp",
-			".c" or ".h"     => "c",
-			".rb"            => "ruby",
-			".php"           => "php",
-			".swift"         => "swift",
-			".kt" or ".kts"  => "kotlin",
-			".scala"         => "scala",
-			".r"             => "r",
-			".jl"            => "julia",
-			".lua"           => "lua",
-			".dart"          => "dart",
-			".hs"            => "haskell",
-			".ml" or ".mli"  => "ocaml",
-			".ex" or ".exs"  => "elixir",
-			".clj" or ".cljs" => "clojure",
-			".nim"           => "nim",
-			".zig"           => "zig",
-			_                => "c-sharp" // Default fallback
+			".c" or ".h"              => "c",
+			".rb"                     => "ruby",
+			".php"                    => "php",
+			".swift"                  => "swift",
+			".kt" or ".kts"           => "kotlin",
+			".scala"                  => "scala",
+			".r"                      => "r",
+			".jl"                     => "julia",
+			".lua"                    => "lua",
+			".dart"                   => "dart",
+			".hs"                     => "haskell",
+			".ml" or ".mli"           => "ocaml",
+			".ex" or ".exs"           => "elixir",
+			".clj" or ".cljs"         => "clojure",
+			".nim"                    => "nim",
+			".zig"                    => "zig",
+			_                         => "c-sharp" // Default fallback
 		};
 	}
 
@@ -70,7 +70,7 @@ public static class LangUtil {
 		if (extensionCounts.ContainsKey(".php")) return "php";
 		if (extensionCounts.ContainsKey(".swift")) return "swift";
 		if (extensionCounts.ContainsKey(".kt")) return "kotlin";
-		
+
 		return "c-sharp"; // Default fallback
 	}
 

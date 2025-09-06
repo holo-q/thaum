@@ -1,29 +1,30 @@
 using Thaum.Core.Models;
 using Thaum.Core.Utils;
+using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.CLI.Models;
 
 public class TreeNode {
-	public string              Name     { get; }
-	public SymbolKind          Kind     { get; }
-	public CodeSymbol?         Symbol   { get; }
+	public string         Name     { get; }
+	public SymbolKind     Kind     { get; }
+	public CodeSymbol?    Symbol   { get; }
 	public List<TreeNode> Children { get; } = new();
 
 	private readonly PerceptualColorer _colorer;
 
 	public TreeNode(string name, SymbolKind kind, CodeSymbol? symbol, PerceptualColorer? colorEngine = null) {
-		Name   = name;
-		Kind   = kind;
-		Symbol = symbol;
+		Name     = name;
+		Kind     = kind;
+		Symbol   = symbol;
 		_colorer = colorEngine ?? new PerceptualColorer();
 	}
 
 	public static List<TreeNode> BuildHierarchy(List<CodeSymbol> symbols, PerceptualColorer colorer) {
-		List<TreeNode>                        nodes         = new List<TreeNode>();
+		List<TreeNode>                             nodes         = new List<TreeNode>();
 		IEnumerable<IGrouping<string, CodeSymbol>> symbolsByFile = symbols.GroupBy(s => s.FilePath);
 
 		foreach (IGrouping<string, CodeSymbol> fileGroup in symbolsByFile) {
-			string relativePath = Path.GetRelativePath(Directory.GetCurrentDirectory(), fileGroup.Key);
+			string   relativePath = Path.GetRelativePath(Directory.GetCurrentDirectory(), fileGroup.Key);
 			TreeNode fileNode     = new TreeNode(relativePath, SymbolKind.Module, null, colorer);
 
 			// Include all meaningful symbol types (for both code and assembly inspection)
@@ -75,7 +76,7 @@ public class TreeNode {
 		string connector = isLast ? "└── " : "├── ";
 		string symbol    = GetSymbolIcon(Kind);
 
-		Console.WriteLine($"{prefix}{connector}{symbol} {Name}");
+		ln($"{prefix}{connector}{symbol} {Name}");
 
 		if (Children.Any()) {
 			string newPrefix = prefix + (isLast ? "    " : "│   ");
@@ -104,20 +105,20 @@ public class TreeNode {
 		// Print symbols with Terminal.Gui colors
 		PrintColoredSymbols(symbols, kind, 80 - linePrefix.Length, options.NoColors);
 
-		Console.WriteLine(); // End the line
+		ln(); // End the line
 	}
 
 	private void PrintColoredSymbols(List<TreeNode> symbols, SymbolKind kind, int maxWidth, bool noColors = false) {
-		int currentWidth  = 0;
+		int  currentWidth  = 0;
 		bool isFirstSymbol = true;
 
 		foreach (TreeNode symbol in symbols) {
 			bool needsSpace  = !isFirstSymbol;
-			int symbolWidth = symbol.Name.Length + (needsSpace ? 1 : 0);
+			int  symbolWidth = symbol.Name.Length + (needsSpace ? 1 : 0);
 
 			// Check if we need to wrap
 			if (currentWidth + symbolWidth > maxWidth && currentWidth > 0) {
-				Console.WriteLine();
+				ln();
 				Console.Write(new string(' ', 80 - maxWidth)); // Indent continuation
 				currentWidth = 0;
 				needsSpace   = false;

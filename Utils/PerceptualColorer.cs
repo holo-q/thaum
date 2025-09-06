@@ -76,14 +76,14 @@ public class PerceptualColorer {
 
 	private static string? ReadOscResponseWithTimeout(int timeoutMs) {
 		List<char> buffer    = new List<char>();
-		DateTime    startTime = DateTime.UtcNow;
-		bool    inEscape  = false;
-		bool    inOsc     = false;
+		DateTime   startTime = DateTime.UtcNow;
+		bool       inEscape  = false;
+		bool       inOsc     = false;
 
 		while ((DateTime.UtcNow - startTime).TotalMilliseconds < timeoutMs) {
 			if (Console.KeyAvailable) {
 				ConsoleKeyInfo keyInfo = Console.ReadKey(true);
-				char ch      = keyInfo.KeyChar;
+				char           ch      = keyInfo.KeyChar;
 
 				buffer.Add(ch);
 

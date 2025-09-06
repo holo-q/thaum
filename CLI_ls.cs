@@ -6,9 +6,11 @@ using Thaum.Core.Models;
 using Thaum.Core.Services;
 using Thaum.Utils;
 using static System.Console;
-using static Thaum.Core.Utils.TraceLogger;
+using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.CLI;
+
+public record LsOptions(string ProjectPath, string Language, int MaxDepth, bool ShowTypes, bool NoColors = false);
 
 /// <summary>
 /// Partial CLI class containing ls command implementation where symbols are discovered
@@ -54,43 +56,41 @@ public partial class CLI {
 		// Also check if it's a DLL/EXE that doesn't exist yet (for better error message)
 		if (opts.ProjectPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ||
 		    opts.ProjectPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) {
-			WriteLine($"Error: Could not find assembly file: {opts.ProjectPath}");
-			WriteLine($"Current directory: {Directory.GetCurrentDirectory()}");
+			ln($"Error: Could not find assembly file: {opts.ProjectPath}");
+			ln($"Current directory: {Directory.GetCurrentDirectory()}");
 			return;
 		}
 
 		// If we reach here and the path doesn't exist, list available assemblies to help debug
 		if (!Directory.Exists(opts.ProjectPath) && !File.Exists(opts.ProjectPath)) {
-			WriteLine($"Path '{opts.ProjectPath}' not found.");
-			WriteLine("\nAvailable loaded assemblies:");
+			ln($"Path '{opts.ProjectPath}' not found.");
+			ln("\nAvailable loaded assemblies:");
 			foreach (var asm in AppDomain.CurrentDomain.GetAssemblies().OrderBy(a => a.GetName().Name)) {
 				var name = asm.GetName().Name;
-				WriteLine($"  - {name}");
+				ln($"  - {name}");
 			}
-			WriteLine("\nTry 'thaum ls <assembly-name>' where <assembly-name> is one of the above.");
+			ln("\nTry 'thaum ls <assembly-name>' where <assembly-name> is one of the above.");
 			return;
 		}
-
-		WriteLine($"Scanning {opts.ProjectPath} for {opts.Language} symbols...");
+		ln($"Scanning {opts.ProjectPath} for {opts.Language} symbols...");
 
 		// Get symbols
 		List<CodeSymbol> symbols = await _crawler.CrawlDir(opts.ProjectPath);
 
 		if (!symbols.Any()) {
-			WriteLine("No symbols found.");
+			ln("No symbols found.");
 			return;
 		}
 
 		// Build and display hierarchy
 		List<TreeNode> hierarchy = TreeNode.BuildHierarchy(symbols, _colorer);
 		TreeNode.DisplayHierarchy(hierarchy, opts);
-
-		WriteLine($"\nFound {symbols.Count} symbols total");
+		ln($"\nFound {symbols.Count} symbols total");
 	}
 
 	[RequiresUnreferencedCode("Calls System.Reflection.Assembly.GetTypes()")]
 	private async Task CMD_ls_assembly(Assembly assembly, LsOptions options) {
-		WriteLine($"Scanning assembly {assembly.GetName().Name}...");
+		ln($"Scanning assembly {assembly.GetName().Name}...");
 
 		try {
 			List<CodeSymbol> symbols = [];
@@ -172,18 +172,17 @@ public partial class CLI {
 			}
 
 			if (!symbols.Any()) {
-				WriteLine("No symbols found in assembly.");
+				ln("No symbols found in assembly.");
 				return;
 			}
 
 			// Build and display hierarchy
 			List<TreeNode> tree = TreeNode.BuildHierarchy(symbols, _colorer);
 			TreeNode.DisplayHierarchy(tree, options);
-
-			WriteLine($"\nFound {symbols.Count} types in assembly");
-			WriteLine($"Total symbols: {symbols.Count + symbols.SelectMany(s => s.Children ?? []).Count()}");
+			ln($"\nFound {symbols.Count} types in assembly");
+			ln($"Total symbols: {symbols.Count + symbols.SelectMany(s => s.Children ?? []).Count()}");
 		} catch (Exception ex) {
-			WriteLine($"Error loading assembly: {ex.Message}");
+			ln($"Error loading assembly: {ex.Message}");
 			_logger.LogError(ex, "Failed to load assembly {AssemblyName}", assembly.GetName().Name);
 			Environment.Exit(1);
 		}
