@@ -6,7 +6,7 @@ using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.Core.Services;
 
-public record CompressorOptions(string ProjectPath, string Language, CompressionLevel CompressionLevel = CompressionLevel.Optimize);
+public record CompressorOptions(string ProjectPath, string Language, string? DefaultPromptName = null);
 
 /// <summary>
 /// Context for hierarchical compression where Level indicates depth (1=function 2=class) where
@@ -16,7 +16,7 @@ public record CompressorOptions(string ProjectPath, string Language, Compression
 public record OptimizationContext(
 	int              Level,
 	List<string>     AvailableKeys,
-	CompressionLevel CompressionLevel = CompressionLevel.Optimize,
+	string?          PromptName       = null,
 	string?          ParentContext    = null,
 	List<string>?    SiblingContexts  = null
 ) {
@@ -68,18 +68,9 @@ public class Compressor {
 			return cached;
 		}
 
-		string prompt = await BuildOptimizationPromptAsync(symbol, context, code);
-
-		// Get the prompt name used for this optimization
-		string compressionPrefix = context.CompressionLevel.GetPromptPrefix();
-		string symbolType = symbol.Kind switch {
-			SymbolKind.Function or SymbolKind.Method => "function",
-			SymbolKind.Class                         => "class",
-			_                                        => "function"
-		};
-
-		string envVarName = $"THAUM_PROMPT_{compressionPrefix.ToUpper()}_{symbolType.ToUpper()}";
-		string promptName = Environment.GetEnvironmentVariable(envVarName) ?? GetDefaultPromptName(compressionPrefix, symbolType);
+		// Get the prompt name - use context override or default
+		string promptName = context.PromptName ?? GLB.GetDefaultPrompt(symbol);
+		string prompt = await BuildOptimizationPromptAsync(symbol, context, code, promptName);
 
 		// Get the raw prompt template content
 		string promptContent = await _promptLoader.LoadPrompt(promptName);
@@ -88,7 +79,7 @@ public class Compressor {
 		string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ??
 		               throw new InvalidOperationException("LLM__DefaultModel environment variable is required");
 
-		string summary = await _llm.CompleteAsync(prompt, new LLMOptions(Temperature: 0.3, MaxTokens: 1024, Model: model));
+		string summary = await _llm.CompleteAsync(prompt, GLB.CompressionOptions(model));
 
 		// Determine provider from model name (simple heuristic)
 		string provider = model.Contains("gpt") ? "openai" :
@@ -104,32 +95,31 @@ public class Compressor {
 	/// where K2 emerges from classes where pattern recognition uses lower temperature for
 	/// consistency where discovered keys enable higher-level compressions
 	/// </summary>
-	public async Task<string> ExtractCommonKeyAsync(List<string> summaries, int level, CompressionLevel compressionLevel = CompressionLevel.Optimize) {
+	public async Task<string> ExtractCommonKeyAsync(List<string> summaries, int level, string? keyPromptName = null) {
 		string cacheKey = $"key_L{level}_{GetOptimizationsHash(summaries)}";
 
 		if (await _cache.TryGetAsync<string>(cacheKey) is { } cached) {
 			return cached;
 		}
 
-		string prompt = await BuildKeyExtractionPromptAsync(summaries, level, compressionLevel);
+		string actualKeyPromptName = keyPromptName ?? GLB.DefaultKeyPrompt;
+		string prompt = await BuildKeyExtractionPromptAsync(summaries, level, actualKeyPromptName);
 
-		// Get prompt name and content for metadata
-		string compressionPrefix = compressionLevel.GetPromptPrefix();
-		string promptName        = $"{compressionPrefix}_key";
-		string promptContent     = await _promptLoader.LoadPrompt(promptName);
+		// Get prompt content for metadata
+		string promptContent = await _promptLoader.LoadPrompt(actualKeyPromptName);
 
 		// Get model from configuration - fail fast if not available
 		string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ??
 		               throw new InvalidOperationException("LLM__DefaultModel environment variable is required");
 
-		string key = await _llm.CompleteAsync(prompt, new LLMOptions(Temperature: 0.2, MaxTokens: 512, Model: model));
+		string key = await _llm.CompleteAsync(prompt, GLB.KeyOptions(model));
 
 		// Determine provider from model name (simple heuristic)
 		string provider = model.Contains("gpt") ? "openai" :
 			model.Contains("claude")            ? "anthropic" :
 			model.Contains("llama")             ? "ollama" : "unknown";
 
-		await _cache.SetAsync(cacheKey, key, TimeSpan.FromDays(1), promptName, promptContent, model, provider);
+		await _cache.SetAsync(cacheKey, key, TimeSpan.FromDays(1), actualKeyPromptName, promptContent, model, provider);
 		return key;
 	}
 
@@ -139,7 +129,7 @@ public class Compressor {
 	/// analysis with K1 where Phase5=K2 extraction where Phase6=final reanalysis with K1+K2
 	/// where parallel processing maximizes throughput where streaming enables progress tracking
 	/// </summary>
-	public async Task<SymbolHierarchy> ProcessCodebaseAsync(string projectPath, string language, CompressionLevel compressionLevel = CompressionLevel.Optimize) {
+	public async Task<SymbolHierarchy> ProcessCodebaseAsync(string projectPath, string language, string? defaultPromptName = null) {
 		traceheader("HIERARCHICAL CODEBASE ANALYSIS");
 		_logger.LogInformation("Starting codebase processing for {ProjectPath}", projectPath);
 
@@ -158,7 +148,7 @@ public class Compressor {
 		IEnumerable<Task<string>> functionOptimizationTasks = functions.Select(async function => {
 			traceln(function.Name, "LLM Analysis", "STREAM");
 			string              sourceCode = await GetSymbolSourceCode(function);
-			OptimizationContext context    = new OptimizationContext(Level: 1, AvailableKeys: [], CompressionLevel: compressionLevel);
+			OptimizationContext context    = new OptimizationContext(Level: 1, AvailableKeys: [], PromptName: defaultPromptName);
 			return await OptimizeSymbolWithStreamAsync(function, context, sourceCode);
 		});
 
@@ -167,7 +157,7 @@ public class Compressor {
 		// Phase 2: Extract K1 from function summaries
 		traceheader("PHASE 2: K1 EXTRACTION");
 		traceln("Function Optimizations", "Pattern Analysis", "KEY");
-		string                     k1            = await ExtractCommonKeyWithStreamAsync(functionOptimizations, 1, compressionLevel);
+		string                     k1            = await ExtractCommonKeyWithStreamAsync(functionOptimizations, 1);
 		Dictionary<string, string> extractedKeys = new Dictionary<string, string> { ["K1"] = k1 };
 		traceln("K1 Extracted", k1.Length > 50 ? $"{k1[..47]}..." : k1, "DONE");
 
@@ -178,7 +168,7 @@ public class Compressor {
 		IEnumerable<Task<string>> functionReanalysisTasks = functions.Select(async function => {
 			traceln(function.Name, "K1-Enhanced Analysis", "STREAM");
 			string              sourceCode = await GetSymbolSourceCode(function);
-			OptimizationContext context    = new OptimizationContext(Level: 1, AvailableKeys: [k1], CompressionLevel: compressionLevel);
+			OptimizationContext context    = new OptimizationContext(Level: 1, AvailableKeys: [k1], PromptName: defaultPromptName);
 			return await OptimizeSymbolWithStreamAsync(function, context, sourceCode);
 		});
 
@@ -193,7 +183,7 @@ public class Compressor {
 		IEnumerable<Task<string>> classOptimizationTasks = classes.Select(async cls => {
 			traceln(cls.Name, "K1-Enhanced Analysis", "STREAM");
 			string              sourceCode = await GetSymbolSourceCode(cls);
-			OptimizationContext context    = new OptimizationContext(Level: 2, AvailableKeys: [k1], CompressionLevel: compressionLevel);
+			OptimizationContext context    = new OptimizationContext(Level: 2, AvailableKeys: [k1], PromptName: defaultPromptName);
 			return await OptimizeSymbolWithStreamAsync(cls, context, sourceCode);
 		});
 
@@ -202,13 +192,13 @@ public class Compressor {
 		// Phase 5: Extract K2 from class summaries
 		traceheader("PHASE 5: K2 EXTRACTION");
 		traceln("Class Optimizations", "Pattern Analysis", "KEY");
-		string k2 = await ExtractCommonKeyWithStreamAsync(classOptimizations, 2, compressionLevel);
+		string k2 = await ExtractCommonKeyWithStreamAsync(classOptimizations, 2);
 		extractedKeys["K2"] = k2;
 		traceln("K2 Extracted", k2.Length > 50 ? $"{k2[..47]}..." : k2, "DONE");
 
 		// Phase 6: Re-summarize everything with K1+K2
 		traceheader("PHASE 6: FINAL RE-ANALYSIS WITH K1+K2");
-		await ResummarizeWithKeysAsync(functions.Concat(classes).ToList(), [k1, k2], compressionLevel);
+		await ResummarizeWithKeysAsync(functions.Concat(classes).ToList(), [k1, k2], defaultPromptName);
 
 		traceheader("HIERARCHY CONSTRUCTION");
 		traceln("Flat Symbols", "Nested Structure", "BUILD");
@@ -246,17 +236,13 @@ public class Compressor {
 		return await _llm.CompleteAsync(optimizationPrompt, new LLMOptions(Temperature: 0.3));
 	}
 
-	private async Task<string> BuildOptimizationPromptAsync(CodeSymbol symbol, OptimizationContext context, string sourceCode) {
-		string compressionPrefix = context.CompressionLevel.GetPromptPrefix();
+	private async Task<string> BuildOptimizationPromptAsync(CodeSymbol symbol, OptimizationContext context, string sourceCode, string promptName) {
+		// Prompt name is now directly passed as parameter
 		string symbolType = symbol.Kind switch {
 			SymbolKind.Function or SymbolKind.Method => "function",
 			SymbolKind.Class                         => "class",
 			_                                        => "function"
 		};
-
-		// Allow environment variable override for prompt names
-		string envVarName = $"THAUM_PROMPT_{compressionPrefix.ToUpper()}_{symbolType.ToUpper()}";
-		string promptName = Environment.GetEnvironmentVariable(envVarName) ?? GetDefaultPromptName(compressionPrefix, symbolType);
 
 		Dictionary<string, object> parameters = new Dictionary<string, object> {
 			["sourceCode"] = sourceCode,
@@ -269,19 +255,8 @@ public class Compressor {
 		return await _promptLoader.FormatPrompt(promptName, parameters);
 	}
 
-	private string GetDefaultPromptName(string compressionPrefix, string symbolType) {
-		// Use compress_function_v2 as the default for compress functions
-		if (compressionPrefix == "compress" && symbolType == "function") {
-			return "compress_function_v2";
-		}
-
-		// Default pattern for all other cases
-		return $"{compressionPrefix}_{symbolType}";
-	}
-
-	private async Task<string> BuildKeyExtractionPromptAsync(List<string> summaries, int level, CompressionLevel compressionLevel = CompressionLevel.Optimize) {
-		string compressionPrefix = compressionLevel.GetPromptPrefix();
-		string promptName        = $"{compressionPrefix}_key";
+	private async Task<string> BuildKeyExtractionPromptAsync(List<string> summaries, int level, string keyPromptName) {
+		string promptName = keyPromptName;
 
 		Dictionary<string, object> parameters = new Dictionary<string, object> {
 			["summaries"] = string.Join("\n", summaries.Select((s, i) => $"{i + 1}. {s}")),
@@ -317,14 +292,15 @@ public class Compressor {
 			return cached;
 		}
 
-		string prompt = await BuildOptimizationPromptAsync(symbol, context, sourceCode);
+		string promptName = context.PromptName ?? GLB.GetDefaultPrompt(symbol);
+		string prompt = await BuildOptimizationPromptAsync(symbol, context, sourceCode, promptName);
 
 		// Get model from configuration - fail fast if not available
 		string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ??
 		               throw new InvalidOperationException("LLM__DefaultModel environment variable is required");
 
 		// Stream the response in real-time
-		IAsyncEnumerable<string> streamResponse = await _llm.StreamCompleteAsync(prompt, new LLMOptions(Temperature: 0.3, MaxTokens: 1024, Model: model));
+		IAsyncEnumerable<string> streamResponse = await _llm.StreamCompleteAsync(prompt, GLB.CompressionOptions(model));
 		StringBuilder            summary        = new StringBuilder();
 
 		await foreach (string token in streamResponse) {
@@ -339,7 +315,7 @@ public class Compressor {
 		return result;
 	}
 
-	private async Task<string> ExtractCommonKeyWithStreamAsync(List<string> summaries, int level, CompressionLevel compressionLevel = CompressionLevel.Optimize) {
+	private async Task<string> ExtractCommonKeyWithStreamAsync(List<string> summaries, int level, string? keyPromptName = null) {
 		string cacheKey = $"key_L{level}_{GetOptimizationsHash(summaries)}";
 
 		if (await _cache.TryGetAsync<string>(cacheKey) is { } cached) {
@@ -347,14 +323,15 @@ public class Compressor {
 			return cached;
 		}
 
-		string prompt = await BuildKeyExtractionPromptAsync(summaries, level, compressionLevel);
+		string actualKeyPromptName = keyPromptName ?? GLB.DefaultKeyPrompt;
+		string prompt = await BuildKeyExtractionPromptAsync(summaries, level, actualKeyPromptName);
 
 		// Get model from configuration - fail fast if not available
 		string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ??
 		               throw new InvalidOperationException("LLM__DefaultModel environment variable is required");
 
 		// Stream the key extraction response
-		IAsyncEnumerable<string> streamResponse = await _llm.StreamCompleteAsync(prompt, new LLMOptions(Temperature: 0.2, MaxTokens: 512, Model: model));
+		IAsyncEnumerable<string> streamResponse = await _llm.StreamCompleteAsync(prompt, GLB.KeyOptions(model));
 		StringBuilder            key            = new StringBuilder();
 
 		await foreach (string token in streamResponse) {
@@ -368,7 +345,7 @@ public class Compressor {
 		return result;
 	}
 
-	private async Task ResummarizeWithKeysAsync(List<CodeSymbol> symbols, List<string> keys, CompressionLevel compressionLevel) {
+	private async Task ResummarizeWithKeysAsync(List<CodeSymbol> symbols, List<string> keys, string? defaultPromptName = null) {
 		traceln("Parallel Final Analysis", $"{symbols.Count} symbols", "START");
 
 		IEnumerable<Task<string>> reanalysisTasks = symbols.Select(async symbol => {
@@ -377,7 +354,7 @@ public class Compressor {
 			OptimizationContext context = new OptimizationContext(
 				Level: symbol.Kind is SymbolKind.Function or SymbolKind.Method ? 1 : 2,
 				AvailableKeys: keys,
-				CompressionLevel: compressionLevel
+				PromptName: defaultPromptName
 			);
 			return await OptimizeSymbolWithStreamAsync(symbol, context, sourceCode);
 		});

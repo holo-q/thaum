@@ -30,23 +30,18 @@ public class Cache : ICache {
 		_logger = Logging.For<Cache>();
 
 		// Simple cache directory - works on all platforms
-		string cacheDir = configuration["Cache:Directory"] ?? Path.Combine(Path.GetTempPath(), "Thaum");
+		string cacheDir = GLB.CacheDir;
 
 		_logger.LogDebug("Creating cache directory: {CacheDir}", cacheDir);
 		Directory.CreateDirectory(cacheDir);
 
-		string dbPath           = Path.Combine(cacheDir, "cache.db");
+		string dbPath           = GLB.CacheDbPath;
 		string connectionString = $"Data Source={dbPath}";
 
 		_con = new SqliteConnection(connectionString);
 		_con.Open();
 
-		_jsonOptions = new JsonSerializerOptions {
-			PropertyNamingPolicy   = JsonNamingPolicy.CamelCase,
-			WriteIndented          = false,
-			DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-			TypeInfoResolver       = JsonContext.Default
-		};
+		_jsonOptions = GLB.CacheJsonOptions;
 
 		InitializeDatabase();
 	}
@@ -485,7 +480,7 @@ public class Cache : ICache {
 
 		// This is a bit hacky since SqliteCacheService doesn't expose a query method
 		// We'll need to add this functionality
-		string dbpath = Path.Combine("cache", "cache.db");
+		string dbpath = GLB.CacheDbPath;
 		if (!File.Exists(dbpath)) return results;
 
 		await using SqliteConnection con = new SqliteConnection($"Data Source={dbpath}");
@@ -527,7 +522,7 @@ public class Cache : ICache {
 	private async Task<List<CachedKey>> GetCachedKeys() {
 		List<CachedKey> results = [];
 
-		string cacheDbPath = Path.Combine("cache", "cache.db");
+		string cacheDbPath = GLB.CacheDbPath;
 		if (!File.Exists(cacheDbPath)) return results;
 
 		await using SqliteConnection con = new SqliteConnection($"Data Source={cacheDbPath}");

@@ -22,7 +22,7 @@ public static class EnvLoader {
 
 		// Process from root down to current directory (so current directory .env takes precedence)
 		foreach (string directory in directories.AsEnumerable().Reverse()) {
-			EnvFile envFile = LoadEnvFile(Path.Combine(directory, ".env"));
+			EnvFile envFile = LoadEnvFile(Path.Combine(directory, GLB.EnvFileName));
 			loadedFiles.Add(envFile);
 
 			// Merge variables - later files override earlier ones

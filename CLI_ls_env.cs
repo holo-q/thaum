@@ -1,3 +1,4 @@
+using Thaum.Utils;
 using Thaum.Core.Utils;
 using static System.Console;
 using static Thaum.Core.Utils.Tracer;
@@ -10,8 +11,8 @@ namespace Thaum.CLI;
 /// where sensitive values display masked for security
 /// </summary>
 public partial class CLI {
-	private static void CMD_ls_env(string[] args) {
-		bool showValues = args.Contains("--values") || args.Contains("-v");
+	public void CMD_ls_env(bool showValues) {
+		trace($"Executing ls-env command with showValues: {showValues}");
 		println("Environment file detection and loading trace:");
 		println();
 

@@ -11,7 +11,7 @@ public class PromptLoader {
 
 	public PromptLoader(string? directory = null) {
 		_logger           = Logging.For<PromptLoader>();
-		_promptsDirectory = directory ?? Path.Combine(Directory.GetCurrentDirectory(), "prompts");
+		_promptsDirectory = directory ?? GLB.PromptsDir;
 		_promptCache      = new Dictionary<string, string>();
 	}
 

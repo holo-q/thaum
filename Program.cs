@@ -8,8 +8,8 @@ namespace Thaum;
 public static class Program {
 	public static async Task Main(string[] args) {
 		// Clear the output log file on startup
-		if (File.Exists("output.log")) {
-			File.Delete("output.log");
+		if (File.Exists(GLB.OutputLogFile)) {
+			File.Delete(GLB.OutputLogFile);
 		}
 
 		// Configure Serilog

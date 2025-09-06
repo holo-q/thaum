@@ -58,7 +58,7 @@ public class PerceptualColorer {
 			Console.Out.Flush();
 
 			// Wait for response with timeout
-			string? response = ReadOscResponseWithTimeout(1000); // 1 second timeout
+			string? response = ReadOscResponseWithTimeout(GLB.OscTimeoutMs); // 1 second timeout
 
 			// Restore console state
 			Console.TreatControlCAsInput = originalInputMode;

@@ -19,7 +19,7 @@ public static class Tracer {
 		_fixedOperatorWidth = _operator.Length + 2;
 
 		if (isInteractiveMode) {
-			_interactiveFileWriter = new FileWriter("interactive.log");
+			_interactiveFileWriter = new FileWriter(GLB.InteractiveLogFile);
 		}
 	}
 

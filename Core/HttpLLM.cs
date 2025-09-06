@@ -98,7 +98,7 @@ public class HttpLLM : LLM {
 
 		// Set OpenAI-specific headers
 		_client.DefaultRequestHeaders.Remove("Authorization");
-		string? apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? _configuration["LLM:ApiKey"];
+		string? apiKey = GLB.API_KEY_OPENAI;
 		if (!string.IsNullOrEmpty(apiKey)) {
 			_client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
 		}
@@ -133,7 +133,7 @@ public class HttpLLM : LLM {
 
 		// Add Anthropic-specific headers
 		_client.DefaultRequestHeaders.Remove("x-api-key");
-		string? apiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ?? _configuration["LLM:ApiKey"];
+		string? apiKey = GLB.ANTHROPIC_AIP_KEY;
 		if (!string.IsNullOrEmpty(apiKey)) {
 			_client.DefaultRequestHeaders.Add("x-api-key", apiKey);
 			_client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
@@ -170,7 +170,7 @@ public class HttpLLM : LLM {
 
 		// Add Anthropic-specific headers
 		_client.DefaultRequestHeaders.Remove("x-api-key");
-		string? apiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ?? _configuration["LLM:ApiKey"];
+		string? apiKey = GLB.ANTHROPIC_AIP_KEY;
 		if (!string.IsNullOrEmpty(apiKey)) {
 			_client.DefaultRequestHeaders.Add("x-api-key", apiKey);
 			_client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
@@ -261,7 +261,7 @@ public class HttpLLM : LLM {
 		StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
 		// Add OpenRouter-specific headers
-		string? apiKey  = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY") ?? _configuration["LLM:ApiKey"];
+		string? apiKey  = GLB.OPENROUTER_API_KEY;
 		string  appName = _configuration["LLM:AppName"] ?? "Thaum";
 		string  siteUrl = _configuration["LLM:SiteUrl"] ?? "https://github.com/your-repo/thaum";
 
@@ -314,7 +314,7 @@ public class HttpLLM : LLM {
 		};
 
 		// Add OpenAI authorization header
-		string? apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? _configuration["LLM:ApiKey"];
+		string? apiKey = GLB.API_KEY_OPENAI;
 		if (!string.IsNullOrEmpty(apiKey)) {
 			httpRequest.Headers.Add("Authorization", $"Bearer {apiKey}");
 		}
@@ -372,7 +372,7 @@ public class HttpLLM : LLM {
 		StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
 		// Add OpenRouter-specific headers to the request
-		string? apiKey  = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY") ?? _configuration["LLM:ApiKey"];
+		string? apiKey  = GLB.OPENROUTER_API_KEY;
 		string  appName = _configuration["LLM:AppName"] ?? "Thaum";
 		string  siteUrl = _configuration["LLM:SiteUrl"] ?? "https://github.com/your-repo/thaum";
 

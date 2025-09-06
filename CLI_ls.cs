@@ -18,64 +18,46 @@ public record LsOptions(string ProjectPath, string Language, int MaxDepth, bool 
 /// where perceptual coloring creates semantic visual feedback
 /// </summary>
 public partial class CLI {
-	[RequiresUnreferencedCode("Calls System.Reflection.Assembly.GetReferencedAssemblies()")]
-	public async Task CMD_ls(string[] args) {
-		LsOptions opts = ParseLsOptions(args);
+	public async Task CMD_ls(LsOptions options) {
+		trace($"Executing ls command with options: {options}");
 
-		// First, always try to load assemblies that we reference
-		foreach (var asmName in Assembly.GetExecutingAssembly().GetReferencedAssemblies()) {
-			try {
-				Assembly.Load(asmName);
-			} catch { }
-		}
-
-		// Check if asking for an assembly by name (e.g., "TreeSitter" or "TreeSitter.DotNet")
-		// Try to find the assembly in the current AppDomain first before checking filesystem
-		Assembly? assembly = AppDomain.CurrentDomain.GetAssemblies()
-			.FirstOrDefault(a => {
-				var name = a.GetName().Name;
-				return name?.Equals(opts.ProjectPath, StringComparison.OrdinalIgnoreCase) == true ||
-				       (opts.ProjectPath.Equals("TreeSitter.DotNet", StringComparison.OrdinalIgnoreCase) &&
-				        name?.Equals("TreeSitter", StringComparison.OrdinalIgnoreCase) == true);
-			});
-
-		if (assembly != null) {
-			await CMD_ls_assembly(assembly, opts);
+		// Handle assembly specifiers
+		if (options.ProjectPath.StartsWith("assembly:")) {
+			string assemblyName = options.ProjectPath[9..]; // Remove "assembly:" prefix
+			await CMD_ls_dotnet(assemblyName, options);
 			return;
 		}
 
-		// Check if the path is a DLL/EXE file
-		if (File.Exists(opts.ProjectPath) &&
-		    (opts.ProjectPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ||
-		     opts.ProjectPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))) {
-			Assembly fileAssembly = Assembly.LoadFrom(opts.ProjectPath);
-			await CMD_ls_assembly(fileAssembly, opts);
-			return;
-		}
+		// Handle file paths for assemblies
+		if (options.ProjectPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ||
+		    options.ProjectPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) {
+			if (!File.Exists(options.ProjectPath)) {
+				println($"Error: Could not find assembly file: {options.ProjectPath}");
+				println($"Current directory: {Directory.GetCurrentDirectory()}");
+				return;
+			}
 
-		// Also check if it's a DLL/EXE that doesn't exist yet (for better error message)
-		if (opts.ProjectPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ||
-		    opts.ProjectPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) {
-			println($"Error: Could not find assembly file: {opts.ProjectPath}");
-			println($"Current directory: {Directory.GetCurrentDirectory()}");
+			Assembly fileAssembly = Assembly.LoadFrom(options.ProjectPath);
+			await CMD_ls_binary(fileAssembly, options);
 			return;
 		}
 
 		// If we reach here and the path doesn't exist, list available assemblies to help debug
-		if (!Directory.Exists(opts.ProjectPath) && !File.Exists(opts.ProjectPath)) {
-			println($"Path '{opts.ProjectPath}' not found.");
+		if (!Directory.Exists(options.ProjectPath) && !File.Exists(options.ProjectPath)) {
+			println($"Path '{options.ProjectPath}' not found.");
 			println("\nAvailable loaded assemblies:");
 			foreach (var asm in AppDomain.CurrentDomain.GetAssemblies().OrderBy(a => a.GetName().Name)) {
 				var name = asm.GetName().Name;
 				println($"  - {name}");
 			}
-			println("\nTry 'thaum ls <assembly-name>' where <assembly-name> is one of the above.");
+			println("\nTry 'thaum ls assembly:<assembly-name>' where <assembly-name> is one of the above.");
 			return;
 		}
-		println($"Scanning {opts.ProjectPath} for {opts.Language} symbols...");
+
+		println($"Scanning {options.ProjectPath} for {options.Language} symbols...");
 
 		// Get symbols
-		List<CodeSymbol> symbols = await _crawler.CrawlDir(opts.ProjectPath);
+		List<CodeSymbol> symbols = await _crawler.CrawlDir(options.ProjectPath);
 
 		if (!symbols.Any()) {
 			println("No symbols found.");
@@ -84,12 +66,30 @@ public partial class CLI {
 
 		// Build and display hierarchy
 		List<TreeNode> hierarchy = TreeNode.BuildHierarchy(symbols, _colorer);
-		TreeNode.DisplayHierarchy(hierarchy, opts);
+		TreeNode.DisplayHierarchy(hierarchy, options);
 		println($"\nFound {symbols.Count} symbols total");
 	}
 
+	private async Task CMD_ls_dotnet(string assemblyName, LsOptions options) {
+		// Load and handle assembly listing
+		var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+		var matchedAssembly = assemblies.FirstOrDefault(a =>
+			a.GetName().Name?.Contains(assemblyName, StringComparison.OrdinalIgnoreCase) == true);
+
+		if (matchedAssembly != null) {
+			await CMD_ls_binary(matchedAssembly, options);
+		} else {
+			println($"Assembly '{assemblyName}' not found.");
+			println("\nAvailable loaded assemblies:");
+			foreach (var asm in assemblies.OrderBy(a => a.GetName().Name)) {
+				var name = asm.GetName().Name;
+				println($"  - {name}");
+			}
+		}
+	}
+
 	[RequiresUnreferencedCode("Calls System.Reflection.Assembly.GetTypes()")]
-	private async Task CMD_ls_assembly(Assembly assembly, LsOptions options) {
+	private async Task CMD_ls_binary(Assembly assembly, LsOptions options) {
 		println($"Scanning assembly {assembly.GetName().Name}...");
 
 		try {
@@ -107,7 +107,6 @@ public partial class CLI {
 				SymbolKind typeKind = SymbolKind.Class;
 				if (type.IsInterface)
 					typeKind = SymbolKind.Interface;
-				// Use Class for enums and structs too since we don't have specific kinds for them
 
 				List<CodeSymbol> typeChildren = [];
 
@@ -142,23 +141,6 @@ public partial class CLI {
 					typeChildren.Add(propertySymbol);
 				}
 
-				// Get fields
-				FieldInfo[] fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly);
-				foreach (FieldInfo field in fields) {
-					// Skip compiler-generated fields
-					if (field.Name.Contains("<") || field.Name.Contains(">"))
-						continue;
-
-					CodeSymbol fieldSymbol = new CodeSymbol(
-						Name: field.Name,
-						Kind: SymbolKind.Field,
-						FilePath: assembly.Location,
-						StartCodeLoc: new CodeLoc(0, 0),
-						EndCodeLoc: new CodeLoc(0, 0)
-					);
-					typeChildren.Add(fieldSymbol);
-				}
-
 				CodeSymbol typeSymbol = new CodeSymbol(
 					Name: type.Name,
 					Kind: typeKind,
@@ -180,58 +162,11 @@ public partial class CLI {
 			List<TreeNode> tree = TreeNode.BuildHierarchy(symbols, _colorer);
 			TreeNode.DisplayHierarchy(tree, options);
 			println($"\nFound {symbols.Count} types in assembly");
-			println($"Total symbols: {symbols.Count + symbols.SelectMany(s => s.Children ?? []).Count()}");
 		} catch (Exception ex) {
 			println($"Error loading assembly: {ex.Message}");
 			_logger.LogError(ex, "Failed to load assembly {AssemblyName}", assembly.GetName().Name);
-			Environment.Exit(1);
 		}
 
 		await Task.CompletedTask;
-	}
-
-	public LsOptions ParseLsOptions(string[] args) {
-		string projectPath = Directory.GetCurrentDirectory();
-		string language    = "auto";
-		int    maxDepth    = 10;
-		bool   showTypes   = false;
-		bool   noColors    = false;
-
-		// Check if first arg is a path/assembly specifier
-		if (args.Length > 1 && !args[1].StartsWith("--")) {
-			projectPath = args[1];
-		}
-
-		for (int i = 1; i < args.Length; i++) {
-			switch (args[i]) {
-				case "--path" when i + 1 < args.Length:
-					projectPath = args[++i];
-					break;
-				case "--lang" when i + 1 < args.Length:
-					language = args[++i];
-					break;
-				case "--depth" when i + 1 < args.Length:
-					maxDepth = int.Parse(args[++i]);
-					break;
-				case "--types":
-					showTypes = true;
-					break;
-				case "--no-colors":
-					noColors = true;
-					break;
-				default:
-					// Skip non-flag args that aren't the first positional argument
-					break;
-			}
-		}
-
-		// Auto-detect language if not specified (skip for assembly inspection and non-existent paths)
-		if (language == "auto" &&
-		    !projectPath.StartsWith("assembly:", StringComparison.OrdinalIgnoreCase) &&
-		    Directory.Exists(projectPath)) {
-			language = LangUtil.DetectLanguageFromDirectory(projectPath);
-		}
-
-		return new LsOptions(projectPath, language, maxDepth, showTypes, noColors);
 	}
 }

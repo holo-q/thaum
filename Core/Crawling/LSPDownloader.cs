@@ -139,7 +139,7 @@ public class LSPDownloader {
 			long?  totalBytes = response.Content.Headers.ContentLength;
 			string tempFile   = Path.Combine(serverDir, $"download{GetFileExtension(downloadUrl)}");
 
-			byte[] buffer    = new byte[8192];
+			byte[] buffer    = new byte[GLB.FileBufferSize];
 			long   totalRead = 0;
 			int    bytesRead;
 

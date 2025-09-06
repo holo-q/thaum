@@ -13,7 +13,7 @@ public abstract class LLM {
 
 		try {
 			// TODO extract to Glb
-			IAsyncEnumerable<string> res = await this.StreamCompleteAsync(prompt, new LLMOptions(Temperature: 0.3, MaxTokens: 1024, Model: GLB.DefaultModel));
+			IAsyncEnumerable<string> res = await this.StreamCompleteAsync(prompt, GLB.CompressionOptions());
 
 			await foreach (string token in res) {
 				Write(token);

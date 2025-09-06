@@ -143,4 +143,52 @@ public static class LangUtil {
 			_            => [".txt"] // Fallback to text files
 		};
 	}
+
+	public static string DetectLanguage(string projectPath) {
+		string[]             files      = Directory.GetFiles(projectPath, "*.*", SearchOption.TopDirectoryOnly);
+		IEnumerable<string?> extensions = files.Select(Path.GetExtension).Where(ext => !string.IsNullOrEmpty(ext));
+
+		Dictionary<string, int> counts = extensions
+			.GroupBy(ext => ext.ToLowerInvariant())
+			.ToDictionary(g => g.Key, g => g.Count());
+
+		// Check for specific project files first
+		if (File.Exists(Path.Combine(projectPath, "pyproject.toml")) ||
+		    File.Exists(Path.Combine(projectPath, "requirements.txt")) ||
+		    counts.GetValueOrDefault(".py", 0) > 0)
+			return "python";
+
+		if (File.Exists(Path.Combine(projectPath, "*.csproj")) ||
+		    File.Exists(Path.Combine(projectPath, "*.sln")) ||
+		    counts.GetValueOrDefault(".cs", 0) > 0)
+			return "c-sharp";
+
+		if (File.Exists(Path.Combine(projectPath, "package.json"))) {
+			return counts.GetValueOrDefault(".ts", 0) > counts.GetValueOrDefault(".js", 0) ? "typescript" : "javascript";
+		}
+
+		if (File.Exists(Path.Combine(projectPath, "Cargo.toml")))
+			return "rust";
+
+		if (File.Exists(Path.Combine(projectPath, "go.mod")))
+			return "go";
+
+		// Fallback to most common extension
+		KeyValuePair<string, int> mostCommon = counts.OrderByDescending(kv => kv.Value).FirstOrDefault();
+		return mostCommon.Key switch {
+			".py" => "python",
+			".cs" => "c-sharp",
+			".js" => "javascript",
+			".ts" => "typescript",
+			".rs" => "rust",
+			".go" => "go",
+			_     => "python" // Default fallback
+		};
+	}
+
+	public static string DetectLanguageInternal(string projectPath, string language) {
+		return language != "auto"
+			? language
+			: LangUtil.DetectLanguage(projectPath);
+	}
 }

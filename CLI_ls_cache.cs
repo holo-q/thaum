@@ -56,7 +56,7 @@ public partial class CLI {
 		}
 
 		// Get console width for full horizontal space usage
-		int consoleWidth = Math.Max(WindowWidth, 120);
+		int consoleWidth = Math.Max(WindowWidth, GLB.ConsoleMinWidth);
 
 		// Header with colors
 		ForegroundColor = ConsoleColor.Cyan;
@@ -390,5 +390,14 @@ public partial class CLI {
 
 		// Default to function for other cases
 		return SymbolKind.Function;
+	}
+
+	public async Task CMD_ls_cache(string pattern, bool showKeys, bool showAll) {
+		trace($"Executing ls-cache command with pattern: '{pattern}', keys: {showKeys}, all: {showAll}");
+		List<string> args = ["ls-cache"];
+		if (!string.IsNullOrEmpty(pattern)) args.Add(pattern);
+		if (showKeys) args.AddRange(["--keys"]);
+		if (showAll) args.AddRange(["--all"]);
+		await CMD_ls_cache(args.ToArray());
 	}
 }

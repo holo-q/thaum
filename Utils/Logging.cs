@@ -29,7 +29,7 @@ public static class Logging {
 		Log.Logger = new LoggerConfiguration()
 			.MinimumLevel.Verbose()
 			.WriteTo.Console()
-			.WriteTo.File("output.log", outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+			.WriteTo.File(GLB.OutputLogFile, outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
 			.WriteTo.Seq("http://localhost:5341")
 			.CreateLogger();
 	}
@@ -42,7 +42,7 @@ public static class Logging {
 	public static void SetupTUI() {
 		Log.Logger = new LoggerConfiguration()
 			.MinimumLevel.Verbose()
-			.WriteTo.File("output.log",
+			.WriteTo.File(GLB.OutputLogFile,
 				outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
 				flushToDiskInterval: TimeSpan.FromMilliseconds(500))
 			.WriteTo.Seq("http://localhost:5341")

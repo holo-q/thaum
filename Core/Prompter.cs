@@ -46,7 +46,7 @@ public class Prompter {
 		OptimizationContext context = new OptimizationContext(
 			Level: targetSymbol.Kind is SymbolKind.Function or SymbolKind.Method ? 1 : 2,
 			AvailableKeys: [],                          // No keys for testing
-			CompressionLevel: CompressionLevel.Compress // Not used anymore, just for compatibility
+			PromptName: null // Use default prompt
 		);
 
 		// Build prompt directly
@@ -57,8 +57,7 @@ public class Prompter {
 		println("═══ TESTING LLM RESPONSE ═══");
 
 		// Get model from configuration
-		string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ??
-		               throw new InvalidOperationException("LLM__DefaultModel environment variable is required");
+		string model = GLB.DefaultModel;
 
 		// Setup services
 		HttpClient httpClient  = new();
@@ -66,7 +65,7 @@ public class Prompter {
 
 		// Stream response
 		// TODO this should NOT be hard-coded
-		IAsyncEnumerable<string> streamResponse = await llmProvider.StreamCompleteAsync(prompt, GLB.Compress_Defaults(model));
+		IAsyncEnumerable<string> streamResponse = await llmProvider.StreamCompleteAsync(prompt, GLB.CompressionOptions(model));
 
 		await foreach (string token in streamResponse) {
 			Write(token);
@@ -86,7 +85,7 @@ public class Prompter {
 		OptimizationContext context = new OptimizationContext(
 			Level: targetSymbol.Kind is SymbolKind.Function or SymbolKind.Method ? 1 : 2,
 			AvailableKeys: [],                          // No keys for testing
-			CompressionLevel: CompressionLevel.Compress // Not used anymore, just for compatibility
+			PromptName: null // Use default prompt
 		);
 
 		// Build prompt directly

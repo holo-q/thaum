@@ -210,9 +210,8 @@ public static class CLI_Commands {
 			DefaultValueFactory = _ => "auto"
 		};
 
-		var optCompression = new Option<string>("--compression", "-c") {
-			Description         = "Compression level: optimize, compress, golf, endgame",
-			DefaultValueFactory = _ => "compress"
+		var optPrompt = new Option<string?>("--prompt", "-p") {
+			Description = "Prompt template name (e.g., compress_function_v5, optimize_class, golf_function)"
 		};
 
 		var optEndgame = new Option<bool>("--endgame") {
@@ -222,16 +221,16 @@ public static class CLI_Commands {
 		var cmd = new Command("optimize", "Generate codebase optimizations");
 		cmd.Options.Add(optPath);
 		cmd.Options.Add(optLang);
-		cmd.Options.Add(optCompression);
+		cmd.Options.Add(optPrompt);
 		cmd.Options.Add(optEndgame);
 
 		cmd.SetAction(async (parseResult, cancellationToken) => {
-			var path        = parseResult.GetValue(optPath)!;
-			var lang        = parseResult.GetValue(optLang)!;
-			var compression = parseResult.GetValue(optCompression)!;
-			var endgame     = parseResult.GetValue(optEndgame);
+			var path    = parseResult.GetValue(optPath)!;
+			var lang    = parseResult.GetValue(optLang)!;
+			var prompt  = parseResult.GetValue(optPrompt);
+			var endgame = parseResult.GetValue(optEndgame);
 
-			await cli.CMD_optimize(path, lang, compression, endgame);
+			await cli.CMD_optimize(path, lang, prompt, endgame);
 		});
 
 		return cmd;

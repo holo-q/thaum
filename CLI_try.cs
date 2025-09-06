@@ -199,7 +199,7 @@ public partial class CLI {
 
 			// Set up file watcher if custom prompt is provided
 			if (!string.IsNullOrEmpty(customPrompt)) {
-				string promptsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "prompts");
+				string promptsDirectory = GLB.PromptsDir;
 				string promptFilePath   = Path.Combine(promptsDirectory, $"{customPrompt}.md");
 				if (File.Exists(promptFilePath)) {
 					config.WatchFilePath = promptFilePath;
@@ -250,7 +250,7 @@ public partial class CLI {
 			}
 
 			// Determine prompt name with environment variable support
-			string promptName = customPrompt ?? GLB.GetDefaultPromptFromEnvironment(targetSymbol);
+			string promptName = customPrompt ?? GLB.GetDefaultPrompt(targetSymbol);
 
 			if (nRollouts == 1) {
 				// Single compression
@@ -269,5 +269,25 @@ public partial class CLI {
 			println($"Error during prompt test: {ex.Message}");
 			Environment.Exit(1);
 		}
+	}
+
+	public async Task CMD_try(string filePath, string symbolName, string? promptName, bool interactive, int nRollouts) {
+		trace($"Executing try command: {filePath}::{symbolName}, prompt: {promptName}, interactive: {interactive}, n: {nRollouts}");
+		
+		// Build args for legacy method and delegate
+		List<string> args = ["try", filePath, symbolName];
+		if (!string.IsNullOrEmpty(promptName)) args.AddRange(["--prompt", promptName]);
+		if (interactive) args.Add("--interactive");
+		if (nRollouts != 1) args.AddRange(["--n", nRollouts.ToString()]);
+		
+		await CMD_try(args.ToArray());
+	}
+
+	public async Task CMD_try_lsp(bool showAll, bool cleanup) {
+		trace($"Executing ls-lsp command with showAll: {showAll}, cleanup: {cleanup}");
+		List<string> args = ["ls-lsp"];
+		if (showAll) args.AddRange(["--all"]);
+		if (cleanup) args.AddRange(["--cleanup"]);
+		await CMD_try_lsp(args.ToArray());
 	}
 }
