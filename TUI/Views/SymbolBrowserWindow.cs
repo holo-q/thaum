@@ -136,7 +136,7 @@ public class SymbolBrowserWindow : View {
 		// Setup key bindings
 		KeyBindings.Add(Key.CursorUp, Command.Up);
 		KeyBindings.Add(Key.CursorDown, Command.Down);
-		KeyBindings.Add(Key.Enter, Command.Accept);
+		// Enter -> Command.Accept binding already exists by default in Terminal.Gui v2
 		KeyBindings.Add(Key.Tab, Command.Toggle);
 		KeyBindings.Add(Key.V, Command.Toggle);
 		KeyBindings.Add(Key.V.WithShift, Command.Toggle);
