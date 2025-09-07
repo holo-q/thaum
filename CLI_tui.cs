@@ -15,8 +15,8 @@ namespace Thaum.CLI;
 /// where Terminal.Gui creates immersive development experience
 /// </summary>
 public partial class CLI {
-    [RequiresUnreferencedCode("Uses reflection for TUI component initialization")]
-    public async Task CMD_tui(string projectPath, string language) {
+	[RequiresUnreferencedCode("Uses reflection for TUI component initialization")]
+	public async Task CMD_tui(string projectPath, string language) {
 		trace($"Launching TUI symbol browser for path: {projectPath}, language: {language}");
 
 		try {
@@ -37,21 +37,15 @@ public partial class CLI {
 
 			try {
 				// Create a top-level window
-				var top = new Toplevel() {
-					X = 0,
-					Y = 0,
-					Width = Dim.Fill(),
-					Height = Dim.Fill()
+				var fill = new Toplevel {
+					Width  = Dim.Fill(),
+					Height = Dim.Fill(),
 				};
-				
-				var symbolBrowser = new SymbolBrowserWindow(_crawler, _compressor, _logger, codeMap, projectPath);
-				top.Add(symbolBrowser);
-				
-				Application.Run(top);
+				fill.Add(new SymbolBrowserWindow(_crawler, _compressor, codeMap, projectPath));
+				Application.Run(fill);
 			} finally {
 				Application.Shutdown();
 			}
-
 		} catch (Exception ex) {
 			_logger.LogError(ex, "Error launching TUI symbol browser");
 			println($"Error: {ex.Message}");

@@ -12,7 +12,7 @@ namespace Thaum.TUI.Views;
 /// </summary>
 public class StatusBarView : View {
 	private readonly BrowserState _state;
-	private Label _statusLabel;
+	private Label? _statusLabel;
 	
 	public StatusBarView(BrowserState state) {
 		_state = state;
@@ -20,7 +20,8 @@ public class StatusBarView : View {
 	}
 	
 	private void InitializeComponents() {
-		// v2 API: ColorScheme set automatically
+		// Force terminal colors for proper transparency
+		ColorScheme = Colors.ColorSchemes["Base"];
 		
 		_statusLabel = new Label {
 			X = 1,
@@ -28,7 +29,8 @@ public class StatusBarView : View {
 			Width = Dim.Fill(1),
 			Height = 1,
 			Text = "",
-			TextAlignment = Alignment.Start
+			TextAlignment = Alignment.Start,
+			ColorScheme = Colors.ColorSchemes["Base"]
 		};
 		
 		Add(_statusLabel);

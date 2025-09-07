@@ -24,7 +24,8 @@ public class SymbolTreeView : View {
 	public SymbolTreeView(BrowserState state) {
 		_state = state;
 		
-		// v2 API: ColorScheme set automatically
+		// Force terminal colors for proper transparency
+		ColorScheme = Colors.ColorSchemes["Base"];
 		
 		_listView = new ListView {
 			X = 0,
@@ -32,7 +33,8 @@ public class SymbolTreeView : View {
 			Width = Dim.Fill(),
 			Height = Dim.Fill(),
 			AllowsMarking = false,
-			CanFocus = true
+			CanFocus = true,
+			ColorScheme = Colors.ColorSchemes["Base"]
 		};
 		
 		Add(_listView);
@@ -84,10 +86,12 @@ public class SymbolTreeView : View {
 	
 	private void BuildCompactDisplay() {
 		// Group symbols similar to the ls command output
-		foreach (var fileNode in _state.DisplayNodes) {
-			// Add file header
+		for (int nodeIndex = 0; nodeIndex < _state.DisplayNodes.Count; nodeIndex++) {
+			var fileNode = _state.DisplayNodes[nodeIndex];
+			
+			// Add file header - make it selectable
 			_displayLines.Add($"└── [DIR] {fileNode.Name}");
-			_nodeIndexMap.Add(-1); // File headers are not selectable
+			_nodeIndexMap.Add(nodeIndex); // File headers are now selectable
 			
 			if (fileNode.Children.Any()) {
 				// Group children by symbol kind
@@ -105,8 +109,7 @@ public class SymbolTreeView : View {
 					
 					_displayLines.Add(line);
 					
-					// For compact mode, map to first symbol in group for selection
-					var nodeIndex = _state.DisplayNodes.IndexOf(fileNode);
+					// Map to the same node index for group selection
 					_nodeIndexMap.Add(nodeIndex);
 				}
 			}
@@ -147,7 +150,7 @@ public class SymbolTreeView : View {
 		var selectedLine = _listView.SelectedItem;
 		if (selectedLine >= 0 && selectedLine < _nodeIndexMap.Count) {
 			var nodeIndex = _nodeIndexMap[selectedLine];
-			if (nodeIndex >= 0) {
+			if (nodeIndex >= 0 && nodeIndex < _state.DisplayNodes.Count) {
 				_state.SelectedIndex = nodeIndex;
 			}
 		}

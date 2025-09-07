@@ -48,7 +48,7 @@ public class LSPCrawler : Crawler {
 		throw new NotImplementedException(); // TODO
 	}
 
-	public override Task<string> GetCode(CodeSymbol targetSymbol) => throw new NotImplementedException();
+	public override Task<string?> GetCode(CodeSymbol targetSymbol) => throw new NotImplementedException();
 
 	private static string FindOmniSharpExecutable() {
 		// Try different possible executable names in order of preference
