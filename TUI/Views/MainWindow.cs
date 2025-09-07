@@ -123,7 +123,7 @@ public class MainWindow : Window {
 
 		Task.Run(async () => {
 			try {
-				string? language = LangUtil.DetectLanguage(filePath);
+				string? language = LangUtil.DetectLanguageFromFilePath(filePath);
 				if (language != null) {
 					var codeMap = await _crawler.CrawlFile(filePath);
 					Application.Invoke(() => _symbolList.UpdateSymbols(codeMap.ToList()));

@@ -222,7 +222,7 @@ public static class LangUtil {
 		return extension is ".py" or ".cs" or ".js" or ".ts" or ".rs" or ".go" or ".java" or ".cpp" or ".cc" or ".cxx" or ".c" or ".h" or ".hpp";
 	}
 
-	public static string? DetectLanguage(string filePath) {
+	public static string? DetectLanguageFromFilePath(string filePath) {
 		string extension = Path.GetExtension(filePath).ToLowerInvariant();
 		return extension switch {
 			".py"                     => "python",

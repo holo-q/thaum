@@ -34,7 +34,7 @@ public class TUIHost<TView> where TView : TUIView, new() {
 
 		try {
 			trace("Creating Terminal.Gui main view without borders");
-			// Use a simple View instead of Window to avoid borders
+			// Create a simple view first, will add key handling after TriggerRetry is defined
 			var mainView = new View() {
 				X        = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(),
 				CanFocus = true
@@ -102,20 +102,17 @@ public class TUIHost<TView> where TView : TUIView, new() {
 				}
 			}
 
-			// Global key bindings are handled through the mainView's KeyBindings in v2
+			// Global key bindings are handled through KeyDown event
 			trace("Setting up global key bindings");
-			mainView.KeyBindings.Add(Key.Q, Command.Quit);
-			mainView.KeyBindings.Add(Key.Esc, Command.Quit);
-			mainView.KeyBindings.Add(Key.Space, () => {
-				traceop("User pressed SPACE - attempting manual retry");
-				_ = TriggerRetry("key:SPACE");
-				return true;
-			});
-			mainView.KeyBindings.Add(Key.R, () => {
-				traceop("User pressed R - attempting manual retry");
-				_ = TriggerRetry("key:R");
-				return true;
-			});
+			mainView.KeyDown += (sender, key) => {
+				if (key == Key.Q || key == Key.Esc) {
+					Application.RequestStop();
+				} else if (key == Key.Space) {
+					_ = TriggerRetry("key:SPACE");
+				} else if (key == Key.R) {
+					_ = TriggerRetry("key:R");
+				}
+			};
 
 			trace("Adding components to Terminal.Gui layout - simplified structure");
 			// Simplified structure: TextView directly in main view
