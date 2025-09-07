@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <PublishAot>false</PublishAot>
+        <InvariantGlobalization>true</InvariantGlobalization>
+        <TrimMode>partial</TrimMode>
+        <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+        <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
+        <RootNamespace>Thaum.Core</RootNamespace>
+        <NoWarn>$(NoWarn)</NoWarn>
+        <WarningsAsErrors />
+        <WarningsNotAsErrors />
+        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+        <DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
+        <RestoreUseSkipNonexistentTargets>true</RestoreUseSkipNonexistentTargets>
+        <RestoreNoCache>false</RestoreNoCache>
+        <RestoreIgnoreFailedSources>true</RestoreIgnoreFailedSources>
+        <EnableNETAnalyzers>false</EnableNETAnalyzers>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+        <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+        <WarningLevel>0</WarningLevel>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)'=='Release'">
+        <PublishTrimmed>true</PublishTrimmed>
+        <TrimmerDefaultAction>link</TrimmerDefaultAction>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="OmniSharp.Extensions.LanguageProtocol" Version="0.19.9" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
+        <PackageReference Include="Serilog" Version="4.1.0" />
+        <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+        <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+        <PackageReference Include="Serilog.Sinks.Seq" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+        <PackageReference Include="System.Text.Json" Version="8.0.5" />
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+        <ProjectReference Include="../TreeSitter/src/TreeSitter.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <TrimmerRootAssembly Include="OmniSharp.Extensions.LanguageProtocol" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,54 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Thaum.Core", "Thaum.Core\Thaum.Core.csproj", "{54B7C6B5-4C3A-452C-BC5F-5A93A3AA362A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Thaum.App", "Thaum.App\Thaum.App.csproj", "{00D6FCF1-211E-4F88-BFD3-DF724BAE155B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Thaum.Tests", "Thaum.Tests\Thaum.Tests.csproj", "{25880FED-F6B1-467F-A2B2-89FA1FC00EA1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TreeSitter", "TreeSitter", "{9B20A92D-9B9C-4852-8429-C273AB0A1F9E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TreeSitter", "TreeSitter\src\TreeSitter.csproj", "{A6051C2A-7D0B-4AEC-8274-0C0CBD0F46FA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Terminal.Gui", "Terminal.Gui", "{03FE0956-185C-4B89-86AB-F0764C175DFE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Terminal.Gui", "Terminal.Gui\Terminal.Gui\Terminal.Gui.csproj", "{6C46C5BC-A65B-433B-AD2D-6B09F69F4F9B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{54B7C6B5-4C3A-452C-BC5F-5A93A3AA362A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{54B7C6B5-4C3A-452C-BC5F-5A93A3AA362A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{54B7C6B5-4C3A-452C-BC5F-5A93A3AA362A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{54B7C6B5-4C3A-452C-BC5F-5A93A3AA362A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00D6FCF1-211E-4F88-BFD3-DF724BAE155B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00D6FCF1-211E-4F88-BFD3-DF724BAE155B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00D6FCF1-211E-4F88-BFD3-DF724BAE155B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00D6FCF1-211E-4F88-BFD3-DF724BAE155B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{25880FED-F6B1-467F-A2B2-89FA1FC00EA1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25880FED-F6B1-467F-A2B2-89FA1FC00EA1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25880FED-F6B1-467F-A2B2-89FA1FC00EA1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25880FED-F6B1-467F-A2B2-89FA1FC00EA1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A6051C2A-7D0B-4AEC-8274-0C0CBD0F46FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6051C2A-7D0B-4AEC-8274-0C0CBD0F46FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6051C2A-7D0B-4AEC-8274-0C0CBD0F46FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6051C2A-7D0B-4AEC-8274-0C0CBD0F46FA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6C46C5BC-A65B-433B-AD2D-6B09F69F4F9B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6C46C5BC-A65B-433B-AD2D-6B09F69F4F9B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C46C5BC-A65B-433B-AD2D-6B09F69F4F9B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6C46C5BC-A65B-433B-AD2D-6B09F69F4F9B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A6051C2A-7D0B-4AEC-8274-0C0CBD0F46FA} = {9B20A92D-9B9C-4852-8429-C273AB0A1F9E}
+		{6C46C5BC-A65B-433B-AD2D-6B09F69F4F9B} = {03FE0956-185C-4B89-86AB-F0764C175DFE}
+	EndGlobalSection
+EndGlobal

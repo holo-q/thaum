@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Set Thaum.App as the default startup project -->
+    <DefaultStartupProject>Thaum.App</DefaultStartupProject>
+  </PropertyGroup>
+</Project>
