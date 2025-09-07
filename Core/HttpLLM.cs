@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -91,7 +92,8 @@ public class HttpLLM : LLM {
 		return await SendOpenAIRequest(request);
 	}
 
-	private async Task<string> SendOpenAIRequest(OpenAIRequest request) {
+    [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Serialize<TValue>(TValue, JsonSerializerOptions)")]
+    private async Task<string> SendOpenAIRequest(OpenAIRequest request) {
 		string        baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenAI provider");
 		string        json    = JsonSerializer.Serialize(request, JsonOptions.Default);
 		StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -117,7 +119,8 @@ public class HttpLLM : LLM {
 		}
 	}
 
-	private async Task<string> CompleteAnthropic(string prompt, LLMOptions options) {
+    [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Serialize<TValue>(TValue, JsonSerializerOptions)")]
+    private async Task<string> CompleteAnthropic(string prompt, LLMOptions options) {
 		AnthropicRequest request = new AnthropicRequest {
 			Model = options.Model.Replace("gpt-4", "claude-3-sonnet-20240229"),
 			Messages = [

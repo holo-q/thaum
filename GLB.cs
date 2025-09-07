@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Thaum.Core.Models;
 using Thaum.Core.Services;
+using Thaum.TUI;
 using System.Text.Json;
 
 /// <summary>
@@ -94,20 +95,11 @@ public static class GLB {
 
 	/// <summary>
 	/// Maps symbol names to semantic icons through pattern recognition where naming conventions reveal intent
-	/// where Async gets lightning, where Get reads, where Set writes, where Handle controls
+	/// leveraging centralized IconProvider for consistent Nerd Font integration and graceful fallbacks
 	/// where each icon creates instant visual recognition of method purpose
 	/// </summary>
 	public static string GetSymbolTypeIcon(string symbolName) {
-		// Simple heuristics to determine symbol type
-		if (symbolName.EndsWith("Async")) return "⚡";
-		if (symbolName.StartsWith("Get")) return "📖";
-		if (symbolName.StartsWith("Set") || symbolName.StartsWith("Update")) return "✏️";
-		if (symbolName.StartsWith("Handle")) return "🎛️";
-		if (symbolName.StartsWith("Build") || symbolName.StartsWith("Create")) return "🔨";
-		if (symbolName.StartsWith("Load") || symbolName.StartsWith("Read")) return "📥";
-		if (symbolName.StartsWith("Save") || symbolName.StartsWith("Write")) return "💾";
-		if (symbolName.Contains("Dispose")) return "🗑️";
-		return "🔧";
+		return IconProvider.GetMethodPatternIcon(symbolName);
 	}
 
 	/// <summary>

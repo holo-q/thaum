@@ -1,41 +1,42 @@
-using Terminal.Gui;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
+// ScrollBar is now available directly as Terminal.Gui.Views.ScrollBar
 using Thaum.Core.Models;
 
 namespace Thaum.UI.Views;
 
 public class SummaryView : FrameView {
-	private readonly TextView      _summaryText;
-	private readonly Label         _symbolInfoLabel;
-	private readonly ScrollBarView _scrollBar;
-	private          CodeSymbol?   _currentSymbol;
+	private readonly TextView    _summaryText;
+	private readonly Label       _symbolInfoLabel;
+	private readonly ScrollBar   _scrollBar;
+	private          CodeSymbol? _currentSymbol;
 
-	public SummaryView() : base("Summary") {
-		// Symbol info at the top
-		_symbolInfoLabel = new Label {
-			X             = 1,
-			Y             = 0,
-			Width         = Dim.Fill(1),
-			Height        = 2,
-			TextAlignment = TextAlignment.Left,
-			Text          = "No symbol selected"
-		};
+	public SummaryView() : base() {
+		Title = "Summary";
 
-		// Summary text area
-		_summaryText = new TextView {
-			X        = 1,
-			Y        = 2,
-			Width    = Dim.Fill(2),
-			Height   = Dim.Fill(1),
-			ReadOnly = true,
-			WordWrap = true,
-			Text     = "Select a symbol to view its summary."
-		};
-
-		Add(_symbolInfoLabel, _summaryText);
-
-		// Add scroll bar after adding to the view (Terminal.Gui v1.15.0 requirement)
-		_scrollBar = new ScrollBarView(_summaryText, true);
-		Add(_scrollBar);
+		Add(
+			// Symbol info at the top
+			_symbolInfoLabel = new Label {
+				X             = 1,
+				Y             = 0,
+				Width         = Dim.Fill(1),
+				Height        = 2,
+				TextAlignment = Alignment.Start,
+				Text          = "No symbol selected"
+			},
+			// Summary text area
+			_summaryText = new TextView {
+				X        = 1,
+				Y        = 2,
+				Width    = Dim.Fill(2),
+				Height   = Dim.Fill(1),
+				ReadOnly = true,
+				WordWrap = true,
+				Text     = "Select a symbol to view its summary."
+			},
+			// Add scroll bar after adding to the view (Terminal.Gui v1.15.0 requirement)
+			_scrollBar = new ScrollBar()
+		);
 	}
 
 	public void UpdateSummary(CodeSymbol symbol) {

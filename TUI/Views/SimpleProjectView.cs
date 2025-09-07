@@ -1,4 +1,7 @@
+using System.Collections.ObjectModel;
 using Terminal.Gui;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace Thaum.UI.Views;
 
@@ -8,7 +11,8 @@ public class SimpleProjectView : FrameView {
 
 	public event Action<string?>? FileSelected;
 
-	public SimpleProjectView() : base("Project Files") {
+	public SimpleProjectView() : base() {
+		Title = "Project Files";
 		_listView = new ListView {
 			X      = 0,
 			Y      = 0,
@@ -16,7 +20,7 @@ public class SimpleProjectView : FrameView {
 			Height = Dim.Fill()
 		};
 
-		_listView.OpenSelectedItem += (e) => {
+		_listView.OpenSelectedItem += (sender, e) => {
 			if (e.Item < _files.Count) {
 				FileSelected?.Invoke(_files[e.Item]);
 			}
@@ -36,7 +40,7 @@ public class SimpleProjectView : FrameView {
 				.ToList();
 
 			_files.AddRange(sourceFiles);
-			_listView.SetSource(_files);
+			_listView.SetSource(new ObservableCollection<string>(_files));
 
 			if (_files.Any()) {
 				_listView.SelectedItem = 0;

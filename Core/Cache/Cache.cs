@@ -7,6 +7,7 @@ using Thaum.CLI;
 using Thaum.CLI.Models;
 using Thaum.Core.Models;
 using Thaum.Utils;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Thaum.Core.Services;
 
@@ -139,12 +140,13 @@ public class Cache : ICache {
 		_logger.LogDebug("Cache database initialized with prompt and model tracking");
 	}
 
-	/// <summary>
-	/// Retrieves cached value checking expiration where last-accessed tracking enables LRU
-	/// eviction strategies where generic deserialization preserves type safety where null
-	/// return indicates miss enabling caller to decide fallback strategy
-	/// </summary>
-	public async Task<T?> GetAsync<T>(string key) where T : class {
+    /// <summary>
+    /// Retrieves cached value checking expiration where last-accessed tracking enables LRU
+    /// eviction strategies where generic deserialization preserves type safety where null
+    /// return indicates miss enabling caller to decide fallback strategy
+    /// </summary>
+    [RequiresUnreferencedCode("Uses reflection for JSON deserialization")]
+    public async Task<T?> GetAsync<T>(string key) where T : class {
 		try {
 			long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
@@ -182,12 +184,13 @@ public class Cache : ICache {
 		return await GetAsync<T>(key);
 	}
 
-	/// <summary>
-	/// Stores value with optional metadata where prompt deduplication via hashing saves space
-	/// where model/provider tracking enables cache analysis where expiration enables automatic
-	/// cleanup where atomic upsert prevents race conditions in concurrent scenarios
-	/// </summary>
-	public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, string? promptName = null, string? promptContent = null, string? modelName = null, string? providerName = null) where T : class {
+    /// <summary>
+    /// Stores value with optional metadata where prompt deduplication via hashing saves space
+    /// where model/provider tracking enables cache analysis where expiration enables automatic
+    /// cleanup where atomic upsert prevents race conditions in concurrent scenarios
+    /// </summary>
+    [RequiresUnreferencedCode("Uses reflection for JSON serialization")]
+    public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, string? promptName = null, string? promptContent = null, string? modelName = null, string? providerName = null) where T : class {
 		try {
 			long  now       = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 			long? expiresAt = expiration.HasValue ? now + (long)expiration.Value.TotalSeconds : (long?)null;

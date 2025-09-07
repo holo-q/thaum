@@ -9,19 +9,19 @@ class TestLogger {
 
 		// Test normal mode
 		println("Testing normal mode:");
-		Tracer.Initialize(logger, false);
-		Tracer.tracein();
-		Tracer.trace("This should go to console");
-		Tracer.traceout();
+		Initialize(logger, false);
+		tracein();
+		trace("This should go to console");
+		traceout();
 
 		// Test interactive mode
 		println("\nTesting interactive mode:");
-		Tracer.Dispose();
-		Tracer.Initialize(logger, true);
-		Tracer.tracein();
-		Tracer.trace("This should go to interactive.log");
-		Tracer.traceout();
-		Tracer.Dispose();
+		Dispose();
+		Initialize(logger, true);
+		tracein();
+		trace("This should go to interactive.log");
+		traceout();
+		Dispose();
 
 		println("Done! Check for interactive.log file.");
 	}

@@ -1,4 +1,7 @@
 using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace Thaum.UI.Views;
 
@@ -11,7 +14,8 @@ public class ProgressView : Window {
 
 	public event Action? Cancelled;
 
-	public ProgressView() : base("Processing") {
+	public ProgressView() : base() {
+		Title = "Processing";
 		Width  = 60;
 		Height = 10;
 
@@ -22,7 +26,7 @@ public class ProgressView : Window {
 			Width         = Dim.Fill(1),
 			Height        = 1,
 			Text          = "Processing...",
-			TextAlignment = TextAlignment.Centered
+			TextAlignment = Alignment.Center
 		};
 
 		// Progress bar
@@ -40,15 +44,16 @@ public class ProgressView : Window {
 			Width         = Dim.Fill(1),
 			Height        = 2,
 			Text          = "",
-			TextAlignment = TextAlignment.Left
+			TextAlignment = Alignment.Start
 		};
 
 		// Cancel button
-		_cancelButton = new Button("Cancel") {
+		_cancelButton = new Button() {
+			Text = "Cancel",
 			X = Pos.Center(),
 			Y = Pos.Bottom(this) - 2
 		};
-		_cancelButton.Clicked += () => OnCancelClicked();
+		_cancelButton.Accepting += (sender, e) => OnCancelClicked();
 
 		Add(_statusLabel, _progressBar, _detailsLabel, _cancelButton);
 	}
@@ -66,7 +71,7 @@ public class ProgressView : Window {
 	}
 
 	public void UpdateProgress(float fraction, string? details = null) {
-		Application.MainLoop.Invoke(() => {
+		Application.Invoke(() => {
 			_progressBar.Fraction = Math.Clamp(fraction, 0f, 1f);
 
 			if (details != null) {
@@ -76,13 +81,13 @@ public class ProgressView : Window {
 	}
 
 	public void UpdateStatus(string status) {
-		Application.MainLoop.Invoke(() => {
+		Application.Invoke(() => {
 			_statusLabel.Text = status;
 		});
 	}
 
 	public void Complete(string? finalStatus = null) {
-		Application.MainLoop.Invoke(() => {
+		Application.Invoke(() => {
 			if (finalStatus != null) {
 				_statusLabel.Text = finalStatus;
 			}
@@ -92,7 +97,7 @@ public class ProgressView : Window {
 
 			// Auto-hide after a short delay
 			Task.Delay(1500).ContinueWith(_ => {
-				Application.MainLoop.Invoke(() => Visible = false);
+				Application.Invoke(() => Visible = false);
 			});
 		});
 	}

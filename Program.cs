@@ -36,7 +36,7 @@ public static class Program {
 				Environment.Exit(1);
 			} finally {
 				// Ensure trace logger resources are cleaned up
-				Tracer.Dispose();
+				Dispose();
 				// Ensure Serilog flushes and disposes properly
 				Log.CloseAndFlush();
 			}

@@ -1,5 +1,9 @@
+using System.Collections.ObjectModel;
 using Terminal.Gui;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 using Thaum.Core.Models;
+using Thaum.TUI;
 
 namespace Thaum.UI.Views;
 
@@ -9,7 +13,8 @@ public class SymbolListView : FrameView {
 
 	public event Action<CodeSymbol?>? SelectionChanged;
 
-	public SymbolListView() : base("Symbols") {
+	public SymbolListView() : base() {
+		Title = "Symbols";
 		_listView = new ListView {
 			X             = 0,
 			Y             = 0,
@@ -54,45 +59,23 @@ public class SymbolListView : FrameView {
 	}
 
 	private void RefreshList() {
-		string[] items = _symbols.Select(FormatSymbolItem).ToArray();
+		var items = new ObservableCollection<string>(_symbols.Select(FormatSymbolItem));
 		_listView.SetSource(items);
 
-		if (items.Length > 0) {
+		if (items.Count > 0) {
 			_listView.SelectedItem = 0;
 		}
 	}
 
 	private string FormatSymbolItem(CodeSymbol symbol) {
-		string icon   = GetSymbolIcon(symbol.Kind);
-		string status = GetSymbolStatus(symbol);
+		string icon   = IconProvider.GetSymbolKindIcon(symbol.Kind);
+		string status = IconProvider.GetSymbolStatusIcon(symbol);
 
 		return $"{icon} {symbol.Name} {status}";
 	}
 
-	private static string GetSymbolIcon(SymbolKind kind) {
-		return kind switch {
-			SymbolKind.Function  => "ƒ",
-			SymbolKind.Method    => "ƒ",
-			SymbolKind.Class     => "C",
-			SymbolKind.Interface => "I",
-			SymbolKind.Module    => "M",
-			SymbolKind.Namespace => "N",
-			SymbolKind.Property  => "P",
-			SymbolKind.Field     => "F",
-			SymbolKind.Variable  => "V",
-			SymbolKind.Parameter => "p",
-			_                    => "?"
-		};
-	}
 
-	private static string GetSymbolStatus(CodeSymbol symbol) {
-		if (symbol.IsSummarized) {
-			return symbol.HasExtractedKey ? "[✓K]" : "[✓]";
-		}
-		return "[ ]";
-	}
-
-	private void OnSelectionChanged(EventArgs args) {
+	private void OnSelectionChanged(object? sender, ListViewItemEventArgs args) {
 		int selectedItem = _listView.SelectedItem;
 		if (selectedItem >= 0 && selectedItem < _symbols.Count) {
 			SelectionChanged?.Invoke(_symbols[selectedItem]);

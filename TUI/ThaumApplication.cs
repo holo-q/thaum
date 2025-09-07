@@ -1,5 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 using Thaum.Core.Services;
 using Thaum.UI.Views;
 
@@ -20,7 +24,8 @@ public class ThaumApplication : IDisposable {
 		_logger             = logger;
 	}
 
-	public async Task RunAsync() {
+    [RequiresUnreferencedCode("Uses reflection for application initialization")]
+    public async Task RunAsync() {
 		_logger.LogInformation("Starting Thaum application");
 
 		try {
@@ -44,7 +49,10 @@ public class ThaumApplication : IDisposable {
 	// Key handling moved to MainWindow for v1.15.0 compatibility
 
 	private void ShowHelp() {
-		Dialog helpDialog = new Dialog("Help", 80, 20) {
+		Dialog helpDialog = new Dialog() {
+			Title = "Help",
+			Width = 80,
+			Height = 20,
 			Modal = true
 		};
 
@@ -57,11 +65,12 @@ public class ThaumApplication : IDisposable {
 			Text     = GetHelpText()
 		};
 
-		Button closeButton = new Button("Close") {
+		Button closeButton = new Button() {
+			Text = "Close",
 			X = Pos.Center(),
 			Y = Pos.Bottom(helpDialog) - 3
 		};
-		closeButton.Clicked += () => helpDialog.RequestStop();
+		closeButton.Accepting += (sender, e) => helpDialog.RequestStop();
 
 		helpDialog.Add(helpText, closeButton);
 		Application.Run(helpDialog);

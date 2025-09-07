@@ -1,0 +1,3 @@
+[submodule "external/Terminal.Gui"]
+	path = external/Terminal.Gui
+	url = https://github.com/gui-cs/Terminal.Gui.git

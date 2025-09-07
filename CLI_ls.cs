@@ -18,7 +18,8 @@ public record LsOptions(string ProjectPath, string Language, int MaxDepth, bool 
 /// where perceptual coloring creates semantic visual feedback
 /// </summary>
 public partial class CLI {
-	public async Task CMD_ls(LsOptions options) {
+    [RequiresUnreferencedCode("Uses reflection for object serialization")]
+    public async Task CMD_ls(LsOptions options) {
 		trace($"Executing ls command with options: {options}");
 
 		// Handle assembly specifiers
@@ -70,7 +71,8 @@ public partial class CLI {
 		println($"\nFound {codeMap.Count} symbols total");
 	}
 
-	private async Task CMD_ls_dotnet(string assemblyName, LsOptions options) {
+    [RequiresUnreferencedCode("Calls Thaum.CLI.CLI.CMD_ls_binary(Assembly, LsOptions)")]
+    private async Task CMD_ls_dotnet(string assemblyName, LsOptions options) {
 		// Load and handle assembly listing
 		var assemblies = AppDomain.CurrentDomain.GetAssemblies();
 		var matchedAssembly = assemblies.FirstOrDefault(a =>

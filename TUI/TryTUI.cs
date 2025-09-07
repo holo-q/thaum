@@ -12,7 +12,7 @@ public class TryTUI : TUIView {
 	private Crawler? _languageServer;
 	private ILogger? _logger;
 
-	public override void Initialize(Terminal.Gui.View container) {
+	public override void Initialize(Terminal.Gui.ViewBase.View container) {
 		// Store parameters passed via TuiConfiguration
 		// The actual TextView setup is handled by InteractiveTuiHost
 	}

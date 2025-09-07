@@ -1,14 +1,22 @@
 using Microsoft.Extensions.Logging;
 using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.Input;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
+using MenuBar = Terminal.Gui.Views.MenuBarv2;
+using MenuItem = Terminal.Gui.Views.MenuItemv2;
+using MenuBarItem = Terminal.Gui.Views.MenuBarItemv2;
 using Thaum.Core.Models;
 using Thaum.Core.Services;
+using Thaum.Utils;
 
 namespace Thaum.UI.Views;
 
 public class MainWindow : Window {
-	private readonly Crawler _crawler;
-	private readonly Compressor  _compressor;
-	private readonly ILogger     _logger;
+	private readonly Crawler    _crawler;
+	private readonly Compressor _compressor;
+	private readonly ILogger    _logger;
 
 	private readonly MenuBar           _menuBar;
 	private readonly SimpleProjectView _projectView;
@@ -21,12 +29,13 @@ public class MainWindow : Window {
 	private SymbolHierarchy? _currentHierarchy;
 
 	public MainWindow(
-		Crawler crawler,
-		Compressor  compressor,
-		ILogger     logger) : base("Thaum - LSP Codebase Summarizer") {
-		_crawler = crawler;
-		_compressor         = compressor;
-		_logger             = logger;
+		Crawler    crawler,
+		Compressor compressor,
+		ILogger    logger) : base() {
+		Title       = "Thaum - LSP Codebase Summarizer";
+		_crawler    = crawler;
+		_compressor = compressor;
+		_logger     = logger;
 
 		Width  = Dim.Fill();
 		Height = Dim.Fill();
@@ -81,9 +90,9 @@ public class MainWindow : Window {
 		// Status bar
 		_statusBar = new StatusBar([
 			new(Key.F1, "~F1~ Help", () => { }),
-			new(Key.CtrlMask | Key.O, "~Ctrl+O~ Open", OpenProject),
-			new(Key.CtrlMask | Key.S, "~Ctrl+S~ Summarize", StartSummarization),
-			new(Key.CtrlMask | Key.Q, "~Ctrl+Q~ Quit", () => Application.RequestStop())
+			new(Key.O.WithCtrl, "~Ctrl+O~ Open", OpenProject),
+			new(Key.S.WithCtrl, "~Ctrl+S~ Summarize", StartSummarization),
+			new(Key.Q.WithCtrl, "~Ctrl+Q~ Quit", () => Application.RequestStop())
 		]);
 
 		mainContainer.Add(_projectView, _symbolList, _summaryView);
@@ -92,20 +101,20 @@ public class MainWindow : Window {
 
 	private MenuBar CreateMenuBar() {
 		return new MenuBar([
-			new("_File", new MenuItem[] {
-				new("_Open Project...", "Ctrl+O", OpenProject),
+			new MenuBarItem("_File", [
+				new MenuItem { Title = "_Open Project...", HelpText = "Ctrl+O", Key = Key.O.WithCtrl, Action = OpenProject },
 				null!, // Separator
-				new("_Exit", "Ctrl+Q", () => Application.RequestStop())
-			}),
-			new("_Tools", new MenuItem[] {
-				new("_Start Summarization", "Ctrl+S", StartSummarization),
-				new("_Refresh Symbols", "Ctrl+R", RefreshSymbols),
-				null!,
-				new("_Clear Cache", "", ClearCache)
-			}),
-			new("_Help", new MenuItem[] {
-				new("_About", "", ShowAbout)
-			})
+				new MenuItem { Title = "_Exit", HelpText = "Ctrl+Q", Key = Key.Q.WithCtrl, Command = Command.Quit }
+			]),
+			new MenuBarItem("_Tools", [
+				new MenuItem { Title = "_Start Summarization", HelpText = "Ctrl+S", Key = Key.S.WithCtrl, Action = StartSummarization },
+				new MenuItem { Title = "_Refresh Symbols", HelpText     = "Ctrl+R", Key = Key.R.WithCtrl, Action = RefreshSymbols },
+				null!, // Separator
+				new MenuItem { Title = "_Clear Cache", HelpText = "", Action = ClearCache }
+			]),
+			new MenuBarItem("_Help", [
+				new MenuItem { Title = "_About", HelpText = "", Action = ShowAbout }
+			])
 		]);
 	}
 
@@ -114,14 +123,14 @@ public class MainWindow : Window {
 
 		Task.Run(async () => {
 			try {
-				string? language = DetectLanguage(filePath);
+				string? language = LangUtil.DetectLanguage(filePath);
 				if (language != null) {
 					var codeMap = await _crawler.CrawlFile(filePath);
-					Application.MainLoop.Invoke(() => _symbolList.UpdateSymbols(codeMap.ToList()));
+					Application.Invoke(() => _symbolList.UpdateSymbols(codeMap.ToList()));
 				}
 			} catch (Exception ex) {
 				_logger.LogError(ex, "Error loading symbols for file {FilePath}", filePath);
-				Application.MainLoop.Invoke(() => SetStatusText($"Error: {ex.Message}"));
+				Application.Invoke(() => SetStatusText($"Error: {ex.Message}"));
 			}
 		});
 	}
@@ -136,9 +145,9 @@ public class MainWindow : Window {
 	}
 
 	private void OpenProject() {
-		OpenDialog dialog = new OpenDialog("Open Project", "Select project folder") {
-			CanChooseDirectories    = true,
-			CanChooseFiles          = false,
+		OpenDialog dialog = new OpenDialog {
+			Title                   = "Open Project",
+			OpenMode                = OpenMode.Directory,
 			AllowsMultipleSelection = false
 		};
 
@@ -154,29 +163,29 @@ public class MainWindow : Window {
 	private void LoadProject(string projectPath) {
 		Task.Run(async () => {
 			try {
-				Application.MainLoop.Invoke(() => SetStatusText("Loading project..."));
+				Application.Invoke(() => SetStatusText("Loading project..."));
 
 				_currentProjectPath = projectPath;
 
 				// Detect primary language
-				string? language = DetectPrimaryLanguage(projectPath);
+				string? language = LangUtil.DetectPrimaryLanguage(projectPath);
 				if (language == null) {
-					Application.MainLoop.Invoke(() => SetStatusText("No supported language detected"));
+					Application.Invoke(() => SetStatusText("No supported language detected"));
 					return;
 				}
 
 				// Load project structure
 				List<string> projectFiles = Directory.GetFiles(projectPath, "*.*", SearchOption.AllDirectories)
-					.Where(IsSourceFile)
+					.Where(LangUtil.IsSourceFile)
 					.ToList();
 
-				Application.MainLoop.Invoke(() => {
+				Application.Invoke(() => {
 					_projectView.LoadFiles(projectPath);
 					SetStatusText($"Loaded {projectFiles.Count} files from {Path.GetFileName(projectPath)}");
 				});
 			} catch (Exception ex) {
 				_logger.LogError(ex, "Error loading project {ProjectPath}", projectPath);
-				Application.MainLoop.Invoke(() => SetStatusText($"Error: {ex.Message}"));
+				Application.Invoke(() => SetStatusText($"Error: {ex.Message}"));
 			}
 		});
 	}
@@ -189,28 +198,28 @@ public class MainWindow : Window {
 
 		Task.Run(async () => {
 			try {
-				Application.MainLoop.Invoke(() => {
+				Application.Invoke(() => {
 					_progressView.Start("Summarizing codebase...");
 					_progressView.Visible = true;
 				});
 
-				string? language = DetectPrimaryLanguage(_currentProjectPath);
+				string? language = LangUtil.DetectPrimaryLanguage(_currentProjectPath);
 				if (language == null) {
-					Application.MainLoop.Invoke(() => SetStatusText("No supported language detected"));
+					Application.Invoke(() => SetStatusText("No supported language detected"));
 					return;
 				}
 
 				SymbolHierarchy hierarchy = await _compressor.ProcessCodebaseAsync(_currentProjectPath, language);
 				_currentHierarchy = hierarchy;
 
-				Application.MainLoop.Invoke(() => {
+				Application.Invoke(() => {
 					_progressView.Visible = false;
 					_symbolList.UpdateHierarchy(hierarchy);
 					SetStatusText($"Summarization completed - {hierarchy.RootSymbols.Count} root symbols");
 				});
 			} catch (Exception ex) {
 				_logger.LogError(ex, "Error during summarization");
-				Application.MainLoop.Invoke(() => {
+				Application.Invoke(() => {
 					_progressView.Visible = false;
 					SetStatusText($"Summarization error: {ex.Message}");
 				});
@@ -223,17 +232,17 @@ public class MainWindow : Window {
 
 		Task.Run(async () => {
 			try {
-				string? language = DetectPrimaryLanguage(_currentProjectPath);
+				string? language = LangUtil.DetectPrimaryLanguage(_currentProjectPath);
 				if (language != null) {
 					var codeMap = await _crawler.CrawlDir(_currentProjectPath);
-					Application.MainLoop.Invoke(() => {
+					Application.Invoke(() => {
 						_symbolList.UpdateSymbols(codeMap.ToList());
 						SetStatusText($"Refreshed {codeMap.Count} symbols");
 					});
 				}
 			} catch (Exception ex) {
 				_logger.LogError(ex, "Error refreshing symbols");
-				Application.MainLoop.Invoke(() => SetStatusText($"Refresh error: {ex.Message}"));
+				Application.Invoke(() => SetStatusText($"Refresh error: {ex.Message}"));
 			}
 		});
 	}
@@ -254,52 +263,8 @@ public class MainWindow : Window {
 
 	private void SetStatusText(string text) {
 		// Update the first status item with the message
-		_statusBar.Items[0] = new StatusItem(Key.Null, text, null);
-	}
-
-	private static string? DetectLanguage(string filePath) {
-		string extension = Path.GetExtension(filePath).ToLowerInvariant();
-		return extension switch {
-			".py"                     => "python",
-			".cs"                     => "c-sharp",
-			".js"                     => "javascript",
-			".ts"                     => "typescript",
-			".rs"                     => "rust",
-			".go"                     => "go",
-			".java"                   => "java",
-			".cpp" or ".cc" or ".cxx" => "cpp",
-			".c"                      => "c",
-			_                         => null
-		};
-	}
-
-	private static string? DetectPrimaryLanguage(string projectPath) {
-		string[] files = Directory.GetFiles(projectPath, "*.*", SearchOption.AllDirectories);
-		Dictionary<string, int> extensionCounts = files
-			.Select(Path.GetExtension)
-			.Where(ext => !string.IsNullOrEmpty(ext))
-			.GroupBy(ext => ext.ToLowerInvariant())
-			.ToDictionary(g => g.Key, g => g.Count());
-
-		Dictionary<string, string> languageMap = new Dictionary<string, string> {
-			[".py"] = "python",
-			[".cs"] = "c-sharp",
-			[".js"] = "javascript",
-			[".ts"] = "typescript",
-			[".rs"] = "rust",
-			[".go"] = "go"
-		};
-
-		KeyValuePair<string, int> primaryExtension = extensionCounts
-			.Where(kv => languageMap.ContainsKey(kv.Key))
-			.OrderByDescending(kv => kv.Value)
-			.FirstOrDefault();
-
-		return primaryExtension.Key != null ? languageMap[primaryExtension.Key] : null;
-	}
-
-	private static bool IsSourceFile(string filePath) {
-		string extension = Path.GetExtension(filePath).ToLowerInvariant();
-		return extension is ".py" or ".cs" or ".js" or ".ts" or ".rs" or ".go" or ".java" or ".cpp" or ".cc" or ".cxx" or ".c" or ".h" or ".hpp";
+		if (_statusBar.SubViews.Count > 0 && _statusBar.SubViews.ElementAt(0) is Shortcut firstShortcut) {
+			firstShortcut.Title = text;
+		}
 	}
 }

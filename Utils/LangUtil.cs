@@ -191,4 +191,50 @@ public static class LangUtil {
 			? language
 			: LangUtil.DetectLanguage(projectPath);
 	}
+
+	public static string? DetectPrimaryLanguage(string projectPath) {
+		string[] files = Directory.GetFiles(projectPath, "*.*", SearchOption.AllDirectories);
+		Dictionary<string, int> extensionCounts = files
+			.Select(Path.GetExtension)
+			.Where(ext => !string.IsNullOrEmpty(ext))
+			.GroupBy(ext => ext.ToLowerInvariant())
+			.ToDictionary(g => g.Key, g => g.Count());
+
+		Dictionary<string, string> languageMap = new Dictionary<string, string> {
+			[".py"] = "python",
+			[".cs"] = "c-sharp",
+			[".js"] = "javascript",
+			[".ts"] = "typescript",
+			[".rs"] = "rust",
+			[".go"] = "go"
+		};
+
+		KeyValuePair<string, int> primaryExtension = extensionCounts
+			.Where(kv => languageMap.ContainsKey(kv.Key))
+			.OrderByDescending(kv => kv.Value)
+			.FirstOrDefault();
+
+		return primaryExtension.Key != null ? languageMap[primaryExtension.Key] : null;
+	}
+
+	public static bool IsSourceFile(string filePath) {
+		string extension = Path.GetExtension(filePath).ToLowerInvariant();
+		return extension is ".py" or ".cs" or ".js" or ".ts" or ".rs" or ".go" or ".java" or ".cpp" or ".cc" or ".cxx" or ".c" or ".h" or ".hpp";
+	}
+
+	public static string? DetectLanguage(string filePath) {
+		string extension = Path.GetExtension(filePath).ToLowerInvariant();
+		return extension switch {
+			".py"                     => "python",
+			".cs"                     => "c-sharp",
+			".js"                     => "javascript",
+			".ts"                     => "typescript",
+			".rs"                     => "rust",
+			".go"                     => "go",
+			".java"                   => "java",
+			".cpp" or ".cc" or ".cxx" => "cpp",
+			".c"                      => "c",
+			_                         => null
+		};
+	}
 }

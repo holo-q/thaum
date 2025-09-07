@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Thaum.CLI.Models;
@@ -18,7 +19,8 @@ internal class AssemblyCommands {
 		_colorer = colorer;
 	}
 
-	public async Task HandleAssemblyListing(Assembly assembly, LsOptions options) {
+    [RequiresUnreferencedCode("Calls System.Reflection.Assembly.GetTypes()")]
+    public async Task HandleAssemblyListing(Assembly assembly, LsOptions options) {
 		println($"Scanning assembly {assembly.GetName().Name}...");
 
 		try {
@@ -120,7 +122,8 @@ internal class AssemblyCommands {
 		await Task.CompletedTask;
 	}
 
-	public async Task HandleLoadedAssemblyListing(string assemblyNamePattern, LsOptions options) {
+    [RequiresUnreferencedCode("Calls System.Reflection.Assembly.GetTypes()")]
+    public async Task HandleLoadedAssemblyListing(string assemblyNamePattern, LsOptions options) {
 		println($"Searching for loaded assemblies matching '{assemblyNamePattern}'...");
 
 		try {

@@ -38,8 +38,13 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Remove="external/**" />
+        <None Include="external/**" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="System.CommandLine" Version="2.0.0-beta7.25380.108" />
-        <PackageReference Include="Terminal.Gui" Version="1.15.0" />
+        <PackageReference Include="Terminal.Gui" Version="2.0.0-develop.4530" />
         <PackageReference Include="OmniSharp.Extensions.LanguageProtocol" Version="0.19.9" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
