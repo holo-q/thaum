@@ -48,7 +48,7 @@ public class RegexCrawler : Crawler {
 		throw new InvalidOperationException("The regex crawler does not support reference crawling. LSPs are required for this.");
 	}
 
-	public override Task<string> GetCode(CodeSymbol targetSymbol) => throw new NotImplementedException();
+	public override Task<string?> GetCode(CodeSymbol targetSymbol) => throw new NotImplementedException();
 
 	private async Task<List<CodeSymbol>> ExtractSymbol(string filePath) {
 		List<CodeSymbol> symbols = [];

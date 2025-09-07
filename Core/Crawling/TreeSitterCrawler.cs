@@ -58,7 +58,7 @@ public class TreeSitterCrawler : Crawler {
 		throw new InvalidOperationException("The TreeSitter crawler does not support reference crawling. LSPs are required for this.");
 	}
 
-	public override Task<string> GetCode(CodeSymbol targetSymbol) => throw new NotImplementedException();
+	public override Task<string?> GetCode(CodeSymbol targetSymbol) => throw new NotImplementedException();
 
 	/// <summary>
 	/// Legacy compatibility - crawls directory and returns symbols as list
