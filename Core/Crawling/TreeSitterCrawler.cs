@@ -75,6 +75,7 @@ public class TreeSitterCrawler : Crawler {
 			// Find all source files for the language using language-agnostic approach
 			List<string> sourceFiles = Directory.GetFiles(dirpath, "*.*", SearchOption.AllDirectories)
 				.Where(f => LangUtil.IsSourceFileForLanguage(f, lang))
+				.Where(f => !ProjectExclusions.ShouldExclude(f, dirpath, lang))
 				.ToList();
 
 			_logger.LogDebug("Found {Count} {Language} files to parse", sourceFiles.Count, lang);

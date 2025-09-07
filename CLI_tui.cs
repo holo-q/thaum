@@ -1,6 +1,9 @@
 using Microsoft.Extensions.Logging;
 using Thaum.TUI.Views;
+using Terminal.Gui;
 using Terminal.Gui.App;
+using Terminal.Gui.Views;
+using Terminal.Gui.ViewBase;
 using static Thaum.Core.Utils.Tracer;
 using System.Diagnostics.CodeAnalysis;
 
@@ -33,9 +36,18 @@ public partial class CLI {
 			Application.Init();
 
 			try {
+				// Create a top-level window
+				var top = new Toplevel() {
+					X = 0,
+					Y = 0,
+					Width = Dim.Fill(),
+					Height = Dim.Fill()
+				};
+				
 				var symbolBrowser = new SymbolBrowserWindow(_crawler, _compressor, _logger, codeMap, projectPath);
-				Application.Top.Add(symbolBrowser);
-				Application.Run();
+				top.Add(symbolBrowser);
+				
+				Application.Run(top);
 			} finally {
 				Application.Shutdown();
 			}
