@@ -47,9 +47,14 @@ public static class FidelityEvaluator {
         if (!report.HasTriad) notes.Add("No triad available");
         if (!report.TriadComplete) notes.Add("Triad missing one or more blocks");
 
+        // Optional signature gate (C#): name should match symbol's name when extracted
+        if (!string.IsNullOrWhiteSpace(report.SigName) && !string.Equals(report.SigName, symbol.Name, StringComparison.Ordinal)) {
+            notes.Add($"Signature name mismatch: extracted='{report.SigName}' symbol='{symbol.Name}'");
+        }
+
         // Minimal gate: triad present + complete + non-trivial function (has any structure)
         report.PassedMinGate = report.HasTriad && report.TriadComplete && (awaitCount + branchCount + callHeur > 0);
-
+        
         report.Notes = notes.ToArray();
         return report;
     }

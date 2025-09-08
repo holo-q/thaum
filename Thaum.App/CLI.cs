@@ -95,6 +95,7 @@ public partial class CLI {
         root.Subcommands.Add(CreateTryCommand(cli));
         root.Subcommands.Add(CreateOptimizeCommand(cli));
         root.Subcommands.Add(CreateEvalCommand(cli));
+        root.Subcommands.Add(CreateEvalCompressionCommand(cli));
         root.Subcommands.Add(CreateTuiCommand(cli));
 
 		return root;
@@ -329,6 +330,32 @@ public partial class CLI {
             var triad  = parseResult.GetValue(optTriad);
 
             await cli.CMD_eval(file, symbol, triad);
+        });
+
+        return cmd;
+    }
+
+    private static Command CreateEvalCompressionCommand(CLI cli) {
+        var optPath = new Option<string>("--path") {
+            Description = "Root directory to evaluate",
+            DefaultValueFactory = _ => Directory.GetCurrentDirectory()
+        };
+        var optLang = new Option<string>("--lang") {
+            Description = "Programming language (or 'auto')",
+            DefaultValueFactory = _ => "auto"
+        };
+        var optOut = new Option<string?>("--out") { Description = "CSV output path (optional)" };
+
+        var cmd = new Command("eval-compression", "Batch evaluation across a directory");
+        cmd.Options.Add(optPath);
+        cmd.Options.Add(optLang);
+        cmd.Options.Add(optOut);
+
+        cmd.SetAction(async (parseResult, cancellationToken) => {
+            var path = parseResult.GetValue(optPath)!;
+            var lang = parseResult.GetValue(optLang)!;
+            var outp = parseResult.GetValue(optOut);
+            await cli.CMD_eval_compression(path, lang, outp);
         });
 
         return cmd;

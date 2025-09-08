@@ -325,6 +325,8 @@ public partial class CLI {
         string language = Thaum.Utils.LangUtil.DetectLanguageFromFile(filePath);
         var report = Thaum.Core.Eval.FidelityEvaluator.EvaluateFunction(symbol, src, triad, language);
         println($"Fidelity: {(report.PassedMinGate ? "PASS" : "FAIL")}  Await={report.AwaitCountSrc} Branch={report.BranchCountSrc} Calls≈{report.CallHeurSrc}");
+        await ArtifactSaver.SaveFidelityAsync(symbol, report);
+
         if (report.Notes.Length > 0) {
             println("Notes:");
             foreach (var n in report.Notes) println($"  - {n}");
