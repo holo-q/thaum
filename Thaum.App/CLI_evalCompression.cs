@@ -14,7 +14,7 @@ public partial class CLI {
             .Where(f => LangUtil.IsSourceFileForLanguage(f, lang))
             .ToList();
 
-        var rows = new List<string> { "file,symbol,await,branch,calls,passed,notes" };
+        var rows = new List<string> { "file,symbol,await,branch,calls,blocks,elses,passed,notes" };
 
         foreach (var file in files) {
             try {
@@ -23,10 +23,10 @@ public partial class CLI {
                     string src = await _crawler.GetCode(sym) ?? string.Empty;
                     var report = Thaum.Core.Eval.FidelityEvaluator.EvaluateFunction(sym, src, null, lang);
                     string note = string.Join("; ", report.Notes);
-                    rows.Add($"{Path.GetRelativePath(root,file)},{sym.Name},{report.AwaitCountSrc},{report.BranchCountSrc},{report.CallHeurSrc},{report.PassedMinGate},{note.Replace(',', ' ')}");
+                    rows.Add($"{Path.GetRelativePath(root,file)},{sym.Name},{report.AwaitCountSrc},{report.BranchCountSrc},{report.CallHeurSrc},{report.BlockCountSrc},{report.ElseCountSrc},{report.PassedMinGate},{note.Replace(',', ' ')}");
                 }
             } catch (Exception ex) {
-                rows.Add($"{Path.GetRelativePath(root,file)},<error>,0,0,0,false,{ex.Message.Replace(',', ' ')}");
+                rows.Add($"{Path.GetRelativePath(root,file)},<error>,0,0,0,0,0,false,{ex.Message.Replace(',', ' ')}");
             }
         }
 
@@ -39,4 +39,3 @@ public partial class CLI {
         }
     }
 }
-

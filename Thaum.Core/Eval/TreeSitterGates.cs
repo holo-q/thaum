@@ -3,7 +3,7 @@ using TreeSitter;
 
 namespace Thaum.Core.Eval;
 
-public record AstSignals(int AwaitCount, int BranchCount, int CallCount);
+public record AstSignals(int AwaitCount, int BranchCount, int CallCount, int BlockCount, int ElseCount);
 
 public static class TreeSitterGates {
     public static AstSignals AnalyzeFunctionSource(string language, string sourceCode) {
@@ -15,16 +15,18 @@ public static class TreeSitterGates {
                 using var tree = parser.Parse(sourceCode)!;
                 var root = tree.RootNode;
 
-                int awaits  = Count(root, n => n.Type == "await_expression");
+                int awaits   = Count(root, n => n.Type == "await_expression");
                 int branches = Count(root, n => n.Type is "if_statement" or "switch_statement" or "for_statement" or "while_statement" or "foreach_statement" or "do_statement");
                 int calls    = Count(root, n => n.Type is "invocation_expression");
+                int blocks   = Count(root, n => n.Type == "block");
+                int elses    = Count(root, n => n.Type == "else_clause");
 
-                return new AstSignals(awaits, branches, calls);
+                return new AstSignals(awaits, branches, calls, blocks, elses);
             }
         } catch {
             // ignore and fall through
         }
-        return new AstSignals(0, 0, 0);
+        return new AstSignals(0, 0, 0, 0, 0);
     }
 
     private static int Count(Node node, Func<Node, bool> pred) {
@@ -42,4 +44,3 @@ public static class TreeSitterGates {
         }
     }
 }
-

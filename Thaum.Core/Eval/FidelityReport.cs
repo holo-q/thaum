@@ -12,6 +12,8 @@ public class FidelityReport {
     public int      AwaitCountSrc  { get; set; }
     public int      BranchCountSrc { get; set; }
     public int      CallHeurSrc    { get; set; }
+    public int      BlockCountSrc  { get; set; }
+    public int      ElseCountSrc   { get; set; }
 
     // Signature (when extracted)
     public string?  SigName        { get; set; }

@@ -22,6 +22,8 @@ public static class FidelityEvaluator {
         var awaitCount  = AwaitRx.Matches(sourceCode).Count;
         var branchCount = BranchRx.Matches(sourceCode).Count;
         var callHeur    = CallHeur.Matches(sourceCode).Count;
+        var blockCount  = 0;
+        var elseCount   = 0;
 
         // Prefer TreeSitter AST signals for supported languages (C# for now)
         if (!string.IsNullOrWhiteSpace(language)) {
@@ -32,6 +34,8 @@ public static class FidelityEvaluator {
                 callHeur    = ast.CallCount;
                 notes.Add($"AST-backed counts used for {language}");
             }
+            blockCount = ast.BlockCount;
+            elseCount  = ast.ElseCount;
             if (language!.ToLowerInvariant() == "c-sharp") {
                 var sig = SignatureExtractor.ExtractCSharp(sourceCode);
                 report.SigName       = sig.Name;
@@ -43,6 +47,8 @@ public static class FidelityEvaluator {
         report.AwaitCountSrc  = awaitCount;
         report.BranchCountSrc = branchCount;
         report.CallHeurSrc    = callHeur;
+        report.BlockCountSrc  = blockCount;
+        report.ElseCountSrc   = elseCount;
 
         if (!report.HasTriad) notes.Add("No triad available");
         if (!report.TriadComplete) notes.Add("Triad missing one or more blocks");
