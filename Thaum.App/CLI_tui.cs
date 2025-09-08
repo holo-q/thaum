@@ -43,13 +43,23 @@ public partial class CLI {
             // Launch TUI application
             Application.Init();
 
-			try {
-				// Use proper v2 Window approach - no need for custom Toplevel wrapper
-				var browser = new SymbolBrowserWindowV2(_crawler, _compressor, codeMap, projectPath);
-				Application.Run(browser);
-			} finally {
-				Application.Shutdown();
-			}
+            try {
+                var power = Environment.GetEnvironmentVariable("THAUM_TUI_POWER");
+                bool usePower = string.IsNullOrEmpty(power)
+                                || power.Equals("1")
+                                || power.Equals("true", StringComparison.OrdinalIgnoreCase)
+                                || power.Equals("yes", StringComparison.OrdinalIgnoreCase);
+
+                if (usePower) {
+                    var win = new PowerWorkspaceWindow(_crawler, _compressor, codeMap, projectPath);
+                    Application.Run(win);
+                } else {
+                    var win = new SymbolBrowserWindowV2(_crawler, _compressor, codeMap, projectPath);
+                    Application.Run(win);
+                }
+            } finally {
+                Application.Shutdown();
+            }
 		} catch (Exception ex) {
 			_logger.LogError(ex, "Error launching TUI symbol browser");
 			println($"Error: {ex.Message}");
