@@ -1,19 +1,12 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Data.Sqlite;
-using System.Text.Json;
-using System.Reflection;
 using System.CommandLine;
-using Thaum.CLI.Models;
 using Thaum.Core.Services;
 using Thaum.Core.Models;
 using Thaum.Core.Utils;
-using static System.Console;
 using static Thaum.Core.Utils.Tracer;
-using System.Diagnostics.CodeAnalysis;
-using Terminal.Gui.Input;
 using Thaum.Core;
 using Thaum.Utils;
+using Command = System.CommandLine.Command;
 
 namespace Thaum.CLI;
 
@@ -225,35 +218,56 @@ public partial class CLI {
 	/// <summary>
 	/// try command: Test prompts on individual symbols
 	/// </summary>
-	private static Command CreateTryCommand(CLI cli) {
-		var argFile        = new Argument<string>("file-path") { Description   = "Path to source file" };
-		var argSymbol      = new Argument<string>("symbol-name") { Description = "Name of symbol to test" };
-		var optPrompt      = new Option<string?>("--prompt") { Description     = "Prompt file name (e.g., compress_function_v2, endgame_function)" };
-		var optInteractive = new Option<bool>("--interactive") { Description   = "Launch interactive TUI with live updates" };
-		var optN = new Option<int>("--n") {
-			Description         = "Number of rollouts for fusion",
-			DefaultValueFactory = _ => 1
-		};
+    private static Command CreateTryCommand(CLI cli) {
+        // Accept either combined path-spec (<file>::<symbol>) or split args (<file> <symbol>)
+        var argPathSpec  = new Argument<string>("file-or-pathspec") { Description = "Either '<file>::<symbol>' or '<file> <symbol>'" };
+        var argSymbolOpt = new Argument<string?>("symbol-name")
+        {
+            Description = "Name of symbol to test (omit if using '<file>::<symbol>')",
+            Arity       = ArgumentArity.ZeroOrOne
+        };
+        var optPrompt      = new Option<string?>("--prompt") { Description = "Prompt file name (e.g., compress_function_v5)" };
+        var optInteractive = new Option<bool>("--interactive") { Description = "Launch interactive TUI with live updates" };
+        var optN = new Option<int>("--n") {
+            Description         = "Number of rollouts for fusion",
+            DefaultValueFactory = _ => 1
+        };
 
-		var cmd = new Command("try", "Test prompts on individual symbols");
-		cmd.Arguments.Add(argFile);
-		cmd.Arguments.Add(argSymbol);
-		cmd.Options.Add(optPrompt);
-		cmd.Options.Add(optInteractive);
-		cmd.Options.Add(optN);
+        var cmd = new Command("try", "Test prompts on individual symbols");
+        cmd.Arguments.Add(argPathSpec);
+        cmd.Arguments.Add(argSymbolOpt);
+        cmd.Options.Add(optPrompt);
+        cmd.Options.Add(optInteractive);
+        cmd.Options.Add(optN);
 
-		cmd.SetAction(async (parseResult, cancellationToken) => {
-			var file        = parseResult.GetValue(argFile)!;
-			var symbol      = parseResult.GetValue(argSymbol)!;
-			var prompt      = parseResult.GetValue(optPrompt);
-			var interactive = parseResult.GetValue(optInteractive);
-			var n           = parseResult.GetValue(optN);
+        cmd.SetAction(async (parseResult, cancellationToken) => {
+            var pathSpec    = parseResult.GetValue(argPathSpec)!;
+            var symbolArg   = parseResult.GetValue(argSymbolOpt);
+            var prompt      = parseResult.GetValue(optPrompt);
+            var interactive = parseResult.GetValue(optInteractive);
+            var n           = parseResult.GetValue(optN);
 
-			await cli.CMD_try(file, symbol, prompt, interactive, n);
-		});
+            string file;
+            string symbol;
+            if (pathSpec.Contains("::")) {
+                var parts = pathSpec.Split("::", 2);
+                file   = parts[0];
+                symbol = parts.Length > 1 ? parts[1] : string.Empty;
+            } else {
+                file   = pathSpec;
+                symbol = symbolArg ?? string.Empty;
+            }
 
-		return cmd;
-	}
+            if (string.IsNullOrWhiteSpace(file) || string.IsNullOrWhiteSpace(symbol)) {
+                Console.WriteLine("Error: Provide '<file>::<symbol>' or '<file> <symbol>'");
+                return;
+            }
+
+            await cli.CMD_try(file, symbol, prompt, interactive, n);
+        });
+
+        return cmd;
+    }
 
 	/// <summary>
 	/// optimize command: Generate codebase optimizations

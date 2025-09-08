@@ -32,8 +32,16 @@ public partial class CLI {
 			println($"Found {codeMap.Count} symbols across {codeMap.FileCount} files");
 			println("Starting interactive symbol browser...");
 
-			// Launch TUI application
-			Application.Init();
+            // Configure color mode from env (default: 16 colors to honor terminal theme)
+            var force16Env = Environment.GetEnvironmentVariable("THAUM_TUI_16COLORS");
+            bool use16 = string.IsNullOrEmpty(force16Env)
+                         || force16Env.Equals("1")
+                         || force16Env.Equals("true", StringComparison.OrdinalIgnoreCase)
+                         || force16Env.Equals("yes", StringComparison.OrdinalIgnoreCase);
+            Application.Force16Colors = use16;
+
+            // Launch TUI application
+            Application.Init();
 
 			try {
 				// Use proper v2 Window approach - no need for custom Toplevel wrapper

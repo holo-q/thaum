@@ -25,8 +25,7 @@
         <PackageReference Include="FluentAssertions" Version="7.0.0" />
         <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
         <ProjectReference Include="../Thaum.Core/Thaum.Core.csproj" />
-        <ProjectReference Include="../Thaum.CLI/Thaum.CLI.csproj" />
-        <ProjectReference Include="../Thaum.TUI/Thaum.TUI.csproj" />
+        <ProjectReference Include="../Thaum.App/Thaum.App.csproj" />
     </ItemGroup>
 
 </Project>

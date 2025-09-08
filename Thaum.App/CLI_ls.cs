@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
 using System.Reflection;
 using System.Diagnostics.CodeAnalysis;
-using Thaum.CLI.Models;
 using Thaum.Core.Models;
 using Thaum.Core.Services;
+using Thaum.Core.Utils;
 using Thaum.Utils;
 using static System.Console;
 using static Thaum.Core.Utils.Tracer;

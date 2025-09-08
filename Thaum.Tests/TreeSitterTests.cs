@@ -24,7 +24,7 @@ public class TreeSitterTests {
 		                           }
 		                           """;
 
-		using var parser = new TreeSitterCrawler.Parser("c_sharp");
+		using var parser = new TreeSitterCrawler.Parser("c-sharp");
 
 		// Act
 		var symbols = parser.Parse(SOURCE_CODE, "test.cs");
@@ -50,7 +50,7 @@ public class TreeSitterTests {
 		                           }
 		                           """;
 
-		using var parser = new TreeSitterCrawler.Parser("c_sharp");
+		using var parser = new TreeSitterCrawler.Parser("c-sharp");
 
 		// Act
 		var symbols = parser.Parse(SOURCE_CODE, "test.cs");
@@ -91,7 +91,7 @@ public class TreeSitterTests {
 		                           }
 		                           """;
 
-		using var parser = new TreeSitterCrawler.Parser("c_sharp");
+		using var parser = new TreeSitterCrawler.Parser("c-sharp");
 
 		// Act
 		var symbols = parser.Parse(SOURCE_CODE, "CompressionLevel.cs");
@@ -107,7 +107,7 @@ public class TreeSitterTests {
 	[Fact]
 	public void Parse_EmptyCode_ShouldReturnEmptyList() {
 		// Arrange
-		using var parser = new TreeSitterCrawler.Parser("c_sharp");
+		using var parser = new TreeSitterCrawler.Parser("c-sharp");
 
 		// Act
 		var symbols = parser.Parse("", "empty.cs");
@@ -130,7 +130,7 @@ public class TreeSitterTests {
 		                           }
 		                           """;
 
-		using var parser = new TreeSitterCrawler.Parser("c_sharp");
+		using var parser = new TreeSitterCrawler.Parser("c-sharp");
 
 		// Act
 		var symbols = parser.Parse(SOURCE_CODE, "test.cs");
@@ -156,7 +156,7 @@ public class TreeSitterTests {
 		                           }
 		                           """;
 
-		using var parser = new TreeSitterCrawler.Parser("c_sharp");
+		using var parser = new TreeSitterCrawler.Parser("c-sharp");
 
 		// Act
 		var symbols = parser.Parse(SOURCE_CODE, "test.cs");
@@ -195,7 +195,7 @@ public class TreeSitterTests {
 	public void Parse_InvalidSyntax_ShouldNotCrash() {
 		// Arrange
 		const string INVALID_CODE = "public class { invalid syntax }";
-		using var    parser       = new TreeSitterCrawler.Parser("c_sharp");
+		using var    parser       = new TreeSitterCrawler.Parser("c-sharp");
 
 		// Act & Assert - Should not throw
 		var symbols = parser.Parse(INVALID_CODE, "invalid.cs");

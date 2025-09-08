@@ -1,9 +1,7 @@
 using Microsoft.Extensions.Logging;
-using Thaum.CLI.Models;
 using Thaum.Core.Models;
 using Thaum.Core.Services;
 using Thaum.Utils;
-using static System.Console;
 using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.CLI;

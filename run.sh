@@ -42,15 +42,46 @@ find_executable_project() {
 }
 
 main() {
+    local FORCE_REBUILD=0
+    if [[ "${1-}" == "--rebuild" ]]; then
+        FORCE_REBUILD=1
+        shift
+    fi
+
     local project
     project=$(find_executable_project)
     
     if [ $? -ne 0 ]; then
         exit 1
     fi
-    
-    echo "Running: dotnet run --project '$project' --no-restore --verbosity quiet -- $*" >&2
-    exec dotnet run --project "$project" --no-restore --verbosity quiet -- "$@"
+
+    # Build before running (incremental by default; full rebuild only when requested)
+    local CORES
+    CORES=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo "4")
+
+    if [[ "$FORCE_REBUILD" == "1" ]]; then
+        echo "Rebuilding: dotnet build '$project' -t:Rebuild (using $CORES cores)" >&2
+        dotnet build "$project" \
+            -t:Rebuild \
+            -c Debug \
+            -v minimal \
+            -nologo \
+            -m:"$CORES" \
+            /p:UseSharedCompilation=true \
+            /p:BuildInParallel=true
+    else
+        echo "Building (incremental): dotnet build '$project' (using $CORES cores)" >&2
+        dotnet build "$project" \
+            -c Debug \
+            -v minimal \
+            -nologo \
+            -m:"$CORES" \
+            /p:UseSharedCompilation=true \
+            /p:BuildInParallel=true
+    fi
+
+    echo "Running: dotnet run --project '$project' --no-restore --no-build --verbosity quiet -- $*" >&2
+    exec dotnet run --project "$project" --no-restore --no-build --verbosity quiet -- "$@"
 }
 
 main "$@"

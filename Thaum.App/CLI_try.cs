@@ -275,7 +275,7 @@ public partial class CLI {
 		trace($"Executing try command: {filePath}::{symbolName}, prompt: {promptName}, interactive: {interactive}, n: {nRollouts}");
 		
 		// Build args for legacy method and delegate
-		List<string> args = ["try", filePath, symbolName];
+		List<string> args = ["try", $"{filePath}::{symbolName}"];
 		if (!string.IsNullOrEmpty(promptName)) args.AddRange(["--prompt", promptName]);
 		if (interactive) args.Add("--interactive");
 		if (nRollouts != 1) args.AddRange(["--n", nRollouts.ToString()]);

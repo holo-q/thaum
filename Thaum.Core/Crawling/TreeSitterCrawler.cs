@@ -29,10 +29,12 @@ public static class TreeSitterQueries {
 public class TreeSitterCrawler : Crawler {
 	private readonly ILogger<TreeSitterCrawler>                   _logger;
 	private readonly Dictionary<string, TreeSitterLanguageConfig> _languageConfigs;
+	private readonly int                                          _maxDegreeOfParallelism;
 
 	public TreeSitterCrawler() {
 		_logger          = Logging.For<TreeSitterCrawler>();
 		_languageConfigs = InitializeLanguageConfigs();
+		_maxDegreeOfParallelism = GetMaxDegreeOfParallelism();
 	}
 
 	public override async Task<CodeMap> CrawlDir(string dirpath, CodeMap? codeMap = null) {
@@ -58,7 +60,47 @@ public class TreeSitterCrawler : Crawler {
 		throw new InvalidOperationException("The TreeSitter crawler does not support reference crawling. LSPs are required for this.");
 	}
 
-	public override Task<string?> GetCode(CodeSymbol targetSymbol) => throw new NotImplementedException();
+	public override async Task<string?> GetCode(CodeSymbol targetSymbol) {
+		try {
+			if (string.IsNullOrEmpty(targetSymbol.FilePath) || !File.Exists(targetSymbol.FilePath)) {
+				return null;
+			}
+
+			string[] lines = await File.ReadAllLinesAsync(targetSymbol.FilePath);
+			int startLine = Math.Clamp(targetSymbol.StartCodeLoc.Line, 0, Math.Max(0, lines.Length - 1));
+			int endLine   = Math.Clamp(targetSymbol.EndCodeLoc.Line,   0, Math.Max(0, lines.Length - 1));
+
+			if (endLine < startLine) (startLine, endLine) = (endLine, startLine);
+
+			int startCol = Math.Max(0, targetSymbol.StartCodeLoc.Character);
+			int endCol   = Math.Max(0, targetSymbol.EndCodeLoc.Character);
+
+			var sb = new System.Text.StringBuilder();
+			for (int i = startLine; i <= endLine; i++) {
+				string line = lines[i];
+				if (i == startLine && i == endLine) {
+					int from = Math.Min(startCol, line.Length);
+					int to   = Math.Min(endCol,   line.Length);
+					if (to > from) sb.Append(line.AsSpan(from, to - from));
+					else sb.Append(line[from..]);
+				} else if (i == startLine) {
+					int from = Math.Min(startCol, line.Length);
+					sb.AppendLine(line[from..]);
+					continue;
+				} else if (i == endLine) {
+					int to = Math.Min(endCol, line.Length);
+					sb.Append(line[..to]);
+				} else {
+					sb.AppendLine(line);
+				}
+			}
+
+			return sb.ToString();
+		} catch (Exception ex) {
+			_logger.LogError(ex, "Error extracting code for symbol {Name} in {File}", targetSymbol.Name, targetSymbol.FilePath);
+			return null;
+		}
+	}
 
 	/// <summary>
 	/// Legacy compatibility - crawls directory and returns symbols as list
@@ -72,7 +114,6 @@ public class TreeSitterCrawler : Crawler {
 		codeMap ??= CodeMap.Create();
 
 		try {
-			// Find all source files for the language using language-agnostic approach
 			List<string> sourceFiles = Directory.GetFiles(dirpath, "*.*", SearchOption.AllDirectories)
 				.Where(f => LangUtil.IsSourceFileForLanguage(f, lang))
 				.Where(f => !ProjectExclusions.ShouldExclude(f, dirpath, lang))
@@ -80,12 +121,21 @@ public class TreeSitterCrawler : Crawler {
 
 			_logger.LogDebug("Found {Count} {Language} files to parse", sourceFiles.Count, lang);
 
-			foreach (string filePath in sourceFiles) {
+			var results = new ConcurrentDictionary<string, List<CodeSymbol>>();
+			var options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism };
+
+			await Parallel.ForEachAsync(sourceFiles, options, async (filePath, ct) => {
 				try {
-					List<CodeSymbol> fileSymbols = await ExtractSymbolsFromFile(filePath, lang);
-					codeMap.AddSymbols(fileSymbols);
+					var fileSymbols = await ExtractSymbolsFromFile(filePath, lang);
+					results[filePath] = fileSymbols;
 				} catch (Exception ex) {
 					_logger.LogWarning(ex, "Failed to parse file: {FilePath}", filePath);
+				}
+			});
+
+			foreach (var filePath in sourceFiles) {
+				if (results.TryGetValue(filePath, out var fileSymbols)) {
+					codeMap.AddSymbols(fileSymbols);
 				}
 			}
 
@@ -221,7 +271,8 @@ public class TreeSitterCrawler : Crawler {
 	private Dictionary<string, TreeSitterLanguageConfig> InitializeLanguageConfigs() {
 		return new Dictionary<string, TreeSitterLanguageConfig> {
 			["c-sharp"] = new TreeSitterLanguageConfig {
-				Language = "c_sharp"
+				// Use hyphenated id to match native lib name: libtree-sitter-c-sharp.so
+				Language = "c-sharp"
 			},
 			["python"] = new TreeSitterLanguageConfig {
 				Language = "python"
@@ -245,6 +296,14 @@ public class TreeSitterCrawler : Crawler {
 		public required string Language { get; init; }
 	}
 
+	private static int GetMaxDegreeOfParallelism() {
+		var env = Environment.GetEnvironmentVariable("THAUM_TREESITTER_DOP");
+		if (!string.IsNullOrWhiteSpace(env) && int.TryParse(env, out var dop) && dop > 0) {
+			return dop;
+		}
+		return Math.Max(1, Environment.ProcessorCount);
+	}
+
 	public class Parser : IDisposable {
 		private readonly TreeSitter.Parser _parser;
 		private readonly Language          _language;
@@ -252,7 +311,8 @@ public class TreeSitterCrawler : Crawler {
 
 		public Parser(string language) {
 			_logger   = Logging.For<Parser>();
-			_language = new Language(language);
+			var (lib, fn) = ResolveLanguageBinding(language);
+			_language = new Language(lib, fn);
 			_parser   = new TreeSitter.Parser(_language);
 		}
 
@@ -289,6 +349,13 @@ public class TreeSitterCrawler : Crawler {
 			}
 
 			return symbols;
+		}
+
+		private static (string library, string function) ResolveLanguageBinding(string id) {
+			var lid = id.ToLowerInvariant();
+			var lib = $"tree-sitter-{lid}";               // native library name uses hyphens
+			var fn  = $"tree_sitter_{lid.Replace('-', '_')}"; // exported function uses underscores
+			return (lib, fn);
 		}
 
 		private SymbolKind GetSymbolKind(string captureName) {
