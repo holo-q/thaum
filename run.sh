@@ -68,7 +68,8 @@ main() {
             -nologo \
             -m:"$CORES" \
             /p:UseSharedCompilation=true \
-            /p:BuildInParallel=true
+            /p:BuildInParallel=true \
+            /p:BuildTUI=false
     else
         echo "Building (incremental): dotnet build '$project' (using $CORES cores)" >&2
         dotnet build "$project" \
@@ -77,7 +78,8 @@ main() {
             -nologo \
             -m:"$CORES" \
             /p:UseSharedCompilation=true \
-            /p:BuildInParallel=true
+            /p:BuildInParallel=true \
+            /p:BuildTUI=false
     fi
 
     echo "Running: dotnet run --project '$project' --no-restore --no-build --verbosity quiet -- $*" >&2

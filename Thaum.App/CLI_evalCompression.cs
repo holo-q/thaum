@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Thaum.Core.Services;
+using Thaum.Core.Models;
 using Thaum.Utils;
 using static System.Console;
 
