@@ -322,7 +322,8 @@ public partial class CLI {
             println("No triad provided; evaluation will only compute simple source metrics.");
         }
 
-        var report = Thaum.Core.Eval.FidelityEvaluator.EvaluateFunction(symbol, src, triad);
+        string language = Thaum.Utils.LangUtil.DetectLanguageFromFile(filePath);
+        var report = Thaum.Core.Eval.FidelityEvaluator.EvaluateFunction(symbol, src, triad, language);
         println($"Fidelity: {(report.PassedMinGate ? "PASS" : "FAIL")}  Await={report.AwaitCountSrc} Branch={report.BranchCountSrc} Calls≈{report.CallHeurSrc}");
         if (report.Notes.Length > 0) {
             println("Notes:");

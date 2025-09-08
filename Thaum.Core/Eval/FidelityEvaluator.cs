@@ -9,7 +9,7 @@ public static class FidelityEvaluator {
     static readonly Regex BranchRx  = new Regex(@"\b(if|switch|for|foreach|while)\b", RegexOptions.Compiled);
     static readonly Regex CallHeur  = new Regex(@"[A-Za-z_][A-Za-z0-9_]*\s*\(", RegexOptions.Compiled);
 
-    public static FidelityReport EvaluateFunction(CodeSymbol symbol, string sourceCode, FunctionTriad? triad) {
+    public static FidelityReport EvaluateFunction(CodeSymbol symbol, string sourceCode, FunctionTriad? triad, string? language = null) {
         var notes = new List<string>();
         var report = new FidelityReport {
             SymbolName    = symbol.Name,
@@ -22,6 +22,17 @@ public static class FidelityEvaluator {
         var awaitCount  = AwaitRx.Matches(sourceCode).Count;
         var branchCount = BranchRx.Matches(sourceCode).Count;
         var callHeur    = CallHeur.Matches(sourceCode).Count;
+
+        // Prefer TreeSitter AST signals for supported languages (C# for now)
+        if (!string.IsNullOrWhiteSpace(language)) {
+            var ast = TreeSitterGates.AnalyzeFunctionSource(language!, sourceCode);
+            if (ast.AwaitCount + ast.BranchCount + ast.CallCount > 0) {
+                awaitCount  = ast.AwaitCount;
+                branchCount = ast.BranchCount;
+                callHeur    = ast.CallCount;
+                notes.Add($"AST-backed counts used for {language}");
+            }
+        }
 
         report.AwaitCountSrc  = awaitCount;
         report.BranchCountSrc = branchCount;
@@ -37,4 +48,3 @@ public static class FidelityEvaluator {
         return report;
     }
 }
-
