@@ -31,6 +31,13 @@ public class PowerWorkspaceWindow : Window
     private TreeView<SymbolTreeNode>    _tree      = null!;
     private TabView                     _tabs      = null!;
     private StatusBar                   _status    = null!;
+    private View                        _summaryTabView = null!;
+    private TextView                    _summaryText    = null!;
+    private View                        _diffTabView    = null!;
+    private TextView                    _diffLeft       = null!;
+    private TextView                    _diffRight      = null!;
+    private ListView                    _jobsList       = null!;
+    private readonly ObservableCollection<JobItem> _jobs = new();
 
     private ObservableCollection<string> _logLines = new();
 
@@ -81,13 +88,30 @@ public class PowerWorkspaceWindow : Window
             Height = Dim.Fill(1)
         };
 
-        _tabs.AddTab(new TabView.Tab("Summary", new View { Width = Dim.Fill(), Height = Dim.Fill() }), false);
+        // Summary tab
+        _summaryTabView = new View { Width = Dim.Fill(), Height = Dim.Fill() };
+        _summaryText    = new TextView { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(), ReadOnly = true };
+        _summaryTabView.Add(_summaryText);
+        _tabs.AddTab(new TabView.Tab("Summary", _summaryTabView), false);
+
+        // Triad tab placeholder (wired later)
         _tabs.AddTab(new TabView.Tab("Triad", new View { Width = Dim.Fill(), Height = Dim.Fill() }), false);
-        _tabs.AddTab(new TabView.Tab("Diff", new View { Width = Dim.Fill(), Height = Dim.Fill() }), false);
+
+        // Diff tab side-by-side
+        _diffTabView = new View { Width = Dim.Fill(), Height = Dim.Fill() };
+        _diffLeft    = new TextView { X = 0, Y = 0, Width = Dim.Percent(50), Height = Dim.Fill(), ReadOnly = true };
+        _diffRight   = new TextView { X = Pos.Right(_diffLeft), Y = 0, Width = Dim.Fill(), Height = Dim.Fill(), ReadOnly = true };
+        _diffTabView.Add(_diffLeft, _diffRight);
+        _tabs.AddTab(new TabView.Tab("Diff", _diffTabView), false);
 
         var logView = new ListView { Width = Dim.Fill(), Height = Dim.Fill() };
         logView.SetSource(_logLines);
         _tabs.AddTab(new TabView.Tab("Logs", logView), true);
+
+        // Jobs tab
+        _jobsList = new ListView { Width = Dim.Fill(), Height = Dim.Fill() };
+        _jobsList.SetSource(new ObservableCollection<string>(_jobs.Select(j => j.ToString()).ToList()));
+        _tabs.AddTab(new TabView.Tab("Jobs", _jobsList), false);
 
         // Bottom status with quick actions
         _status = new StatusBar([
@@ -119,6 +143,19 @@ public class PowerWorkspaceWindow : Window
 
         KeyBindings.Add(Key.F10, Command.Save);
         AddCommand(Command.Save, () => { ToggleColors(); return true; });
+
+        // Enter to enqueue a Try job on selected symbol (simulated)
+        KeyBindings.Add(Key.Enter, Command.Accept);
+        AddCommand(Command.Accept, () =>
+        {
+            var sel = _tree.SelectedObject;
+            if (sel?.IsFile == false && sel.Symbol is { } sym)
+            {
+                EnqueueJob(sym, promptName: "compress_function_v5");
+                return true;
+            }
+            return false;
+        });
     }
 
     private void ToggleExpandCollapse()
@@ -138,14 +175,72 @@ public class PowerWorkspaceWindow : Window
         Title = selected.IsFile
             ? $"{Path.GetFileName(selected.FilePath)}"
             : $"{selected.Symbol!.Name} ({selected.Symbol.Kind})";
+
+        // Update Summary tab
+        if (!selected.IsFile && selected.Symbol is { } sym)
+        {
+            _summaryText.Text = BuildSymbolSummary(sym);
+            _tabs.SelectedTab = _tabs.Tabs.FirstOrDefault(t => t.Text == "Summary") ?? _tabs.SelectedTab;
+        }
+        else if (selected.IsFile)
+        {
+            _summaryText.Text = BuildFileSummary(selected.FilePath);
+        }
     }
 
     private void OnTreeActivated(SymbolTreeNode obj)
     {
         // Stub: Future hook to open prompt selector or show triad
         _logLines.Add($"Activate: {(obj.IsFile ? obj.FilePath : obj.Symbol!.Name)}");
-        _tabs.SelectedTab = _tabs.Tabs.FirstOrDefault(t => t.Text == "Triad") ?? _tabs.SelectedTab;
+        if (!obj.IsFile)
+        {
+            // Populate diff with original snippet and a placeholder rehydrated text
+            var original = ReadSnippet(obj.FilePath, obj.Symbol!.StartCodeLoc.Line, obj.Symbol.EndCodeLoc.Line, 120);
+            var placeholder = $"// Rehydrated placeholder for {obj.Symbol.Name}\n" + original;
+            _diffLeft.Text  = original;
+            _diffRight.Text = placeholder;
+            _tabs.SelectedTab = _tabs.Tabs.FirstOrDefault(t => t.Text == "Diff") ?? _tabs.SelectedTab;
+        }
         _tabs.SetNeedsDraw();
+    }
+
+    private string BuildFileSummary(string filePath)
+    {
+        try
+        {
+            var info = new FileInfo(filePath);
+            return $"File: {filePath}\nSize: {info.Length} bytes\nModified: {info.LastWriteTime}";
+        }
+        catch (Exception ex)
+        {
+            return $"File: {filePath}\nError: {ex.Message}";
+        }
+    }
+
+    private string BuildSymbolSummary(CodeSymbol sym)
+    {
+        var header = $"Name: {sym.Name}\nKind: {sym.Kind}\nFile: {sym.FilePath}\nRange: L{sym.StartCodeLoc.Line}-{sym.EndCodeLoc.Line}\n";
+        var snippet = ReadSnippet(sym.FilePath, sym.StartCodeLoc.Line, sym.EndCodeLoc.Line, maxLines: 80);
+        return header + "\n" + snippet;
+    }
+
+    private string ReadSnippet(string filePath, int startLine, int endLine, int maxLines = 120)
+    {
+        try
+        {
+            if (!File.Exists(filePath)) return "<file not found>";
+            var lines = File.ReadAllLines(filePath);
+            int s = Math.Max(1, startLine);
+            int e = Math.Min(lines.Length, Math.Max(s, endLine));
+            int count = Math.Min(maxLines, e - s + 1);
+            var slice = lines.Skip(s - 1).Take(count).ToArray();
+            // Prepend line numbers
+            return string.Join('\n', slice.Select((l, i) => $"{s + i,4}: {l}"));
+        }
+        catch (Exception ex)
+        {
+            return $"<error reading snippet: {ex.Message}>";
+        }
     }
 
     private void ApplyFilter(string text)
@@ -214,5 +309,61 @@ public class PowerWorkspaceWindow : Window
         Application.Driver?.ClearContents();
         SetNeedsDraw();
     }
+
+    private void EnqueueJob(CodeSymbol symbol, string promptName)
+    {
+        var job = new JobItem(symbol, promptName);
+        _jobs.Add(job);
+        RefreshJobsList();
+
+        // Simulate async processing and completion
+        Task.Run(async () =>
+        {
+            job.Status = JobStatus.Running;
+            UpdateJob(job);
+            await Task.Delay(1200);
+            job.Status = JobStatus.Succeeded;
+            UpdateJob(job);
+        });
+    }
+
+    private void UpdateJob(JobItem job)
+    {
+        Application.Invoke(() => RefreshJobsList());
+    }
+
+    private void RefreshJobsList()
+    {
+        _jobsList.SetSource(new ObservableCollection<string>(_jobs.Select(j => j.ToString()).ToList()));
+        _jobsList.SetNeedsDraw();
+    }
 }
 
+public enum JobStatus
+{
+    Queued,
+    Running,
+    Succeeded,
+    Failed,
+    Canceled
+}
+
+public class JobItem
+{
+    public string     Id         { get; } = Guid.NewGuid().ToString("N")[..8];
+    public CodeSymbol Symbol     { get; }
+    public string     PromptName { get; }
+    public JobStatus  Status     { get; set; } = JobStatus.Queued;
+
+    public JobItem(CodeSymbol symbol, string promptName)
+    {
+        Symbol     = symbol;
+        PromptName = promptName;
+    }
+
+    public override string ToString()
+    {
+        var name = Symbol.Name;
+        return $"[{Status}] {Id} {name} :: {PromptName}";
+    }
+}

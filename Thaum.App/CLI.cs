@@ -92,9 +92,10 @@ public partial class CLI {
 		root.Subcommands.Add(CreateLsEnvCommand(cli));
 		root.Subcommands.Add(CreateLsCacheCommand(cli));
 		root.Subcommands.Add(CreateLsLspCommand(cli));
-		root.Subcommands.Add(CreateTryCommand(cli));
-		root.Subcommands.Add(CreateOptimizeCommand(cli));
-		root.Subcommands.Add(CreateTuiCommand(cli));
+        root.Subcommands.Add(CreateTryCommand(cli));
+        root.Subcommands.Add(CreateOptimizeCommand(cli));
+        root.Subcommands.Add(CreateEvalCommand(cli));
+        root.Subcommands.Add(CreateTuiCommand(cli));
 
 		return root;
 	}
@@ -275,7 +276,7 @@ public partial class CLI {
 	/// <summary>
 	/// optimize command: Generate codebase optimizations
 	/// </summary>
-	private static Command CreateOptimizeCommand(CLI cli) {
+    private static Command CreateOptimizeCommand(CLI cli) {
 		var optPath = new Option<string>("--path") {
 			Description         = "Project path",
 			DefaultValueFactory = _ => Directory.GetCurrentDirectory()
@@ -310,8 +311,28 @@ public partial class CLI {
 		});
 
 		return cmd;
-	}
+    }
 
+    private static Command CreateEvalCommand(CLI cli) {
+        var argFile   = new Argument<string>("file-path") { Description = "Path to source file" };
+        var argSymbol = new Argument<string>("symbol-name") { Description = "Name of symbol to evaluate" };
+        var optTriad  = new Option<string?>("--triad") { Description = "Path to triad JSON (optional)" };
+
+        var cmd = new Command("eval", "Evaluate compression fidelity for a single function triad");
+        cmd.Arguments.Add(argFile);
+        cmd.Arguments.Add(argSymbol);
+        cmd.Options.Add(optTriad);
+
+        cmd.SetAction(async (parseResult, cancellationToken) => {
+            var file   = parseResult.GetValue(argFile)!;
+            var symbol = parseResult.GetValue(argSymbol)!;
+            var triad  = parseResult.GetValue(optTriad);
+
+            await cli.CMD_eval(file, symbol, triad);
+        });
+
+        return cmd;
+    }
 	/// <summary>
 	/// tui command: Launch interactive symbol browser
 	/// </summary>
