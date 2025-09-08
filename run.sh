@@ -43,13 +43,8 @@ find_executable_project() {
 
 main() {
     local FORCE_REBUILD=0
-    local HEADLESS=0
     if [[ "${1-}" == "--rebuild" ]]; then
         FORCE_REBUILD=1
-        shift
-    fi
-    if [[ "${1-}" == "--headless" ]]; then
-        HEADLESS=1
         shift
     fi
 
@@ -73,8 +68,7 @@ main() {
             -nologo \
             -m:"$CORES" \
             /p:UseSharedCompilation=true \
-            /p:BuildInParallel=true \
-            $( [[ "$HEADLESS" == "1" ]] && echo "/p:BuildTUI=false" )
+            /p:BuildInParallel=true
     else
         echo "Building (incremental): dotnet build '$project' (using $CORES cores)" >&2
         dotnet build "$project" \
@@ -83,8 +77,7 @@ main() {
             -nologo \
             -m:"$CORES" \
             /p:UseSharedCompilation=true \
-            /p:BuildInParallel=true \
-            $( [[ "$HEADLESS" == "1" ]] && echo "/p:BuildTUI=false" )
+            /p:BuildInParallel=true
     fi
 
     echo "Running: dotnet run --project '$project' --no-restore --no-build --verbosity quiet -- $*" >&2

@@ -53,15 +53,6 @@
     <ProjectReference Include="../Terminal.Gui/Terminal.Gui/Terminal.Gui.csproj" />
   </ItemGroup>
 
-  <!-- Allow headless (no TUI) builds by excluding TUI sources when BuildTUI=false -->
-  <PropertyGroup>
-    <BuildTUI>true</BuildTUI>
-  </PropertyGroup>
-  <ItemGroup Condition="'$(BuildTUI)' != 'true'">
-    <Compile Remove="TUI/Views/**/*.cs" />
-    <Compile Remove="TUI/**/*.cs" />
-  </ItemGroup>
-
     <ItemGroup>
         <TrimmerRootAssembly Include="Terminal.Gui" />
     </ItemGroup>
