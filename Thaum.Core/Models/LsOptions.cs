@@ -9,5 +9,7 @@ public record LsOptions(
     string Language,
     int MaxDepth,
     bool ShowTypes,
-    bool NoColors = false
+    bool NoColors = false,
+    string? BatchJson = null,
+    bool Split = false
 );

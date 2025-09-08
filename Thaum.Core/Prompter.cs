@@ -75,7 +75,7 @@ namespace Thaum.Core;
 			println("═══ TEST COMPLETE ═══");
 
 			// Persist artifacts (prompt + response + parsed triad)
-			await ArtifactSaver.SaveSessionAsync(targetSymbol, targetSymbol.FilePath, prompt, sb.ToString(), null);
+			_ = await ArtifactSaver.SaveSessionAsync(targetSymbol, targetSymbol.FilePath, prompt, sb.ToString(), null);
 		}
 
 	/// <summary>

@@ -1,3 +1,4 @@
+using Spectre.Console;
 using Thaum.Core.Models;
 using Thaum.Core.Utils;
 using static Thaum.Core.Utils.Tracer;
@@ -91,84 +92,83 @@ public class TreeNode {
 		}
 	}
 
-	private void DisplaySymbolGroup(SymbolKind kind, List<TreeNode> symbols, string prefix, bool isLast, int maxDepth, int depth, bool noColors = false) {
-		if (depth >= maxDepth || !symbols.Any()) return;
+    private void DisplaySymbolGroup(SymbolKind kind, List<TreeNode> symbols, string prefix, bool isLast, int maxDepth, int depth, bool noColors = false) {
+        if (depth >= maxDepth || !symbols.Any()) return;
 
-		string connector = isLast ? "└── " : "├── ";
-		string icon      = GetSymbolIcon(kind);
-		string kindName  = GetKindDisplayName(kind);
+        string connector = isLast ? "└── " : "├── ";
+        string icon      = GetSymbolIcon(kind);
+        string kindName  = GetKindDisplayName(kind);
 
-		// Print prefix and label normally
-		string linePrefix = $"{prefix}{connector}{icon} {kindName}: ";
-		Console.Write(linePrefix);
+        // Compose the left prefix "├── X label: " and compute console width
+        string linePrefix = $"{prefix}{connector}{icon} {kindName}: ";
+        int totalWidth = GetConsoleWidth();
+        int available  = Math.Max(20, totalWidth - linePrefix.Length);
 
-		// Print symbols with Terminal.Gui colors
-		PrintColoredSymbols(symbols, kind, 80 - linePrefix.Length, noColors);
+        // Build wrapped lines with Spectre markup tokens and render via Spectre directly
+        var tokens = symbols.Select(s => BuildToken(s.Name, kind, noColors)).ToList();
+        foreach (string line in BuildWrappedMarkupLines(tokens, symbols.Select(s => s.Name.Length).ToList(), available, linePrefix, new string(' ', linePrefix.Length))) {
+            // Use Spectre to render markup so colors work regardless of Serilog sink
+            AnsiConsole.MarkupLine(line);
+        }
+    }
 
-		println(); // End the line
-	}
+    private static int GetConsoleWidth() {
+        try { return Console.WindowWidth; } catch { return GLB.ConsoleMinWidth; }
+    }
 
-	private void PrintColoredSymbols(List<TreeNode> symbols, SymbolKind kind, int maxWidth, bool noColors = false) {
-		int  currentWidth  = 0;
-		bool isFirstSymbol = true;
+    private static IEnumerable<string> BuildWrappedMarkupLines(List<string> markupTokens, List<int> plainTokenLengths, int maxWidth, string firstPrefix, string contPrefix) {
+        var lines = new List<string>();
+        string current = firstPrefix;
+        int width = 0;
+        for (int i = 0; i < markupTokens.Count; i++) {
+            string token = markupTokens[i];
+            int tokenLen = plainTokenLengths[i];
+            int needed = (width == 0 ? 0 : 1) + tokenLen; // space + visible chars
+            if (width + needed > maxWidth && width > 0) {
+                lines.Add(current);
+                current = contPrefix + markupTokens[i];
+                width = tokenLen;
+            } else {
+                if (width > 0) { current += " "; }
+                current += token;
+                width += needed;
+            }
+        }
+        if (!string.IsNullOrEmpty(current)) lines.Add(current);
+        return lines;
+    }
 
-		foreach (TreeNode symbol in symbols) {
-			bool needsSpace  = !isFirstSymbol;
-			int  symbolWidth = symbol.Name.Length + (needsSpace ? 1 : 0);
+    private string BuildToken(string symbolName, SymbolKind kind, bool noColors) {
+        string safe = Markup.Escape(symbolName);
+        if (noColors) return safe;
 
-			// Check if we need to wrap
-			if (currentWidth + symbolWidth > maxWidth && currentWidth > 0) {
-				println();
-				Console.Write(new string(' ', 80 - maxWidth)); // Indent continuation
-				currentWidth = 0;
-				needsSpace   = false;
-			}
+        SemanticColorType semanticType = kind switch {
+            SymbolKind.Function  => SemanticColorType.Function,
+            SymbolKind.Method    => SemanticColorType.Function,
+            SymbolKind.Class     => SemanticColorType.Class,
+            SymbolKind.Interface => SemanticColorType.Interface,
+            SymbolKind.Module    => SemanticColorType.Module,
+            SymbolKind.Namespace => SemanticColorType.Namespace,
+            _                    => SemanticColorType.Function
+        };
 
-			if (needsSpace) {
-				Console.Write(" ");
-				currentWidth += 1;
-			}
+        (int r, int g, int b) = _colorer.GenerateSemanticColor(symbolName, semanticType);
+        // Foreground black on semantic background for clear label chips
+        return $"[black on rgb({r},{g},{b})]{safe}[/]";
+    }
 
-			// Use proper color helper method
-			WriteColoredSymbol(symbol.Name, kind, noColors);
-
-			currentWidth  += symbol.Name.Length;
-			isFirstSymbol =  false;
-		}
-	}
-
-	private void WriteColoredSymbol(string symbolName, SymbolKind kind, bool noColors = false) {
-		if (noColors) {
-			Console.Write(symbolName);
-			return;
-		}
-
-		SemanticColorType semanticType = kind switch {
-			SymbolKind.Function  => SemanticColorType.Function,
-			SymbolKind.Method    => SemanticColorType.Function,
-			SymbolKind.Class     => SemanticColorType.Class,
-			SymbolKind.Interface => SemanticColorType.Interface,
-			SymbolKind.Module    => SemanticColorType.Module,
-			SymbolKind.Namespace => SemanticColorType.Namespace,
-			_                    => SemanticColorType.Function
-		};
-
-		(int r, int g, int b) = _colorer.GenerateSemanticColor(symbolName, semanticType);
-		Console.Write($"\e[48;2;{r};{g};{b}m\e[38;2;0;0;0m{symbolName}\e[0m");
-	}
-
-	private static string GetSymbolIcon(SymbolKind kind) {
-		return kind switch {
-			SymbolKind.Function  => "ƒ",
-			SymbolKind.Method    => "ƒ",
-			SymbolKind.Class     => "C",
-			SymbolKind.Interface => "I",
-			SymbolKind.Module    => "📁",
-			SymbolKind.Namespace => "N",
-			SymbolKind.Property  => "P",
-			SymbolKind.Field     => "F",
-			SymbolKind.Variable  => "V",
-			SymbolKind.Parameter => "p",
+    private static string GetSymbolIcon(SymbolKind kind) {
+        return kind switch {
+            SymbolKind.Function  => "ƒ",
+            SymbolKind.Method    => "ƒ",
+            SymbolKind.Class     => "C",
+            SymbolKind.Interface => "I",
+            SymbolKind.Module    => "DIR",
+            SymbolKind.Namespace => "N",
+            SymbolKind.Property  => "P",
+            SymbolKind.Field     => "F",
+            SymbolKind.Variable  => "V",
+            SymbolKind.Parameter => "p",
 			_                    => "?"
 		};
 	}

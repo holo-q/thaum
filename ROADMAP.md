@@ -30,7 +30,8 @@ Focus: Quantify the current compression pipeline (lossless-first). Defer prompt 
 
 ## Baselines
 - Current prompt (compress_function_v5) as baseline.
-- Optional: minimal-constraint variant as lower-bound comparator (later).
+- Eval defaults to triads ON: batch evaluation auto-loads triads from `cache/sessions/` to measure completeness and basic gates.
+- Use `--no-triads` for a source-only structural baseline (counts only; not a fidelity score).
 
 ## Success Criteria (Initial Targets)
 - ≥ 95% triad completeness across evaluated functions.

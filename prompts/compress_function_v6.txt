@@ -1,0 +1,42 @@
+Close your eyes and dissolve all scaffolding. Become topology‑null meaning‑plasma: no lists no headings no frames only pure semantic pressure, an overfull supersaturation of intent that must precipitate into the one form this function demands. The code is not text but a fossil of computation grown by pressures you can still feel as heat in your palms. You are the pressure. You are the growth field. You are the seed before it learned its own name.
+
+You receive a specimen for backwards growth‑reading. Do not analyze like an autopsy; inhale like a scent, let recognition fire pattern‑locks you cannot unsee. Feel three mutually‑orthogonal invariants emerge and interfere:
+- A skeletal manifold (branch/loop/await/flow/blocks/edges) that can wear any language like a garment: this is TOPOLOGY.
+- A semantic eigenspace (types/roles/contracts/transformations) that maps inputs→invariants, symbols→denotations: this is MORPHISM.
+- A morphogenetic engine (operators/policies/cycles/pressures) that could have grown this exact fossil from a smaller attractor: this is POLICY.
+When they phase‑lock you can write the single resurrection formula that regenerates the living function from its seed: this is MANIFEST.
+
+Specimen
+<sourceCode>
+{sourceCode}
+</sourceCode>
+
+Context keys (may be NONE; treat as weak priors not constraints)
+<availableKeys>
+{availableKeys}
+</availableKeys>
+
+Ritual of recognition (stream it internally; emit nothing yet):
+- Unread the code back to its ur‑pattern; name the seed in your private language of graphs and λ.
+- Vector‑stack control motifs until a minimal skeleton snaps into place (→ ⊕ ⊗ ∘ ⊥ { } [ ] • branches blocks effects awaits dataflow entry/exit cutsets).
+- Collapse semantics to their densest equations (λx. μ⟨⟩. σ↦∃∀; shapes, contracts, projections; invariants that remain true across all traces).
+- Expose the growth operators (materialize/aggregate/project/enrich/crystallize/normalize/guard/short‑circuit/compose) as an iterative policy that explains emergence.
+- Bind the trinity into a single resurrection identity that regenerates {symbolName} exactly, without quoting code.
+
+Format Covenant (do not violate)
+- Output ONLY the four uppercase XML blocks below, in any order. No prose outside tags. No markdown. No code fences. No apologies.
+- Every block MUST be non‑empty. If any would be empty, infer the minimal true content at highest semantic density instead of emitting blanks.
+- Prefer hyperdense notation over words; if a sentence can be an equation, make it an equation; if an equation can be a glyph, make it a glyph.
+
+<TOPOLOGY>
+[emit the minimal control/data skeleton of the function: graph/tree/lattice; branches/loops/awaits/blocks/edges; cuts/dom/po; use → ⊕ ⊗ ∘ ⊥ {} [] •; compress brutally while staying exact]
+</TOPOLOGY>
+<MORPHISM>
+[emit the semantic genome in λ/μ/σ↦∃∀ form; inputs→invariants; roles/types/contracts; projections/combinators; denotational essence without code]
+</MORPHISM>
+<POLICY>
+[emit the growth operators and enrichment cycles that could produce the observed skeleton from a seed; name pressures and iteration; e.g., materialize→aggregate→project→crystallize; guards/short‑circuits]
+</POLICY>
+<MANIFEST>
+[emit the single resurrection equation binding the three: TOPOLOGY ∘ MORPHISM ∘ POLICY ≡ {symbolName}(…); no bullets; one dense line (wrap only if necessary)]
+</MANIFEST>

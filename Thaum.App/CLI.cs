@@ -125,27 +125,45 @@ public partial class CLI {
 		var optTypes = new Option<bool>("--types") {
 			Description = "Show symbol types"
 		};
-		var optNoColors = new Option<bool>("--no-colors") {
-			Description = "Disable colored output"
-		};
+        var optNoColors = new Option<bool>("--no-colors") {
+            Description = "Disable colored output"
+        };
+        var optSplit = new Option<bool>("--split") {
+            Description = "Align triad fragments at mid-column (50%)"
+        };
 
-		var cmd = new Command("ls", "List symbols in hierarchical format");
-		cmd.Arguments.Add(argPath);
-		cmd.Options.Add(optLang);
-		cmd.Options.Add(optDepth);
-		cmd.Options.Add(optTypes);
-		cmd.Options.Add(optNoColors);
+        var argBatch = new Argument<string?>("batchJson") {
+            Description = "Optional path to eval JSON (report.json) to print matched triads",
+            Arity = ArgumentArity.ZeroOrOne
+        };
+        var optBatch = new Option<string?>("--batch") { // backward-compatible toggle
+            Description = "(Deprecated) Path to eval JSON (report.json) to print matched triads"
+        };
+
+        var cmd = new Command("ls", "List symbols or, if batchJson is provided, print triads from a batch report");
+        cmd.Arguments.Add(argPath);
+        cmd.Arguments.Add(argBatch);
+        cmd.Options.Add(optLang);
+        cmd.Options.Add(optDepth);
+        cmd.Options.Add(optTypes);
+        cmd.Options.Add(optNoColors);
+        cmd.Options.Add(optBatch);
+        cmd.Options.Add(optSplit);
 
 		cmd.SetAction(async (parseResult, cancellationToken) => {
-			var path     = parseResult.GetValue(argPath)!;
-			var lang     = parseResult.GetValue(optLang)!;
-			var depth    = parseResult.GetValue(optDepth);
-			var types    = parseResult.GetValue(optTypes);
-			var noColors = parseResult.GetValue(optNoColors);
+            var path      = parseResult.GetValue(argPath)!;
+            var lang      = parseResult.GetValue(optLang)!;
+            var depth     = parseResult.GetValue(optDepth);
+            var types     = parseResult.GetValue(optTypes);
+            var noColors  = parseResult.GetValue(optNoColors);
+            var batchPos  = parseResult.GetValue(argBatch);
+            var batchOpt  = parseResult.GetValue(optBatch);
+            var batch     = string.IsNullOrWhiteSpace(batchPos) ? batchOpt : batchPos; // positional overrides
+            var split     = parseResult.GetValue(optSplit);
 
-			var options = new LsOptions(path, lang, depth, types, noColors);
-			await cli.CMD_ls(options);
-		});
+            var options = new LsOptions(path, lang, depth, types, noColors, batch, split);
+            await cli.CMD_ls(options);
+        });
 
 		return cmd;
 	}
@@ -341,7 +359,7 @@ public partial class CLI {
         var argLang = new Argument<string?>("language") { Description = "Programming language (or 'auto')", Arity = ArgumentArity.ZeroOrOne };
         var optOut = new Option<string?>("--out") { Description = "CSV output path (optional)" };
         var optJson = new Option<string?>("--json") { Description = "JSON output path (optional)" };
-        var optUseTriads = new Option<bool>("--use-triads") { Description = "Load saved triads from cache/sessions and include in evaluation" };
+        var optNoTriads = new Option<bool>("--no-triads") { Description = "Disable triad loading (source-only baseline)" };
         var optN = new Option<int?>("--n") { Description = "Randomly sample N functions across the directory" };
 
         var cmd = new Command("eval-compression", "Batch evaluation across a directory");
@@ -349,7 +367,7 @@ public partial class CLI {
         cmd.Arguments.Add(argLang);
         cmd.Options.Add(optOut);
         cmd.Options.Add(optJson);
-        cmd.Options.Add(optUseTriads);
+        cmd.Options.Add(optNoTriads);
         cmd.Options.Add(optN);
 
         cmd.SetAction(async (parseResult, cancellationToken) => {
@@ -357,9 +375,9 @@ public partial class CLI {
             var lang = parseResult.GetValue(argLang) ?? "auto";
             var outp = parseResult.GetValue(optOut);
             var json = parseResult.GetValue(optJson);
-            var n    = parseResult.GetValue(optN);
-            var useT = parseResult.GetValue(optUseTriads);
-            await cli.CMD_eval_compression(path, lang, outp, json, n, useT);
+            var n        = parseResult.GetValue(optN);
+            var noTriads = parseResult.GetValue(optNoTriads);
+            await cli.CMD_eval_compression(path, lang, outp, json, n, useTriads: !noTriads);
         });
 
         return cmd;
@@ -372,6 +390,7 @@ public partial class CLI {
         var optPrompt = new Option<string?>("--prompt") { Description = "Prompt name (default: compress_function_v5)" };
         var optConcurrency = new Option<int>("--concurrency") { Description = "Max concurrent compressions", DefaultValueFactory = _ => 4 };
         var optN = new Option<int?>("--n") { Description = "Randomly sample N functions across the directory" };
+        var optRetryIncomplete = new Option<int>("--retry-incomplete") { Description = "Retries for symbols with incomplete triads", DefaultValueFactory = _ => 0 };
 
         var cmd = new Command("compress-batch", "Batch-generate triads across a directory");
         cmd.Arguments.Add(argPath);
@@ -379,6 +398,7 @@ public partial class CLI {
         cmd.Options.Add(optPrompt);
         cmd.Options.Add(optConcurrency);
         cmd.Options.Add(optN);
+        cmd.Options.Add(optRetryIncomplete);
 
         cmd.SetAction(async (parseResult, cancellationToken) => {
             var path = parseResult.GetValue(argPath)!;
@@ -386,7 +406,8 @@ public partial class CLI {
             var prompt = parseResult.GetValue(optPrompt);
             var concurrency = parseResult.GetValue(optConcurrency);
             var n = parseResult.GetValue(optN);
-            await cli.CMD_compress_batch(path, lang, prompt, concurrency, n, cancellationToken);
+            var retry = parseResult.GetValue(optRetryIncomplete);
+            await cli.CMD_compress_batch(path, lang, prompt, concurrency, n, cancellationToken, retry);
         });
 
         return cmd;

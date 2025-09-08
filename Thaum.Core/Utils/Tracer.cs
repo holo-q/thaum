@@ -1,26 +1,24 @@
-using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Microsoft.Extensions.Logging;
+using Spectre.Console;
+using Thaum.Utils;
 
 namespace Thaum.Core.Utils;
 
+// Backwards-compatible façade that routes to unified Logging.
 public static class Tracer {
-	private static ILogger?    _logger;
-	private static FileWriter? _interactiveFileWriter;
-	private static bool        _isInteractiveMode  = false;
-	private static int         _terminalWidth      = 80;
-	private static string      _operator           = "->";
-	private static int         _fixedOperatorWidth = 4; // operator plus surrounding spaces
+    private static ILogger _logger = Logging.Factory.CreateLogger("Tracer");
+	private static bool    _isInteractiveMode;
+	private static int     _terminalWidth      = 80;
+	private static string  _operator           = "->";
+	private static int     _fixedOperatorWidth = 4; // operator plus surrounding spaces
 
 	public static void Initialize(ILogger logger, bool isInteractiveMode = false) {
-		_logger             = logger;
-		_isInteractiveMode  = isInteractiveMode;
-		_terminalWidth      = GetTerminalWidth();
+		_logger            = logger;
+		_isInteractiveMode = isInteractiveMode;
+		_terminalWidth     = GetTerminalWidth();
 		_fixedOperatorWidth = _operator.Length + 2;
-
-		if (isInteractiveMode) {
-			_interactiveFileWriter = new FileWriter(GLB.InteractiveLogFile);
-		}
 	}
 
 	public static void tracein(
@@ -65,13 +63,7 @@ public static class Tracer {
 		_trace($"{prefix} OPERATION: {operation}");
 	}
 
-	private static void _trace(string message) {
-		if (_isInteractiveMode && _interactiveFileWriter != null) {
-			_interactiveFileWriter.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] TRACE: {message}");
-		} else {
-			_logger?.LogTrace(message);
-		}
-	}
+	private static void _trace(string message) => _logger.LogTrace(message);
 
 	private static string GetClassNameFromFilePath(string sourceFilePath) {
 		if (string.IsNullOrEmpty(sourceFilePath)) return "Unknown";
@@ -80,9 +72,7 @@ public static class Tracer {
 		return fileName;
 	}
 
-	public static void Dispose() {
-		_interactiveFileWriter?.Dispose();
-	}
+	public static void Dispose() { }
 
 
 	public static IDisposable trace_scope(
@@ -176,9 +166,14 @@ public static class Tracer {
 
 	public static void traceheader(string title) {
 		println();
-		println(tracehdr(title));
-		println();
-	}
+        try {
+            var rule = new Rule($"{title}");
+            AnsiConsole.Write(rule);
+        } catch {
+            println(tracehdr(title));
+        }
+        println();
+    }
 
 	public static void traceprogress(string operation, int current, int total) {
 		double percentage = (double)current / total * 100;
@@ -194,31 +189,14 @@ public static class Tracer {
 	}
 
 	public static void print(object? obj = null) {
-		Console.Write(obj?.ToString() ?? "");
+		_logger.LogInformation("{Message}", obj?.ToString() ?? "");
 	}
 
 	public static void println(object? obj = null) {
-		Console.WriteLine(obj?.ToString() ?? "");
-	}
-
-	private class FileWriter : IDisposable {
-		private readonly StreamWriter _writer;
-		private readonly object       _lock = new object();
-
-		public FileWriter(string filePath) {
-			_writer = new StreamWriter(filePath, append: true) {
-				AutoFlush = true
-			};
+		if (obj is null) {
+			Logging.NewLine();
+			return;
 		}
-
-		public void WriteLine(string message) {
-			lock (_lock) {
-				_writer.WriteLine(message);
-			}
-		}
-
-		public void Dispose() {
-			_writer?.Dispose();
-		}
+		_logger.LogInformation("{Message}", obj.ToString());
 	}
 }

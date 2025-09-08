@@ -121,6 +121,15 @@
           "Serilog": "3.1.1"
         }
       },
+      "Serilog.Formatting.Compact": {
+        "type": "Direct",
+        "requested": "[2.0.0, )",
+        "resolved": "2.0.0",
+        "contentHash": "ob6z3ikzFM3D1xalhFuBIK1IOWf+XrQq+H4KeH4VqBcPpNcmUgZlRQ2h3Q7wvthpdZBBoY86qZOI2LCXNaLlNA==",
+        "dependencies": {
+          "Serilog": "3.1.0"
+        }
+      },
       "Serilog.Sinks.Console": {
         "type": "Direct",
         "requested": "[6.0.0, )",
@@ -149,11 +158,33 @@
           "Serilog.Sinks.File": "5.0.0"
         }
       },
+      "Serilog.Sinks.SpectreConsole": {
+        "type": "Direct",
+        "requested": "[0.2.1, )",
+        "resolved": "0.3.0",
+        "contentHash": "6FJQU2UsgIpxh+FKACY3hB/jsnrkqeRckP+e8Xq2oxQ8DcPsfndfeThG1P8vKrNro0A69hL6TaCrIUhFJ+FLdQ==",
+        "dependencies": {
+          "FSharp.Core": "6.0.5",
+          "Serilog": "2.10.0",
+          "Spectre.Console": "0.45.0"
+        }
+      },
+      "Spectre.Console": {
+        "type": "Direct",
+        "requested": "[0.49.1, )",
+        "resolved": "0.49.1",
+        "contentHash": "USV+pdu49OJ3nCjxNuw1K9Zw/c1HCBbwbjXZp0EOn6wM99tFdAtN34KEBZUMyRuJuXlUMDqhd8Yq9obW2MslYA=="
+      },
       "System.Text.Json": {
         "type": "Direct",
         "requested": "[8.0.5, )",
         "resolved": "8.0.5",
         "contentHash": "0f1B50Ss7rqxXiaBJyzUu9bWFOO2/zSlifZ/UNMdiIpDYe4cY4LQQicP4nirK1OS31I43rn062UIJ1Q9bpmHpg=="
+      },
+      "FSharp.Core": {
+        "type": "Transitive",
+        "resolved": "6.0.5",
+        "contentHash": "FwdQVtpj34xt8vKyFUUeNIS+obWlEnSrSW7y1ivRVts/ZsrUsKyOd0bZehgFhWdnB/NBsa9DCWvNFMTO0XDFcg=="
       },
       "MediatR": {
         "type": "Transitive",

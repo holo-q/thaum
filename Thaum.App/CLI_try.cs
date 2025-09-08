@@ -267,7 +267,7 @@ public partial class CLI {
                 ), src);
                 println("═══ GENERATED PROMPT (DRY-RUN) ═══");
                 println(prompt);
-                await ArtifactSaver.SaveSessionAsync(targetSymbol, filepath, prompt, null, null);
+                _ = await ArtifactSaver.SaveSessionAsync(targetSymbol, filepath, prompt, null, null);
             }
             else if (nRollouts == 1) {
                 // Single compression

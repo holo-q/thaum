@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using System.Text;
 using Thaum.Core.Models;
+using Spectre.Console;
 using Thaum.Utils;
 using static Thaum.Core.Utils.Tracer;
 
@@ -130,82 +131,108 @@ public class Compressor {
 	/// where parallel processing maximizes throughput where streaming enables progress tracking
 	/// </summary>
 	public async Task<SymbolHierarchy> ProcessCodebaseAsync(string projectPath, string language, string? defaultPromptName = null) {
-		traceheader("HIERARCHICAL CODEBASE ANALYSIS");
-		_logger.LogInformation("Starting codebase processing for {ProjectPath}", projectPath);
+		_logger.LogInformation("Start: codebase processing for {ProjectPath}", projectPath);
 
-		traceln("LSP Server", $"{language.ToUpper()}", "INIT");
-
-		traceln("Workspace", "Symbol Discovery", "SCAN");
-		var codeMap = await _crawler.CrawlDir(projectPath);
+		// Discovery spinner (compact, no boxes)
+		var codeMap = await AnsiConsole.Status()
+			.Spinner(Spinner.Known.Dots)
+			.SpinnerStyle(Style.Parse("green"))
+			.StartAsync("Scanning workspace for symbols", async _ => await _crawler.CrawlDir(projectPath));
 		List<CodeSymbol> allSymbols = codeMap.ToList();
 		HierarchyBuilder hierarchyBuilder = new HierarchyBuilder();
 
 		// Phase 1: Optimize functions (deepest scope)
-		traceheader("PHASE 1: FUNCTION ANALYSIS");
+		using var _p1 = Logging.Scope("PHASE 1: Function Analysis");
 		List<CodeSymbol> functions = allSymbols.Where(s => s.Kind is SymbolKind.Function or SymbolKind.Method).ToList();
 
-		traceln("Parallel Processing", $"{functions.Count} functions", "START");
-
-		IEnumerable<Task<string>> functionOptimizationTasks = functions.Select(async function => {
-			traceln(function.Name, "LLM Analysis", "STREAM");
-			string              sourceCode = await GetSymbolSourceCode(function);
-			OptimizationContext context    = new OptimizationContext(Level: 1, AvailableKeys: [], PromptName: defaultPromptName);
-			return await OptimizeSymbolWithStreamAsync(function, context, sourceCode);
-		});
-
-		List<string> functionOptimizations = (await Task.WhenAll(functionOptimizationTasks)).ToList();
+		List<string> functionOptimizations = new List<string>(functions.Count);
+		await AnsiConsole.Progress()
+			.Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
+			.StartAsync(async ctx => {
+				var task = ctx.AddTask($"Functions ({functions.Count})", maxValue: functions.Count);
+				var results = await Task.WhenAll(functions.Select(async function => {
+					string sourceCode = await GetSymbolSourceCode(function);
+					OptimizationContext context = new OptimizationContext(Level: 1, AvailableKeys: [], PromptName: defaultPromptName);
+					string summary = await OptimizeSymbolWithStreamAsync(function, context, sourceCode);
+					task.Increment(1);
+					return summary;
+				}));
+				functionOptimizations.AddRange(results);
+			});
 
 		// Phase 2: Extract K1 from function summaries
-		traceheader("PHASE 2: K1 EXTRACTION");
-		traceln("Function Optimizations", "Pattern Analysis", "KEY");
-		string                     k1            = await ExtractCommonKeyWithStreamAsync(functionOptimizations, 1);
+		using var _p2 = Logging.Scope("PHASE 2: K1 Extraction");
+		string k1 = await AnsiConsole.Status()
+			.Spinner(Spinner.Known.Dots)
+			.SpinnerStyle(Style.Parse("yellow"))
+			.StartAsync("Extracting K1 from function summaries", async _ => await ExtractCommonKeyWithStreamAsync(functionOptimizations, 1));
 		Dictionary<string, string> extractedKeys = new Dictionary<string, string> { ["K1"] = k1 };
-		traceln("K1 Extracted", k1.Length > 50 ? $"{k1[..47]}..." : k1, "DONE");
+		_logger.LogInformation("K1: {Sample}", k1.Length > 50 ? $"{k1[..47]}..." : k1);
 
 		// Phase 3: Re-summarize functions with K1
-		traceheader("PHASE 3: FUNCTION RE-ANALYSIS WITH K1");
-		traceln("Parallel Re-analysis", $"{functions.Count} functions", "START");
-
-		IEnumerable<Task<string>> functionReanalysisTasks = functions.Select(async function => {
-			traceln(function.Name, "K1-Enhanced Analysis", "STREAM");
-			string              sourceCode = await GetSymbolSourceCode(function);
-			OptimizationContext context    = new OptimizationContext(Level: 1, AvailableKeys: [k1], PromptName: defaultPromptName);
-			return await OptimizeSymbolWithStreamAsync(function, context, sourceCode);
-		});
-
-		await Task.WhenAll(functionReanalysisTasks);
+		using var _p3 = Logging.Scope("PHASE 3: Function Re-analysis with K1");
+		await AnsiConsole.Progress()
+			.Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
+			.StartAsync(async ctx => {
+				var task = ctx.AddTask($"Functions ({functions.Count})", maxValue: functions.Count);
+				await Task.WhenAll(functions.Select(async function => {
+					string sourceCode = await GetSymbolSourceCode(function);
+					OptimizationContext context = new OptimizationContext(Level: 1, AvailableKeys: [k1], PromptName: defaultPromptName);
+					await OptimizeSymbolWithStreamAsync(function, context, sourceCode);
+					task.Increment(1);
+				}));
+			});
 
 		// Phase 4: Optimize classes with K1
-		traceheader("PHASE 4: CLASS ANALYSIS WITH K1");
+		using var _p4 = Logging.Scope("PHASE 4: Class Analysis with K1");
 		List<CodeSymbol> classes = allSymbols.Where(s => s.Kind == SymbolKind.Class).ToList();
 
-		traceln("Parallel Processing", $"{classes.Count} classes", "START");
-
-		IEnumerable<Task<string>> classOptimizationTasks = classes.Select(async cls => {
-			traceln(cls.Name, "K1-Enhanced Analysis", "STREAM");
-			string              sourceCode = await GetSymbolSourceCode(cls);
-			OptimizationContext context    = new OptimizationContext(Level: 2, AvailableKeys: [k1], PromptName: defaultPromptName);
-			return await OptimizeSymbolWithStreamAsync(cls, context, sourceCode);
-		});
-
-		List<string> classOptimizations = (await Task.WhenAll(classOptimizationTasks)).ToList();
+		List<string> classOptimizations = new List<string>(classes.Count);
+		await AnsiConsole.Progress()
+			.Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
+			.StartAsync(async ctx => {
+				var task = ctx.AddTask($"Classes ({classes.Count})", maxValue: classes.Count);
+				var results = await Task.WhenAll(classes.Select(async cls => {
+					string sourceCode = await GetSymbolSourceCode(cls);
+					OptimizationContext context = new OptimizationContext(Level: 2, AvailableKeys: [k1], PromptName: defaultPromptName);
+					string summary = await OptimizeSymbolWithStreamAsync(cls, context, sourceCode);
+					task.Increment(1);
+					return summary;
+				}));
+				classOptimizations.AddRange(results);
+			});
 
 		// Phase 5: Extract K2 from class summaries
-		traceheader("PHASE 5: K2 EXTRACTION");
-		traceln("Class Optimizations", "Pattern Analysis", "KEY");
-		string k2 = await ExtractCommonKeyWithStreamAsync(classOptimizations, 2);
+		using var _p5 = Logging.Scope("PHASE 5: K2 Extraction");
+		string k2 = await AnsiConsole.Status()
+			.Spinner(Spinner.Known.Dots)
+			.SpinnerStyle(Style.Parse("yellow"))
+			.StartAsync("Extracting K2 from class summaries", async _ => await ExtractCommonKeyWithStreamAsync(classOptimizations, 2));
 		extractedKeys["K2"] = k2;
-		traceln("K2 Extracted", k2.Length > 50 ? $"{k2[..47]}..." : k2, "DONE");
+		_logger.LogInformation("K2: {Sample}", k2.Length > 50 ? $"{k2[..47]}..." : k2);
 
 		// Phase 6: Re-summarize everything with K1+K2
-		traceheader("PHASE 6: FINAL RE-ANALYSIS WITH K1+K2");
-		await ResummarizeWithKeysAsync(functions.Concat(classes).ToList(), [k1, k2], defaultPromptName);
+		using var _p6 = Logging.Scope("PHASE 6: Final Re-analysis with K1+K2");
+		var all = functions.Concat(classes).ToList();
+		await AnsiConsole.Progress()
+			.Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
+			.StartAsync(async ctx => {
+				var task = ctx.AddTask($"Symbols ({all.Count})", maxValue: all.Count);
+				await Task.WhenAll(all.Select(async symbol => {
+					string sourceCode = await GetSymbolSourceCode(symbol);
+					OptimizationContext context = new OptimizationContext(
+						Level: symbol.Kind is SymbolKind.Function or SymbolKind.Method ? 1 : 2,
+						AvailableKeys: [k1, k2],
+						PromptName: defaultPromptName);
+					await OptimizeSymbolWithStreamAsync(symbol, context, sourceCode);
+					task.Increment(1);
+				}));
+			});
 
-		traceheader("HIERARCHY CONSTRUCTION");
-		traceln("Flat Symbols", "Nested Structure", "BUILD");
+		using var _p7 = Logging.Scope("Hierarchy Construction");
 		List<CodeSymbol> rootSymbols = hierarchyBuilder.BuildHierarchy(allSymbols);
 
-		traceln("Analysis Complete", $"{allSymbols.Count} symbols processed", "DONE");
+		_logger.LogInformation("Done: {Count} symbols processed", allSymbols.Count);
 		return new SymbolHierarchy(projectPath, rootSymbols, extractedKeys, DateTime.UtcNow);
 	}
 
@@ -289,7 +316,7 @@ public class Compressor {
 		string cacheKey = $"optimization_{symbol.Name}_{symbol.FilePath}_{symbol.StartCodeLoc.Line}_{context.Level}";
 
 		if (await _cache.TryGetAsync<string>(cacheKey) is { } cached) {
-			traceln(symbol.Name, "Cached Optimization", "HIT");
+			_logger.LogDebug("Cache hit: {Symbol}", symbol.Name);
 			return cached;
 		}
 
@@ -311,7 +338,7 @@ public class Compressor {
 
 		string result = summary.ToString().Trim();
 		await _cache.SetAsync(cacheKey, result, TimeSpan.FromHours(24));
-		traceln(symbol.Name, $"Optimization ({result.Length} chars)", "DONE");
+		_logger.LogDebug("Optimized {Symbol} ({Len} chars)", symbol.Name, result.Length);
 
 		return result;
 	}
@@ -320,7 +347,7 @@ public class Compressor {
 		string cacheKey = $"key_L{level}_{GetOptimizationsHash(summaries)}";
 
 		if (await _cache.TryGetAsync<string>(cacheKey) is { } cached) {
-			traceln($"K{level} Extraction", "Cached Key", "HIT");
+			_logger.LogDebug("Cache hit: K{Level}", level);
 			return cached;
 		}
 
@@ -347,10 +374,10 @@ public class Compressor {
 	}
 
 	private async Task ResummarizeWithKeysAsync(List<CodeSymbol> symbols, List<string> keys, string? defaultPromptName = null) {
-		traceln("Parallel Final Analysis", $"{symbols.Count} symbols", "START");
+		_logger.LogDebug("Final analysis for {Count} symbols", symbols.Count);
 
 		IEnumerable<Task<string>> reanalysisTasks = symbols.Select(async symbol => {
-			traceln(symbol.Name, "Final K1+K2 Analysis", "STREAM");
+			_logger.LogDebug("Final analysis: {Symbol}", symbol.Name);
 			string sourceCode = await GetSymbolSourceCode(symbol);
 			OptimizationContext context = new OptimizationContext(
 				Level: symbol.Kind is SymbolKind.Function or SymbolKind.Method ? 1 : 2,

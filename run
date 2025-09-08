@@ -1,3 +1,0 @@
-#!/bin/bash
-# Simple wrapper to run thaum without specifying project
-dotnet run --project Thaum.App -- "$@"
