@@ -13,7 +13,11 @@ public class FidelityReport {
     public int      BranchCountSrc { get; set; }
     public int      CallHeurSrc    { get; set; }
 
+    // Signature (when extracted)
+    public string?  SigName        { get; set; }
+    public string?  SigReturnType  { get; set; }
+    public int      SigParamCount  { get; set; }
+
     public bool     PassedMinGate  { get; set; }
     public string[] Notes          { get; set; } = Array.Empty<string>();
 }
-

@@ -32,6 +32,12 @@ public static class FidelityEvaluator {
                 callHeur    = ast.CallCount;
                 notes.Add($"AST-backed counts used for {language}");
             }
+            if (language!.ToLowerInvariant() == "c-sharp") {
+                var sig = SignatureExtractor.ExtractCSharp(sourceCode);
+                report.SigName       = sig.Name;
+                report.SigReturnType = sig.ReturnType;
+                report.SigParamCount = sig.ParamCount;
+            }
         }
 
         report.AwaitCountSrc  = awaitCount;
