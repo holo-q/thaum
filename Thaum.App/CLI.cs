@@ -221,14 +221,11 @@ public partial class CLI {
 	/// try command: Test prompts on individual symbols
 	/// </summary>
     private static Command CreateTryCommand(CLI cli) {
-        // Accept either combined path-spec (<file>::<symbol>) or split args (<file> <symbol>)
-        var argPathSpec  = new Argument<string>("file-or-pathspec") { Description = "Either '<file>::<symbol>' or '<file> <symbol>'" };
-        var argSymbolOpt = new Argument<string?>("symbol-name")
-        {
-            Description = "Name of symbol to test (omit if using '<file>::<symbol>')",
-            Arity       = ArgumentArity.ZeroOrOne
-        };
-        var optPrompt      = new Option<string?>("--prompt") { Description = "Prompt file name (e.g., compress_function_v5)" };
+        // Accept either combined path-spec (<file>::<symbol>) or split args (<file> <symbol> [prompt])
+        var argPathSpec  = new Argument<string>("file-or-pathspec") { Description = "Either '<file>::<symbol>' or '<file> <symbol> [prompt]" };
+        var argSymbolOpt = new Argument<string?>("symbol-name") { Description = "Name of symbol to test (omit if using '<file>::<symbol>')", Arity = ArgumentArity.ZeroOrOne };
+        var argPromptPos = new Argument<string?>("prompt") { Description = "Optional prompt name (e.g., compress_function_v5)", Arity = ArgumentArity.ZeroOrOne };
+        var optPrompt      = new Option<string?>("--prompt") { Description = "[Deprecated] Prompt file name (use positional 'prompt' instead)" };
         var optDry         = new Option<bool>("--dry") { Description = "Do not call LLM; print and save constructed prompt only" };
         var optInteractive = new Option<bool>("--interactive") { Description = "Launch interactive TUI with live updates" };
         var optN = new Option<int>("--n") {
@@ -239,6 +236,7 @@ public partial class CLI {
         var cmd = new Command("try", "Test prompts on individual symbols");
         cmd.Arguments.Add(argPathSpec);
         cmd.Arguments.Add(argSymbolOpt);
+        cmd.Arguments.Add(argPromptPos);
         cmd.Options.Add(optPrompt);
         cmd.Options.Add(optInteractive);
         cmd.Options.Add(optDry);
@@ -247,7 +245,8 @@ public partial class CLI {
         cmd.SetAction(async (parseResult, cancellationToken) => {
             var pathSpec    = parseResult.GetValue(argPathSpec)!;
             var symbolArg   = parseResult.GetValue(argSymbolOpt);
-            var prompt      = parseResult.GetValue(optPrompt);
+            var promptPos   = parseResult.GetValue(argPromptPos);
+            var prompt      = parseResult.GetValue(optPrompt) ?? promptPos;
             var interactive = parseResult.GetValue(optInteractive);
             var dryRun      = parseResult.GetValue(optDry);
             var n           = parseResult.GetValue(optN);
@@ -336,26 +335,20 @@ public partial class CLI {
     }
 
     private static Command CreateEvalCompressionCommand(CLI cli) {
-        var optPath = new Option<string>("--path") {
-            Description = "Root directory to evaluate",
-            DefaultValueFactory = _ => Directory.GetCurrentDirectory()
-        };
-        var optLang = new Option<string>("--lang") {
-            Description = "Programming language (or 'auto')",
-            DefaultValueFactory = _ => "auto"
-        };
+        var argPath = new Argument<string>("path") { Description = "Root directory to evaluate" };
+        var argLang = new Argument<string?>("language") { Description = "Programming language (or 'auto')", Arity = ArgumentArity.ZeroOrOne };
         var optOut = new Option<string?>("--out") { Description = "CSV output path (optional)" };
         var optJson = new Option<string?>("--json") { Description = "JSON output path (optional)" };
 
         var cmd = new Command("eval-compression", "Batch evaluation across a directory");
-        cmd.Options.Add(optPath);
-        cmd.Options.Add(optLang);
+        cmd.Arguments.Add(argPath);
+        cmd.Arguments.Add(argLang);
         cmd.Options.Add(optOut);
         cmd.Options.Add(optJson);
 
         cmd.SetAction(async (parseResult, cancellationToken) => {
-            var path = parseResult.GetValue(optPath)!;
-            var lang = parseResult.GetValue(optLang)!;
+            var path = parseResult.GetValue(argPath)!;
+            var lang = parseResult.GetValue(argLang) ?? "auto";
             var outp = parseResult.GetValue(optOut);
             var json = parseResult.GetValue(optJson);
             await cli.CMD_eval_compression(path, lang, outp, json);
