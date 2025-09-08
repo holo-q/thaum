@@ -301,6 +301,40 @@ public partial class CLI {
         await CMD_try(args.ToArray());
     }
 
+    public async Task CMD_eval(string filePath, string symbolName, string? triadPath) {
+        tracein(parameters: new { filePath, symbolName, triadPath });
+
+        // Locate symbol via TreeSitter
+        var codeMap = await _crawler.CrawlFile(filePath);
+        var symbol  = codeMap.GetSymbolByName(symbolName);
+        if (symbol is null) {
+            println($"Symbol '{symbolName}' not found in {filePath}");
+            traceout();
+            return;
+        }
+
+        string src = await _crawler.GetCode(symbol) ?? string.Empty;
+        Thaum.Core.Triads.FunctionTriad? triad = null;
+        if (!string.IsNullOrWhiteSpace(triadPath) && File.Exists(triadPath)) {
+            string json = await File.ReadAllTextAsync(triadPath);
+            triad = System.Text.Json.JsonSerializer.Deserialize<Thaum.Core.Triads.FunctionTriad>(json, GLB.JsonOptions);
+        } else {
+            println("No triad provided; evaluation will only compute simple source metrics.");
+        }
+
+        string language = Thaum.Utils.LangUtil.DetectLanguageFromFile(filePath);
+        var report = Thaum.Core.Eval.FidelityEvaluator.EvaluateFunction(symbol, src, triad, language);
+        println($"Fidelity: {(report.PassedMinGate ? "PASS" : "FAIL")}  Await={report.AwaitCountSrc} Branch={report.BranchCountSrc} Calls≈{report.CallHeurSrc}");
+        await ArtifactSaver.SaveFidelityAsync(symbol, report);
+
+        if (report.Notes.Length > 0) {
+            println("Notes:");
+            foreach (var n in report.Notes) println($"  - {n}");
+        }
+
+        traceout();
+    }
+
 	public async Task CMD_try_lsp(bool showAll, bool cleanup) {
 		trace($"Executing ls-lsp command with showAll: {showAll}, cleanup: {cleanup}");
 		List<string> args = ["ls-lsp"];

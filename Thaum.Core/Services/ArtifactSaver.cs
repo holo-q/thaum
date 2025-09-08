@@ -1,6 +1,7 @@
 using System.Text;
 using Thaum.Core.Models;
 using Thaum.Core.Triads;
+using Thaum.Core.Eval;
 
 namespace Thaum.Core.Services;
 
@@ -23,9 +24,17 @@ public static class ArtifactSaver {
         }
     }
 
+    public static async Task SaveFidelityAsync(CodeSymbol symbol, FidelityReport report) {
+        string sessionRoot = Path.Combine(GLB.CacheDir, "sessions", DateTime.UtcNow.ToString("yyyyMMdd_HHmmssfff"));
+        Directory.CreateDirectory(sessionRoot);
+        string safeName = MakeSafe(symbol.Name);
+        string path = Path.Combine(sessionRoot, $"{safeName}.fidelity.json");
+        var json = System.Text.Json.JsonSerializer.Serialize(report, GLB.JsonOptions);
+        await File.WriteAllTextAsync(path, json, Encoding.UTF8);
+    }
+
     static string MakeSafe(string name) {
         foreach (char c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
         return name;
     }
 }
-

@@ -29,29 +29,30 @@ public partial class CLI {
 	/// TreeSitterCrawler enables code analysis where PerceptualColorer creates visual semantics
 	/// where EnvLoader enables hierarchical config where trace logging captures execution flow
 	/// </summary>
-	public CLI() {
-		HttpClient httpClient = new HttpClient();
+    public CLI() {
+        HttpClient httpClient = new HttpClient();
 
-		_crawler  = new TreeSitterCrawler();
-		_logger   = Logging.For<CLI>();
-		_colorer  = new PerceptualColorer();
-		_llm      = new HttpLLM(httpClient, GLB.AppConfig);
-		_prompter = new Prompter(_llm);
+        _crawler = new TreeSitterCrawler();
+        _logger  = Logging.For<CLI>();
+        _colorer = new PerceptualColorer();
 
-		// Initialize trace logger
-		Initialize(_logger);
-		tracein();
+        // Initialize trace logger first
+        Initialize(_logger);
+        tracein();
 
-		// Load .env files from directory hierarchy
-		EnvLoader.LoadAndApply();
+        // Load .env files before constructing components that read configuration
+        EnvLoader.LoadAndApply();
 
-		// Setup configuration for LLM provider
-		Cache        cache        = new Cache(GLB.AppConfig);
-		PromptLoader promptLoader = new PromptLoader();
+        // Now construct LLM and dependent services with environment-applied configuration
+        _llm      = new HttpLLM(httpClient, GLB.AppConfig);
+        _prompter = new Prompter(_llm);
 
-		_compressor = new Compressor(_llm, _crawler, cache, promptLoader);
-		traceout();
-	}
+        Cache        cache        = new Cache(GLB.AppConfig);
+        PromptLoader promptLoader = new PromptLoader();
+
+        _compressor = new Compressor(_llm, _crawler, cache, promptLoader);
+        traceout();
+    }
 
 	/// <summary>
 	/// Main entry point using System.CommandLine for robust argument parsing where commands
@@ -92,9 +93,12 @@ public partial class CLI {
 		root.Subcommands.Add(CreateLsEnvCommand(cli));
 		root.Subcommands.Add(CreateLsCacheCommand(cli));
 		root.Subcommands.Add(CreateLsLspCommand(cli));
-		root.Subcommands.Add(CreateTryCommand(cli));
-		root.Subcommands.Add(CreateOptimizeCommand(cli));
-		root.Subcommands.Add(CreateTuiCommand(cli));
+        root.Subcommands.Add(CreateTryCommand(cli));
+        root.Subcommands.Add(CreateOptimizeCommand(cli));
+        root.Subcommands.Add(CreateEvalCommand(cli));
+        root.Subcommands.Add(CreateEvalCompressionCommand(cli));
+        root.Subcommands.Add(CreateCompressBatchCommand(cli));
+        root.Subcommands.Add(CreateTuiCommand(cli));
 
 		return root;
 	}
@@ -219,14 +223,11 @@ public partial class CLI {
 	/// try command: Test prompts on individual symbols
 	/// </summary>
     private static Command CreateTryCommand(CLI cli) {
-        // Accept either combined path-spec (<file>::<symbol>) or split args (<file> <symbol>)
-        var argPathSpec  = new Argument<string>("file-or-pathspec") { Description = "Either '<file>::<symbol>' or '<file> <symbol>'" };
-        var argSymbolOpt = new Argument<string?>("symbol-name")
-        {
-            Description = "Name of symbol to test (omit if using '<file>::<symbol>')",
-            Arity       = ArgumentArity.ZeroOrOne
-        };
-        var optPrompt      = new Option<string?>("--prompt") { Description = "Prompt file name (e.g., compress_function_v5)" };
+        // Accept either combined path-spec (<file>::<symbol>) or split args (<file> <symbol> [prompt])
+        var argPathSpec  = new Argument<string>("file-or-pathspec") { Description = "Either '<file>::<symbol>' or '<file> <symbol> [prompt]" };
+        var argSymbolOpt = new Argument<string?>("symbol-name") { Description = "Name of symbol to test (omit if using '<file>::<symbol>')", Arity = ArgumentArity.ZeroOrOne };
+        var argPromptPos = new Argument<string?>("prompt") { Description = "Optional prompt name (e.g., compress_function_v5)", Arity = ArgumentArity.ZeroOrOne };
+        var optPrompt      = new Option<string?>("--prompt") { Description = "[Deprecated] Prompt file name (use positional 'prompt' instead)" };
         var optDry         = new Option<bool>("--dry") { Description = "Do not call LLM; print and save constructed prompt only" };
         var optInteractive = new Option<bool>("--interactive") { Description = "Launch interactive TUI with live updates" };
         var optN = new Option<int>("--n") {
@@ -237,6 +238,7 @@ public partial class CLI {
         var cmd = new Command("try", "Test prompts on individual symbols");
         cmd.Arguments.Add(argPathSpec);
         cmd.Arguments.Add(argSymbolOpt);
+        cmd.Arguments.Add(argPromptPos);
         cmd.Options.Add(optPrompt);
         cmd.Options.Add(optInteractive);
         cmd.Options.Add(optDry);
@@ -245,7 +247,8 @@ public partial class CLI {
         cmd.SetAction(async (parseResult, cancellationToken) => {
             var pathSpec    = parseResult.GetValue(argPathSpec)!;
             var symbolArg   = parseResult.GetValue(argSymbolOpt);
-            var prompt      = parseResult.GetValue(optPrompt);
+            var promptPos   = parseResult.GetValue(argPromptPos);
+            var prompt      = parseResult.GetValue(optPrompt) ?? promptPos;
             var interactive = parseResult.GetValue(optInteractive);
             var dryRun      = parseResult.GetValue(optDry);
             var n           = parseResult.GetValue(optN);
@@ -275,7 +278,7 @@ public partial class CLI {
 	/// <summary>
 	/// optimize command: Generate codebase optimizations
 	/// </summary>
-	private static Command CreateOptimizeCommand(CLI cli) {
+    private static Command CreateOptimizeCommand(CLI cli) {
 		var optPath = new Option<string>("--path") {
 			Description         = "Project path",
 			DefaultValueFactory = _ => Directory.GetCurrentDirectory()
@@ -310,8 +313,84 @@ public partial class CLI {
 		});
 
 		return cmd;
-	}
+    }
 
+    private static Command CreateEvalCommand(CLI cli) {
+        var argFile   = new Argument<string>("file-path") { Description = "Path to source file" };
+        var argSymbol = new Argument<string>("symbol-name") { Description = "Name of symbol to evaluate" };
+        var optTriad  = new Option<string?>("--triad") { Description = "Path to triad JSON (optional)" };
+
+        var cmd = new Command("eval", "Evaluate compression fidelity for a single function triad");
+        cmd.Arguments.Add(argFile);
+        cmd.Arguments.Add(argSymbol);
+        cmd.Options.Add(optTriad);
+
+        cmd.SetAction(async (parseResult, cancellationToken) => {
+            var file   = parseResult.GetValue(argFile)!;
+            var symbol = parseResult.GetValue(argSymbol)!;
+            var triad  = parseResult.GetValue(optTriad);
+
+            await cli.CMD_eval(file, symbol, triad);
+        });
+
+        return cmd;
+    }
+
+    private static Command CreateEvalCompressionCommand(CLI cli) {
+        var argPath = new Argument<string>("path") { Description = "Root directory to evaluate" };
+        var argLang = new Argument<string?>("language") { Description = "Programming language (or 'auto')", Arity = ArgumentArity.ZeroOrOne };
+        var optOut = new Option<string?>("--out") { Description = "CSV output path (optional)" };
+        var optJson = new Option<string?>("--json") { Description = "JSON output path (optional)" };
+        var optUseTriads = new Option<bool>("--use-triads") { Description = "Load saved triads from cache/sessions and include in evaluation" };
+        var optN = new Option<int?>("--n") { Description = "Randomly sample N functions across the directory" };
+
+        var cmd = new Command("eval-compression", "Batch evaluation across a directory");
+        cmd.Arguments.Add(argPath);
+        cmd.Arguments.Add(argLang);
+        cmd.Options.Add(optOut);
+        cmd.Options.Add(optJson);
+        cmd.Options.Add(optUseTriads);
+        cmd.Options.Add(optN);
+
+        cmd.SetAction(async (parseResult, cancellationToken) => {
+            var path = parseResult.GetValue(argPath)!;
+            var lang = parseResult.GetValue(argLang) ?? "auto";
+            var outp = parseResult.GetValue(optOut);
+            var json = parseResult.GetValue(optJson);
+            var n    = parseResult.GetValue(optN);
+            var useT = parseResult.GetValue(optUseTriads);
+            await cli.CMD_eval_compression(path, lang, outp, json, n, useT);
+        });
+
+        return cmd;
+    }
+
+    private static Command CreateCompressBatchCommand(CLI cli) {
+        var argPath = new Argument<string>("path") { Description = "Root directory to compress" };
+        var argLang = new Argument<string?>("language") { Description = "Programming language (or 'auto')", Arity = ArgumentArity.ZeroOrOne };
+
+        var optPrompt = new Option<string?>("--prompt") { Description = "Prompt name (default: compress_function_v5)" };
+        var optConcurrency = new Option<int>("--concurrency") { Description = "Max concurrent compressions", DefaultValueFactory = _ => 4 };
+        var optN = new Option<int?>("--n") { Description = "Randomly sample N functions across the directory" };
+
+        var cmd = new Command("compress-batch", "Batch-generate triads across a directory");
+        cmd.Arguments.Add(argPath);
+        cmd.Arguments.Add(argLang);
+        cmd.Options.Add(optPrompt);
+        cmd.Options.Add(optConcurrency);
+        cmd.Options.Add(optN);
+
+        cmd.SetAction(async (parseResult, cancellationToken) => {
+            var path = parseResult.GetValue(argPath)!;
+            var lang = parseResult.GetValue(argLang) ?? "auto";
+            var prompt = parseResult.GetValue(optPrompt);
+            var concurrency = parseResult.GetValue(optConcurrency);
+            var n = parseResult.GetValue(optN);
+            await cli.CMD_compress_batch(path, lang, prompt, concurrency, n, cancellationToken);
+        });
+
+        return cmd;
+    }
 	/// <summary>
 	/// tui command: Launch interactive symbol browser
 	/// </summary>
