@@ -93,11 +93,11 @@ public static class SignatureExtractor {
         if (pred(node)) return node;
         var cursor = node.Walk();
         try {
-            if (!cursor.GoToFirstChild()) return null;
+            if (!cursor.GotoFirstChild()) return null;
             do {
                 var found = FindFirst(cursor.CurrentNode, pred);
                 if (found != null) return found;
-            } while (cursor.GoToNextSibling());
+            } while (cursor.GotoNextSibling());
             return null;
         } finally { cursor.Dispose(); }
     }

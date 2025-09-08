@@ -64,7 +64,7 @@ main() {
         dotnet build "$project" \
             -t:Rebuild \
             -c Debug \
-            -v minimal \
+            -v minimal -clp:ErrorsOnly \
             -nologo \
             -m:"$CORES" \
             /p:UseSharedCompilation=true \
@@ -73,7 +73,7 @@ main() {
         echo "Building (incremental): dotnet build '$project' (using $CORES cores)" >&2
         dotnet build "$project" \
             -c Debug \
-            -v minimal \
+            -v minimal -clp:ErrorsOnly \
             -nologo \
             -m:"$CORES" \
             /p:UseSharedCompilation=true \
