@@ -345,17 +345,20 @@ public partial class CLI {
             DefaultValueFactory = _ => "auto"
         };
         var optOut = new Option<string?>("--out") { Description = "CSV output path (optional)" };
+        var optJson = new Option<string?>("--json") { Description = "JSON output path (optional)" };
 
         var cmd = new Command("eval-compression", "Batch evaluation across a directory");
         cmd.Options.Add(optPath);
         cmd.Options.Add(optLang);
         cmd.Options.Add(optOut);
+        cmd.Options.Add(optJson);
 
         cmd.SetAction(async (parseResult, cancellationToken) => {
             var path = parseResult.GetValue(optPath)!;
             var lang = parseResult.GetValue(optLang)!;
             var outp = parseResult.GetValue(optOut);
-            await cli.CMD_eval_compression(path, lang, outp);
+            var json = parseResult.GetValue(optJson);
+            await cli.CMD_eval_compression(path, lang, outp, json);
         });
 
         return cmd;
