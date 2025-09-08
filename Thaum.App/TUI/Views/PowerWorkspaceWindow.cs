@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using Microsoft.Extensions.Logging;
 using Terminal.Gui;
 using Terminal.Gui.App;
+using Terminal.Gui.Configuration;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
@@ -40,6 +42,8 @@ public class PowerWorkspaceWindow : Window
     private readonly ObservableCollection<JobItem> _jobs = new();
 
     private ObservableCollection<string> _logLines = new();
+    private readonly List<string> _availableSchemes = new();
+    private int _schemeIndex = 0;
 
     public PowerWorkspaceWindow(Crawler crawler, Compressor compressor, CodeMap codeMap, string projectPath)
     {
@@ -56,6 +60,7 @@ public class PowerWorkspaceWindow : Window
         BuildLayout();
         LoadSymbols(_codeMap);
         SetupCommands();
+        SetupColorSchemes();
     }
 
     private void BuildLayout()
@@ -63,7 +68,7 @@ public class PowerWorkspaceWindow : Window
         // Top search line
         var searchLabel = new Label { X = 0, Y = 0, Text = "Search:" };
         _searchBox = new TextField { X = Pos.Right(searchLabel) + 1, Y = 0, Width = Dim.Fill() };
-        _searchBox.TextChanging += (s, e) => ApplyFilter(e.NewValue?.ToString() ?? string.Empty);
+        _searchBox.TextChanged += (s, e) => ApplyFilter(_searchBox.Text?.ToString() ?? string.Empty);
 
         // Left tree (fills height minus status bar)
         _tree = new TreeView<SymbolTreeNode>
@@ -77,7 +82,7 @@ public class PowerWorkspaceWindow : Window
         };
 
         _tree.SelectionChanged += (s, e) => UpdateDetail(e.NewValue);
-        _tree.ObjectActivated  += (s, e) => OnTreeActivated(e.Object);
+        _tree.ObjectActivated  += (s, e) => OnTreeActivated(e.ActivatedObject);
 
         // Right tabs
         _tabs = new TabView
@@ -92,26 +97,31 @@ public class PowerWorkspaceWindow : Window
         _summaryTabView = new View { Width = Dim.Fill(), Height = Dim.Fill() };
         _summaryText    = new TextView { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(), ReadOnly = true };
         _summaryTabView.Add(_summaryText);
-        _tabs.AddTab(new TabView.Tab("Summary", _summaryTabView), false);
+        var tabSummary = new Tab { DisplayText = "Summary", View = _summaryTabView };
+        _tabs.AddTab(tabSummary, false);
 
         // Triad tab placeholder (wired later)
-        _tabs.AddTab(new TabView.Tab("Triad", new View { Width = Dim.Fill(), Height = Dim.Fill() }), false);
+        var tabTriad = new Tab { DisplayText = "Triad", View = new View { Width = Dim.Fill(), Height = Dim.Fill() } };
+        _tabs.AddTab(tabTriad, false);
 
         // Diff tab side-by-side
         _diffTabView = new View { Width = Dim.Fill(), Height = Dim.Fill() };
         _diffLeft    = new TextView { X = 0, Y = 0, Width = Dim.Percent(50), Height = Dim.Fill(), ReadOnly = true };
         _diffRight   = new TextView { X = Pos.Right(_diffLeft), Y = 0, Width = Dim.Fill(), Height = Dim.Fill(), ReadOnly = true };
         _diffTabView.Add(_diffLeft, _diffRight);
-        _tabs.AddTab(new TabView.Tab("Diff", _diffTabView), false);
+        var tabDiff = new Tab { DisplayText = "Diff", View = _diffTabView };
+        _tabs.AddTab(tabDiff, false);
 
         var logView = new ListView { Width = Dim.Fill(), Height = Dim.Fill() };
         logView.SetSource(_logLines);
-        _tabs.AddTab(new TabView.Tab("Logs", logView), true);
+        var tabLogs = new Tab { DisplayText = "Logs", View = logView };
+        _tabs.AddTab(tabLogs, true);
 
         // Jobs tab
         _jobsList = new ListView { Width = Dim.Fill(), Height = Dim.Fill() };
         _jobsList.SetSource(new ObservableCollection<string>(_jobs.Select(j => j.ToString()).ToList()));
-        _tabs.AddTab(new TabView.Tab("Jobs", _jobsList), false);
+        var tabJobs = new Tab { DisplayText = "Jobs", View = _jobsList };
+        _tabs.AddTab(tabJobs, false);
 
         // Bottom status with quick actions
         _status = new StatusBar([
@@ -180,7 +190,7 @@ public class PowerWorkspaceWindow : Window
         if (!selected.IsFile && selected.Symbol is { } sym)
         {
             _summaryText.Text = BuildSymbolSummary(sym);
-            _tabs.SelectedTab = _tabs.Tabs.FirstOrDefault(t => t.Text == "Summary") ?? _tabs.SelectedTab;
+            _tabs.SelectedTab = _tabs.Tabs.FirstOrDefault(t => t.DisplayText == "Summary") ?? _tabs.SelectedTab;
         }
         else if (selected.IsFile)
         {
@@ -199,7 +209,7 @@ public class PowerWorkspaceWindow : Window
             var placeholder = $"// Rehydrated placeholder for {obj.Symbol.Name}\n" + original;
             _diffLeft.Text  = original;
             _diffRight.Text = placeholder;
-            _tabs.SelectedTab = _tabs.Tabs.FirstOrDefault(t => t.Text == "Diff") ?? _tabs.SelectedTab;
+            _tabs.SelectedTab = _tabs.Tabs.FirstOrDefault(t => t.DisplayText == "Diff") ?? _tabs.SelectedTab;
         }
         _tabs.SetNeedsDraw();
     }
@@ -252,13 +262,13 @@ public class PowerWorkspaceWindow : Window
         }
 
         // naive filter: include files/symbols whose name contains the text
-        var filtered = new CodeMap();
+        var filtered = CodeMap.Create();
         foreach (var sym in _codeMap)
         {
             if (sym.Name.Contains(text, StringComparison.OrdinalIgnoreCase)
                 || Path.GetFileName(sym.FilePath).Contains(text, StringComparison.OrdinalIgnoreCase))
             {
-                filtered.Add(sym);
+                filtered.AddSymbol(sym);
             }
         }
         LoadSymbols(filtered);
@@ -299,8 +309,10 @@ public class PowerWorkspaceWindow : Window
 
     private void CycleScheme()
     {
-        // Defer to SymbolBrowserWindowV2 implementation via F9 handling
-        Application.Raise(Command.Edit);
+        if (_availableSchemes.Count == 0) return;
+        _schemeIndex = (_schemeIndex + 1) % _availableSchemes.Count;
+        ApplyScheme(_availableSchemes[_schemeIndex]);
+        SetNeedsDraw();
     }
 
     private void ToggleColors()
@@ -308,6 +320,47 @@ public class PowerWorkspaceWindow : Window
         Application.Force16Colors = !Application.Force16Colors;
         Application.Driver?.ClearContents();
         SetNeedsDraw();
+    }
+
+    private void SetupColorSchemes()
+    {
+        try
+        {
+            var dark = new Scheme(new Terminal.Gui.Drawing.Attribute(StandardColor.LightGray, StandardColor.Black));
+            var names = SchemeManager.GetSchemeNames();
+            if (!names.Contains("ThaumDark"))
+            {
+                SchemeManager.AddScheme("ThaumDark", dark);
+            }
+
+            _availableSchemes.Clear();
+            _availableSchemes.Add("ThaumDark");
+            var baseName = SchemeManager.SchemesToSchemeName(Schemes.Base);
+            var topName  = SchemeManager.SchemesToSchemeName(Schemes.Toplevel);
+            var dlgName  = SchemeManager.SchemesToSchemeName(Schemes.Dialog);
+            if (baseName is { }) _availableSchemes.Add(baseName);
+            if (topName  is { }) _availableSchemes.Add(topName);
+            if (dlgName  is { }) _availableSchemes.Add(dlgName);
+
+            ApplyScheme(_availableSchemes[0]);
+        }
+        catch
+        {
+            // ignore if configuration not initialized
+        }
+    }
+
+    private void ApplyScheme(string schemeName)
+    {
+        try
+        {
+            var scheme = SchemeManager.GetScheme(schemeName);
+            SetScheme(scheme);
+            _tree?.SetScheme(scheme);
+            _tabs?.SetScheme(scheme);
+            _status?.SetScheme(scheme);
+        }
+        catch { }
     }
 
     private void EnqueueJob(CodeSymbol symbol, string promptName)
