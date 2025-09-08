@@ -29,29 +29,30 @@ public partial class CLI {
 	/// TreeSitterCrawler enables code analysis where PerceptualColorer creates visual semantics
 	/// where EnvLoader enables hierarchical config where trace logging captures execution flow
 	/// </summary>
-	public CLI() {
-		HttpClient httpClient = new HttpClient();
+    public CLI() {
+        HttpClient httpClient = new HttpClient();
 
-		_crawler  = new TreeSitterCrawler();
-		_logger   = Logging.For<CLI>();
-		_colorer  = new PerceptualColorer();
-		_llm      = new HttpLLM(httpClient, GLB.AppConfig);
-		_prompter = new Prompter(_llm);
+        _crawler = new TreeSitterCrawler();
+        _logger  = Logging.For<CLI>();
+        _colorer = new PerceptualColorer();
 
-		// Initialize trace logger
-		Initialize(_logger);
-		tracein();
+        // Initialize trace logger first
+        Initialize(_logger);
+        tracein();
 
-		// Load .env files from directory hierarchy
-		EnvLoader.LoadAndApply();
+        // Load .env files before constructing components that read configuration
+        EnvLoader.LoadAndApply();
 
-		// Setup configuration for LLM provider
-		Cache        cache        = new Cache(GLB.AppConfig);
-		PromptLoader promptLoader = new PromptLoader();
+        // Now construct LLM and dependent services with environment-applied configuration
+        _llm      = new HttpLLM(httpClient, GLB.AppConfig);
+        _prompter = new Prompter(_llm);
 
-		_compressor = new Compressor(_llm, _crawler, cache, promptLoader);
-		traceout();
-	}
+        Cache        cache        = new Cache(GLB.AppConfig);
+        PromptLoader promptLoader = new PromptLoader();
+
+        _compressor = new Compressor(_llm, _crawler, cache, promptLoader);
+        traceout();
+    }
 
 	/// <summary>
 	/// Main entry point using System.CommandLine for robust argument parsing where commands
@@ -96,6 +97,7 @@ public partial class CLI {
         root.Subcommands.Add(CreateOptimizeCommand(cli));
         root.Subcommands.Add(CreateEvalCommand(cli));
         root.Subcommands.Add(CreateEvalCompressionCommand(cli));
+        root.Subcommands.Add(CreateCompressBatchCommand(cli));
         root.Subcommands.Add(CreateTuiCommand(cli));
 
 		return root;
@@ -339,19 +341,52 @@ public partial class CLI {
         var argLang = new Argument<string?>("language") { Description = "Programming language (or 'auto')", Arity = ArgumentArity.ZeroOrOne };
         var optOut = new Option<string?>("--out") { Description = "CSV output path (optional)" };
         var optJson = new Option<string?>("--json") { Description = "JSON output path (optional)" };
+        var optUseTriads = new Option<bool>("--use-triads") { Description = "Load saved triads from cache/sessions and include in evaluation" };
+        var optN = new Option<int?>("--n") { Description = "Randomly sample N functions across the directory" };
 
         var cmd = new Command("eval-compression", "Batch evaluation across a directory");
         cmd.Arguments.Add(argPath);
         cmd.Arguments.Add(argLang);
         cmd.Options.Add(optOut);
         cmd.Options.Add(optJson);
+        cmd.Options.Add(optUseTriads);
+        cmd.Options.Add(optN);
 
         cmd.SetAction(async (parseResult, cancellationToken) => {
             var path = parseResult.GetValue(argPath)!;
             var lang = parseResult.GetValue(argLang) ?? "auto";
             var outp = parseResult.GetValue(optOut);
             var json = parseResult.GetValue(optJson);
-            await cli.CMD_eval_compression(path, lang, outp, json);
+            var n    = parseResult.GetValue(optN);
+            var useT = parseResult.GetValue(optUseTriads);
+            await cli.CMD_eval_compression(path, lang, outp, json, n, useT);
+        });
+
+        return cmd;
+    }
+
+    private static Command CreateCompressBatchCommand(CLI cli) {
+        var argPath = new Argument<string>("path") { Description = "Root directory to compress" };
+        var argLang = new Argument<string?>("language") { Description = "Programming language (or 'auto')", Arity = ArgumentArity.ZeroOrOne };
+
+        var optPrompt = new Option<string?>("--prompt") { Description = "Prompt name (default: compress_function_v5)" };
+        var optConcurrency = new Option<int>("--concurrency") { Description = "Max concurrent compressions", DefaultValueFactory = _ => 4 };
+        var optN = new Option<int?>("--n") { Description = "Randomly sample N functions across the directory" };
+
+        var cmd = new Command("compress-batch", "Batch-generate triads across a directory");
+        cmd.Arguments.Add(argPath);
+        cmd.Arguments.Add(argLang);
+        cmd.Options.Add(optPrompt);
+        cmd.Options.Add(optConcurrency);
+        cmd.Options.Add(optN);
+
+        cmd.SetAction(async (parseResult, cancellationToken) => {
+            var path = parseResult.GetValue(argPath)!;
+            var lang = parseResult.GetValue(argLang) ?? "auto";
+            var prompt = parseResult.GetValue(optPrompt);
+            var concurrency = parseResult.GetValue(optConcurrency);
+            var n = parseResult.GetValue(optN);
+            await cli.CMD_compress_batch(path, lang, prompt, concurrency, n, cancellationToken);
         });
 
         return cmd;
