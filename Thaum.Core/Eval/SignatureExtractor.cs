@@ -14,16 +14,16 @@ public static class SignatureExtractor {
 
             // Find first method_declaration in snippet
             var method = FindFirst(root, n => n.Type == "method_declaration");
-            if (method == null) return new MethodSignature(null, null, 0);
+            if (method is null) return new MethodSignature(null, null, 0);
 
             string? name = null;
             string? returnType = null;
             int paramCount = 0;
 
             // Traverse children
-            var cursor = method.Value.Walk();
+            var cursor = method.Walk();
             try {
-                if (cursor.GoToFirstChild()) {
+                if (cursor.GotoFirstChild()) {
                     do {
                         var n = cursor.CurrentNode;
                         if (n.Type == "identifier") {
@@ -35,12 +35,12 @@ public static class SignatureExtractor {
                             // heuristically capture return type: first type before identifier (name)
                             // we'll refine: check sibling ordering
                         }
-                    } while (cursor.GoToNextSibling());
+                    } while (cursor.GotoNextSibling());
                 }
             } finally { cursor.Dispose(); }
 
             // Return type heuristic: search immediate children prior to identifier token
-            returnType = FindReturnType(method.Value);
+            returnType = FindReturnType(method);
 
             return new MethodSignature(name, returnType, paramCount);
         } catch {
@@ -53,11 +53,11 @@ public static class SignatureExtractor {
         int count = 0;
         var cursor = paramList.Walk();
         try {
-            if (!cursor.GoToFirstChild()) return 0;
+            if (!cursor.GotoFirstChild()) return 0;
             do {
                 var n = cursor.CurrentNode;
                 if (n.Type == "parameter") count++;
-            } while (cursor.GoToNextSibling());
+            } while (cursor.GotoNextSibling());
         } finally { cursor.Dispose(); }
         return count;
     }
@@ -67,8 +67,8 @@ public static class SignatureExtractor {
         var children = new List<Node>();
         var cursor = method.Walk();
         try {
-            if (cursor.GoToFirstChild()) {
-                do { children.Add(cursor.CurrentNode); } while (cursor.GoToNextSibling());
+            if (cursor.GotoFirstChild()) {
+                do { children.Add(cursor.CurrentNode); } while (cursor.GotoNextSibling());
             }
         } finally { cursor.Dispose(); }
 
@@ -102,4 +102,3 @@ public static class SignatureExtractor {
         } finally { cursor.Dispose(); }
     }
 }
-

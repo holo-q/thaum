@@ -34,10 +34,10 @@ public static class TreeSitterGates {
         var cursor = node.Walk();
         try {
             if (pred(node)) count++;
-            if (!cursor.GoToFirstChild()) return count;
+            if (!cursor.GotoFirstChild()) return count;
             do {
                 count += Count(cursor.CurrentNode, pred);
-            } while (cursor.GoToNextSibling());
+            } while (cursor.GotoNextSibling());
             return count;
         } finally {
             cursor.Dispose();
