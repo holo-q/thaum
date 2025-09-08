@@ -11,8 +11,8 @@ namespace Thaum.Core;
 /// where compression isn't reduction but recognition of seeds/eigenforms/ur-patterns from which
 /// code grew where multiple rollouts create holographic interference patterns that fusion resolves
 /// </summary>
-public class Prompter {
-	private readonly LLM _llm;
+	public class Prompter {
+		private readonly LLM _llm;
 
 	// TODO we can combine all compress functions
 	public Prompter(LLM llm) {
@@ -41,7 +41,7 @@ public class Prompter {
 	/// primordial seed-form through triple-vision perception (TOPOLOGY/MORPHISM/POLICY) where
 	/// the prompt doesn't compress but recognizes the growth pattern that generated the code
 	/// </summary>
-	public async Task Compress(string code, string promptName, CodeSymbol targetSymbol) {
+		public async Task Compress(string code, string promptName, CodeSymbol targetSymbol) {
 		// Build context (simplified for testing)
 		OptimizationContext context = new OptimizationContext(
 			Level: targetSymbol.Kind is SymbolKind.Function or SymbolKind.Method ? 1 : 2,
@@ -63,17 +63,20 @@ public class Prompter {
 		HttpClient httpClient  = new();
 		HttpLLM    llmProvider = new HttpLLM(httpClient, GLB.AppConfig);
 
-		// Stream response
-		// TODO this should NOT be hard-coded
-		IAsyncEnumerable<string> streamResponse = await llmProvider.StreamCompleteAsync(prompt, GLB.CompressionOptions(model));
+			// Stream response (also capture for artifact persistence)
+			var sb = new System.Text.StringBuilder();
+			IAsyncEnumerable<string> streamResponse = await llmProvider.StreamCompleteAsync(prompt, GLB.CompressionOptions(model));
+			await foreach (string token in streamResponse) {
+				Write(token);
+				sb.Append(token);
+			}
+			println();
+			println();
+			println("═══ TEST COMPLETE ═══");
 
-		await foreach (string token in streamResponse) {
-			Write(token);
+			// Persist artifacts (prompt + response + parsed triad)
+			await ArtifactSaver.SaveSessionAsync(targetSymbol, targetSymbol.FilePath, prompt, sb.ToString(), null);
 		}
-		println();
-		println();
-		println("═══ TEST COMPLETE ═══");
-	}
 
 	/// <summary>
 	/// Compression rollout for holographic fusion where each rollout creates different perspective

@@ -227,6 +227,7 @@ public partial class CLI {
             Arity       = ArgumentArity.ZeroOrOne
         };
         var optPrompt      = new Option<string?>("--prompt") { Description = "Prompt file name (e.g., compress_function_v5)" };
+        var optDry         = new Option<bool>("--dry") { Description = "Do not call LLM; print and save constructed prompt only" };
         var optInteractive = new Option<bool>("--interactive") { Description = "Launch interactive TUI with live updates" };
         var optN = new Option<int>("--n") {
             Description         = "Number of rollouts for fusion",
@@ -238,6 +239,7 @@ public partial class CLI {
         cmd.Arguments.Add(argSymbolOpt);
         cmd.Options.Add(optPrompt);
         cmd.Options.Add(optInteractive);
+        cmd.Options.Add(optDry);
         cmd.Options.Add(optN);
 
         cmd.SetAction(async (parseResult, cancellationToken) => {
@@ -245,6 +247,7 @@ public partial class CLI {
             var symbolArg   = parseResult.GetValue(argSymbolOpt);
             var prompt      = parseResult.GetValue(optPrompt);
             var interactive = parseResult.GetValue(optInteractive);
+            var dryRun      = parseResult.GetValue(optDry);
             var n           = parseResult.GetValue(optN);
 
             string file;
@@ -263,7 +266,7 @@ public partial class CLI {
                 return;
             }
 
-            await cli.CMD_try(file, symbol, prompt, interactive, n);
+            await cli.CMD_try(file, symbol, prompt, interactive, n, dryRun);
         });
 
         return cmd;

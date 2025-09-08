@@ -127,9 +127,10 @@ public partial class CLI {
 
 		// Parse options
 		// ----------------------------------------
-		string? customPrompt = null;
-		bool    interactive  = false;
-		int     rolloutCount = 1;
+        string? customPrompt = null;
+        bool    interactive  = false;
+        bool    dryRun       = false;
+        int     rolloutCount = 1;
 
 		for (int i = 2; i < args.Length; i++) {
 			switch (args[i]) {
@@ -137,11 +138,15 @@ public partial class CLI {
 					customPrompt = args[++i];
 					trace($"Custom prompt specified: {customPrompt}");
 					break;
-				case "--interactive":
-					interactive = true;
-					trace("Interactive mode enabled");
-					break;
-				case "--n" when i + 1 < args.Length:
+                case "--interactive":
+                    interactive = true;
+                    trace("Interactive mode enabled");
+                    break;
+                case "--dry":
+                    dryRun = true;
+                    trace("Dry mode enabled");
+                    break;
+                case "--n" when i + 1 < args.Length:
 					if (int.TryParse(args[++i], out rolloutCount) && rolloutCount > 0) {
 						trace($"Multiple rollouts specified: {rolloutCount}");
 					} else {
@@ -160,11 +165,11 @@ public partial class CLI {
 			trace($"Converted relative path '{originalPath}' to absolute: '{filePath}'");
 		}
 
-		if (interactive) {
-			await TryTUI(filePath, symbolName, customPrompt);
-		} else {
-			await Try(filePath, symbolName, customPrompt, rolloutCount);
-		}
+        if (interactive) {
+            await TryTUI(filePath, symbolName, customPrompt);
+        } else {
+            await Try(filePath, symbolName, customPrompt, rolloutCount, dryRun);
+        }
 
 		traceout();
 	}
@@ -213,7 +218,7 @@ public partial class CLI {
 		}
 	}
 
-	private async Task Try(string filepath, string targetName, string? customPrompt, int nRollouts) {
+    private async Task Try(string filepath, string targetName, string? customPrompt, int nRollouts, bool dryRun) {
 		trace("Starting non-interactive mode");
 
 		if (!File.Exists(filepath)) {
@@ -249,39 +254,52 @@ public partial class CLI {
 				return;
 			}
 
-			// Determine prompt name with environment variable support
-			string promptName = customPrompt ?? GLB.GetDefaultPrompt(targetSymbol);
+            // Determine prompt name with environment variable support
+            string promptName = customPrompt ?? GLB.GetDefaultPrompt(targetSymbol);
 
-			if (nRollouts == 1) {
-				// Single compression
-				println($"Using prompt: {promptName}");
-				println();
-				Prompter prompter = new Prompter(new HttpLLM(new HttpClient(), GLB.AppConfig));
-				await prompter.Compress(src, promptName, targetSymbol);
-			} else {
-				// Multiple rollouts with fusion
-				println($"Multiple rollouts ({nRollouts}) with fusion");
-				println($"Using prompt: {promptName}");
-				println();
-				await _prompter.CompressWithFusion(src, promptName, targetSymbol, nRollouts);
-			}
-		} catch (Exception ex) {
-			println($"Error during prompt test: {ex.Message}");
-			Environment.Exit(1);
-		}
-	}
+            if (dryRun) {
+                println($"Using prompt (dry-run): {promptName}");
+                println();
+                string prompt = await PromptUtil.BuildCustomPromptAsync(promptName, targetSymbol, new OptimizationContext(
+                    Level: targetSymbol.Kind is SymbolKind.Function or SymbolKind.Method ? 1 : 2,
+                    AvailableKeys: [],
+                    PromptName: null
+                ), src);
+                println("═══ GENERATED PROMPT (DRY-RUN) ═══");
+                println(prompt);
+                await ArtifactSaver.SaveSessionAsync(targetSymbol, filepath, prompt, null, null);
+            }
+            else if (nRollouts == 1) {
+                // Single compression
+                println($"Using prompt: {promptName}");
+                println();
+                Prompter prompter = new Prompter(new HttpLLM(new HttpClient(), GLB.AppConfig));
+                await prompter.Compress(src, promptName, targetSymbol);
+            } else {
+                // Multiple rollouts with fusion
+                println($"Multiple rollouts ({nRollouts}) with fusion");
+                println($"Using prompt: {promptName}");
+                println();
+                await _prompter.CompressWithFusion(src, promptName, targetSymbol, nRollouts);
+            }
+        } catch (Exception ex) {
+            println($"Error during prompt test: {ex.Message}");
+            Environment.Exit(1);
+        }
+    }
 
-	public async Task CMD_try(string filePath, string symbolName, string? promptName, bool interactive, int nRollouts) {
-		trace($"Executing try command: {filePath}::{symbolName}, prompt: {promptName}, interactive: {interactive}, n: {nRollouts}");
-		
-		// Build args for legacy method and delegate
-		List<string> args = ["try", $"{filePath}::{symbolName}"];
-		if (!string.IsNullOrEmpty(promptName)) args.AddRange(["--prompt", promptName]);
-		if (interactive) args.Add("--interactive");
-		if (nRollouts != 1) args.AddRange(["--n", nRollouts.ToString()]);
-		
-		await CMD_try(args.ToArray());
-	}
+    public async Task CMD_try(string filePath, string symbolName, string? promptName, bool interactive, int nRollouts, bool dryRun = false) {
+        trace($"Executing try command: {filePath}::{symbolName}, prompt: {promptName}, interactive: {interactive}, n: {nRollouts}");
+        
+        // Build args for legacy method and delegate
+        List<string> args = ["try", $"{filePath}::{symbolName}"];
+        if (!string.IsNullOrEmpty(promptName)) args.AddRange(["--prompt", promptName]);
+        if (interactive) args.Add("--interactive");
+        if (nRollouts != 1) args.AddRange(["--n", nRollouts.ToString()]);
+        if (dryRun) args.Add("--dry");
+        
+        await CMD_try(args.ToArray());
+    }
 
 	public async Task CMD_try_lsp(bool showAll, bool cleanup) {
 		trace($"Executing ls-lsp command with showAll: {showAll}, cleanup: {cleanup}");
