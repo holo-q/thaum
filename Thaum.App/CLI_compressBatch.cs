@@ -25,7 +25,8 @@ public partial class CLI {
         int concurrency,
         int? sampleN,
         CancellationToken cancellationToken,
-        int retryIncomplete = 0
+        int retryIncomplete = 0,
+        int? seed = null
     ) {
         string root = Path.GetFullPath(path);
         string lang = language == "auto" ? LangUtil.DetectLanguageFromDirectory(root) : language;
@@ -44,7 +45,8 @@ public partial class CLI {
             .StartAsync("Scanning workspace for functions", async _ => await _crawler.CrawlDir(root));
         var symbols = codeMap.Where(s => s.Kind is SymbolKind.Method or SymbolKind.Function).ToList();
         if (sampleN is int n && n > 0 && n < symbols.Count) {
-            symbols = symbols.OrderBy(_ => Random.Shared.Next()).Take(n).ToList();
+            var rng = seed is int s ? new Random(s) : Random.Shared;
+            symbols = symbols.OrderBy(_ => rng.Next()).Take(n).ToList();
         }
 
         if (symbols.Count == 0) {

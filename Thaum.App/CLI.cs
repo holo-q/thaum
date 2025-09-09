@@ -361,6 +361,8 @@ public partial class CLI {
         var optJson = new Option<string?>("--json") { Description = "JSON output path (optional)" };
         var optNoTriads = new Option<bool>("--no-triads") { Description = "Disable triad loading (source-only baseline)" };
         var optN = new Option<int?>("--n") { Description = "Randomly sample N functions across the directory" };
+        var optTriadsFrom = new Option<string?>("--triads-from") { Description = "Load triads only from this session directory (overrides default scan)" };
+        var optSeed = new Option<int?>("--seed") { Description = "Seed for reproducible sampling" };
 
         var cmd = new Command("eval-compression", "Batch evaluation across a directory");
         cmd.Arguments.Add(argPath);
@@ -369,6 +371,8 @@ public partial class CLI {
         cmd.Options.Add(optJson);
         cmd.Options.Add(optNoTriads);
         cmd.Options.Add(optN);
+        cmd.Options.Add(optTriadsFrom);
+        cmd.Options.Add(optSeed);
 
         cmd.SetAction(async (parseResult, cancellationToken) => {
             var path = parseResult.GetValue(argPath)!;
@@ -377,7 +381,9 @@ public partial class CLI {
             var json = parseResult.GetValue(optJson);
             var n        = parseResult.GetValue(optN);
             var noTriads = parseResult.GetValue(optNoTriads);
-            await cli.CMD_eval_compression(path, lang, outp, json, n, useTriads: !noTriads);
+            var triFrom  = parseResult.GetValue(optTriadsFrom);
+            var seed     = parseResult.GetValue(optSeed);
+            await cli.CMD_eval_compression(path, lang, outp, json, n, useTriads: !noTriads, triadsFrom: triFrom, seed: seed);
         });
 
         return cmd;
@@ -391,6 +397,7 @@ public partial class CLI {
         var optConcurrency = new Option<int>("--concurrency") { Description = "Max concurrent compressions", DefaultValueFactory = _ => 4 };
         var optN = new Option<int?>("--n") { Description = "Randomly sample N functions across the directory" };
         var optRetryIncomplete = new Option<int>("--retry-incomplete") { Description = "Retries for symbols with incomplete triads", DefaultValueFactory = _ => 0 };
+        var optSeed = new Option<int?>("--seed") { Description = "Seed for reproducible sampling" };
 
         var cmd = new Command("compress-batch", "Batch-generate triads across a directory");
         cmd.Arguments.Add(argPath);
@@ -399,6 +406,7 @@ public partial class CLI {
         cmd.Options.Add(optConcurrency);
         cmd.Options.Add(optN);
         cmd.Options.Add(optRetryIncomplete);
+        cmd.Options.Add(optSeed);
 
         cmd.SetAction(async (parseResult, cancellationToken) => {
             var path = parseResult.GetValue(argPath)!;
@@ -407,7 +415,8 @@ public partial class CLI {
             var concurrency = parseResult.GetValue(optConcurrency);
             var n = parseResult.GetValue(optN);
             var retry = parseResult.GetValue(optRetryIncomplete);
-            await cli.CMD_compress_batch(path, lang, prompt, concurrency, n, cancellationToken, retry);
+            var seed  = parseResult.GetValue(optSeed);
+            await cli.CMD_compress_batch(path, lang, prompt, concurrency, n, cancellationToken, retry, seed);
         });
 
         return cmd;

@@ -17,7 +17,7 @@ public partial class CLI {
     /// TODO we could add --seed for reproducible sampling and stratified splits.
     /// TODO we could emit a session index here to aid dataset export.
     /// </summary>
-    public async Task CMD_eval_compression(string path, string language, string? outputCsv, string? outputJson = null, int? sampleN = null, bool useTriads = true) {
+    public async Task CMD_eval_compression(string path, string language, string? outputCsv, string? outputJson = null, int? sampleN = null, bool useTriads = true, string? triadsFrom = null, int? seed = null) {
         string root = Path.GetFullPath(path);
         string lang = language == "auto" ? LangUtil.DetectLanguageFromDirectory(root) : language;
         var files = Directory.GetFiles(root, "*.*", SearchOption.AllDirectories)
@@ -50,7 +50,8 @@ public partial class CLI {
 
         // Random sampling if requested
         if (sampleN is int n && n > 0 && n < allSymbols.Count) {
-            allSymbols = allSymbols.OrderBy(_ => Random.Shared.Next()).Take(n).ToList();
+            var rng = seed is int s ? new Random(s) : Random.Shared;
+            allSymbols = allSymbols.OrderBy(_ => rng.Next()).Take(n).ToList();
         }
 
         // Optionally load triads from cache/sessions (default ON)
@@ -58,7 +59,7 @@ public partial class CLI {
         var triadsMap = new Dictionary<(string file, string symbol), FunctionTriad>();
         int triadsLoaded = 0;
         if (useTriads) {
-            string sessionsDir = Path.Combine(GLB.CacheDir, "sessions");
+            string sessionsDir = string.IsNullOrWhiteSpace(triadsFrom) ? Path.Combine(GLB.CacheDir, "sessions") : Path.GetFullPath(triadsFrom);
             if (Directory.Exists(sessionsDir)) {
                 var triadFiles = Directory.GetFiles(sessionsDir, "*.triad.json", SearchOption.AllDirectories).ToList();
                 await AnsiConsole.Progress()

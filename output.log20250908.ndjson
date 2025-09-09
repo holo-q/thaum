@@ -5551,3 +5551,25 @@
 {"@t":"2025-09-08T09:05:32.7335618Z","@mt":"(CLI.RunAsync) Command completed with exit code: 0","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
 {"@t":"2025-09-08T09:05:32.7341295Z","@mt":"(CLI.RunAsync) EXIT","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
 {"@t":"2025-09-08T09:05:32.7347284Z","@mt":"(CLI.RunAsync) SCOPE EXIT: RunAsync","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-08T23:25:28.6624711Z","@mt":"(CLI..ctor) ENTER","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-08T23:25:28.9303294Z","@mt":"Creating cache directory: {CacheDir}","@l":"Debug","CacheDir":"./cache","SourceContext":"Thaum.Core.Services.Cache","Indent":"","App":"Thaum"}
+{"@t":"2025-09-08T23:25:28.9857244Z","@mt":"Cache database initialized with prompt and model tracking","@l":"Debug","SourceContext":"Thaum.Core.Services.Cache","Indent":"","App":"Thaum"}
+{"@t":"2025-09-08T23:25:28.9874509Z","@mt":"(CLI..ctor) EXIT","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-08T23:25:28.9916469Z","@mt":"(CLI.RunAsync) ENTER with: { args = ls /home/nuck/holoq/repositories/thaum/Thaum.Core ./cache/sessions/20250908_085510522/session_index.json --split }","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-08T23:25:28.9942657Z","@mt":"(CLI.RunAsync) SCOPE ENTER: RunAsync","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-08T23:25:29.0111220Z","@mt":"(CLI.RunAsync) Processing command with System.CommandLine: ls /home/nuck/holoq/repositories/thaum/Thaum.Core ./cache/sessions/20250908_085510522/session_index.json --split","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-08T23:25:29.0410447Z","@mt":"(CLI_ls.CMD_ls) Executing ls command with options: LsOptions { ProjectPath = /home/nuck/holoq/repositories/thaum/Thaum.Core, Language = auto, MaxDepth = 10, ShowTypes = False, NoColors = False, BatchJson = ./cache/sessions/20250908_085510522/session_index.json, Split = True }","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-08T23:25:29.1521876Z","@mt":"(CLI.RunAsync) Command completed with exit code: 0","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-08T23:25:29.1528765Z","@mt":"(CLI.RunAsync) EXIT","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-08T23:25:29.1537504Z","@mt":"(CLI.RunAsync) SCOPE EXIT: RunAsync","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-09T00:42:45.4625593Z","@mt":"(CLI..ctor) ENTER","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-09T00:42:45.7238795Z","@mt":"Creating cache directory: {CacheDir}","@l":"Debug","CacheDir":"./cache","SourceContext":"Thaum.Core.Services.Cache","Indent":"","App":"Thaum"}
+{"@t":"2025-09-09T00:42:45.7745959Z","@mt":"Cache database initialized with prompt and model tracking","@l":"Debug","SourceContext":"Thaum.Core.Services.Cache","Indent":"","App":"Thaum"}
+{"@t":"2025-09-09T00:42:45.7765028Z","@mt":"(CLI..ctor) EXIT","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-09T00:42:45.7800333Z","@mt":"(CLI.RunAsync) ENTER with: { args = ls /home/nuck/holoq/repositories/thaum/Thaum.Core ./cache/sessions/20250908_085510522/session_index.json --split }","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-09T00:42:45.7830803Z","@mt":"(CLI.RunAsync) SCOPE ENTER: RunAsync","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-09T00:42:45.8010244Z","@mt":"(CLI.RunAsync) Processing command with System.CommandLine: ls /home/nuck/holoq/repositories/thaum/Thaum.Core ./cache/sessions/20250908_085510522/session_index.json --split","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-09T00:42:45.8311877Z","@mt":"(CLI_ls.CMD_ls) Executing ls command with options: LsOptions { ProjectPath = /home/nuck/holoq/repositories/thaum/Thaum.Core, Language = auto, MaxDepth = 10, ShowTypes = False, NoColors = False, BatchJson = ./cache/sessions/20250908_085510522/session_index.json, Split = True }","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-09T00:42:45.9557854Z","@mt":"(CLI.RunAsync) Command completed with exit code: 0","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-09T00:42:45.9566796Z","@mt":"(CLI.RunAsync) EXIT","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
+{"@t":"2025-09-09T00:42:45.9576505Z","@mt":"(CLI.RunAsync) SCOPE EXIT: RunAsync","@l":"Verbose","SourceContext":"Thaum.CLI.CLI","Indent":"","App":"Thaum"}
