@@ -52,7 +52,7 @@
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
         <PackageReference Include="System.CommandLine" Version="2.0.0-beta7.25380.108" />
     <ProjectReference Include="../Thaum.Core/Thaum.Core.csproj" />
-    <!-- Prefer local Ratatui.cs binding during dogfooding -->
+    <!-- Prefer local Ratatui.cs project during development -->
     <!-- <PackageReference Include="Ratatui.cs" Version="0.2.1" /> -->
     <ProjectReference Include="../reference/Ratatui.cs/src/Ratatui/Ratatui.csproj" />
     <ProjectReference Include="../Ratatui.Reload.Abstractions/Ratatui.Reload.Abstractions.csproj" />
