@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Thaum.Core.Models;
@@ -19,7 +20,7 @@ public class RatatuiApp {
 
 	private enum Mode { Browser, Source, Summary, References, Info }
 
-	private sealed class AppState {
+		public sealed class AppState {
 		public Panel focus  = Panel.Files;
 		public Mode  screen = Mode.Browser;
 
@@ -54,17 +55,7 @@ public class RatatuiApp {
 		_logger     = logger;
 	}
 
-	// Global, semantically meaningful colors/styles
-	private static class Theme {
-		public static readonly Style Hint       = new Style(dim: true);
-		public static readonly Style FilePath   = new Style(fg: Color.Cyan);
-		public static readonly Style LineNumber = new Style(fg: Color.DarkGray);
-		public static readonly Style Error      = new Style(fg: Color.LightRed, bold: true);
-		public static readonly Style Success    = new Style(fg: Color.LightGreen, bold: true);
-		public static readonly Style Info       = new Style(fg: Color.LightBlue);
-        public static readonly Style Title      = new Style(bold: true);
-        public static readonly Style CodeHi     = new Style(fg: Color.LightYellow, bold: true);
-	}
+		// Theme lives in TuiTheme now
 
 	public async Task RunAsync(CodeMap codeMap, string projectPath, string language) {
 		List<CodeSymbol> allSymbols = codeMap.ToList()
@@ -456,9 +447,9 @@ public class RatatuiApp {
 				Rect right      = cols[2];
 				int  metaHeight = Math.Max(6, right.Height / 3);
 				term.Draw(meta, new Rect(right.X, right.Y, right.Width, metaHeight));
-                string          body   = app.isLoading ? $"Summarizing… {Spinner()}" : (app.summary ?? "");
+                string          body   = app.isLoading ? $"Summarizing… {TuiTheme.Spinner()}" : (app.summary ?? "");
                 using Paragraph detail = new Paragraph("").Title("Summary", border: true);
-                if (body.StartsWith("Error:")) detail.AppendSpan(body, Theme.Error); else detail.AppendSpan(body);
+                if (body.StartsWith("Error:")) detail.AppendSpan(body, TuiTheme.Error); else detail.AppendSpan(body);
                 term.Draw(detail, new Rect(right.X, right.Y + metaHeight + 1, right.Width, Math.Max(1, right.Height - metaHeight - 1)));
                 break;
             }
@@ -481,7 +472,7 @@ public class RatatuiApp {
                     string                 num      = (i + 1).ToString().PadLeft(5) + "  ";
                     Memory<byte>           ln       = Encoding.UTF8.GetBytes(num).AsMemory();
                     string                 line     = lines[i];
-                    List<Batching.SpanRun> runs     = new List<Ratatui.Batching.SpanRun>(4) { new Ratatui.Batching.SpanRun(ln, Theme.LineNumber) };
+                    List<Batching.SpanRun> runs     = new List<Ratatui.Batching.SpanRun>(4) { new Ratatui.Batching.SpanRun(ln, TuiTheme.LineNumber) };
                     int                    oneBased = i + 1;
                     if (oneBased >= symStartLine && oneBased <= symEndLine) {
                         int sc = (oneBased == symStartLine) ? symStartCol : 0;
@@ -490,7 +481,7 @@ public class RatatuiApp {
                         ec = Math.Clamp(ec, sc, line.Length);
                         string pre = line[..sc], mid = line[sc..ec], post = line[ec..];
                         if (pre.Length > 0) runs.Add(new Ratatui.Batching.SpanRun(Encoding.UTF8.GetBytes(pre).AsMemory(), default));
-                        if (mid.Length > 0) runs.Add(new Ratatui.Batching.SpanRun(Encoding.UTF8.GetBytes(mid).AsMemory(), Theme.CodeHi));
+                        if (mid.Length > 0) runs.Add(new Ratatui.Batching.SpanRun(Encoding.UTF8.GetBytes(mid).AsMemory(), TuiTheme.CodeHi));
                         if (post.Length > 0) runs.Add(new Ratatui.Batching.SpanRun(Encoding.UTF8.GetBytes(post).AsMemory(), default));
                     } else {
                         runs.Add(new Ratatui.Batching.SpanRun(Encoding.UTF8.GetBytes(line).AsMemory(), default));
@@ -503,9 +494,9 @@ public class RatatuiApp {
             case Mode.Summary: {
                 using Paragraph title = new Paragraph("Summary").Title("Summary", border: true);
                 term.Draw(title, new Rect(rows[1].X, rows[1].Y, rows[1].Width, 2));
-                string          body = app.isLoading ? $"Summarizing… {Spinner()}" : (app.summary ?? "No summary yet. Press 3 to (re)generate.");
+                string          body = app.isLoading ? $"Summarizing… {TuiTheme.Spinner()}" : (app.summary ?? "No summary yet. Press 3 to (re)generate.");
                 using Paragraph para = new Paragraph("");
-                if (body.StartsWith("Error:")) para.AppendSpan(body, Theme.Error); else para.AppendSpan(body);
+                if (body.StartsWith("Error:")) para.AppendSpan(body, TuiTheme.Error); else para.AppendSpan(body);
                 term.Draw(para, new Rect(rows[1].X, rows[1].Y + 2, rows[1].Width, rows[1].Height - 2));
                 break;
             }
