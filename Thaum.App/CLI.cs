@@ -221,6 +221,17 @@ public partial class CLI {
 			});
 		});
 
+		app.Command("tui-watch", cmd => {
+			cmd.Description = "Launch TUI with hot reload (watch plugin project)";
+			cmd.HelpOption(inherited: true);
+			var optPlugin = cmd.Option("--plugin", "Path to plugin .csproj (default: Thaum.TUI/Thaum.TUI.csproj)", CommandOptionType.SingleValue);
+			cmd.OnExecuteAsync(async _ => {
+				string? plugin = string.IsNullOrWhiteSpace(optPlugin.Value()) ? null : optPlugin.Value();
+				await cli.CMD_tui_watch(plugin);
+				return 0;
+			});
+		});
+
 		app.Command("ls-lsp", cmd => {
 			cmd.Description = "(Temporarily disabled during TUI migration)";
 			cmd.OnExecute(() => {

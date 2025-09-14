@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Thaum.Core.Models;
@@ -16,9 +15,9 @@ public class RatatuiApp {
 	private readonly Compressor _compressor;
 	private readonly ILogger    _logger;
 
-	private enum Panel { Files, Symbols }
+    public enum Panel { Files, Symbols }
 
-	private enum Mode { Browser, Source, Summary, References, Info }
+    public enum Mode { Browser, Source, Summary, References, Info }
 
 		public sealed class AppState {
 		public Panel focus  = Panel.Files;
@@ -67,7 +66,8 @@ public class RatatuiApp {
 			return;
 		}
 
-		using Terminal term = new Terminal().Raw().AltScreen().ShowCursor(false);
+        using Terminal term = new Terminal().Raw().AltScreen().ShowCursor(false);
+        var opener = new DefaultEditorOpener();
 
 		AppState app = new AppState {
 			allSymbols = allSymbols,
@@ -80,10 +80,7 @@ public class RatatuiApp {
 		string? firstFile = app.visibleFiles.FirstOrDefault();
 		app.visibleSymbols = firstFile == null ? [] : SymbolsForFile(app, firstFile).ToList();
 
-		List?           filesList  = BuildFilesList(app, projectPath);
-		List?           symList    = BuildSymbolsList(app);
-		using ListState filesState = new ListState().Selected(app.fileSelected).Offset(app.fileOffset);
-		using ListState symState   = new ListState().Selected(app.symSelected).Offset(app.symOffset);
+        // Browser lists are now built inside BrowserScreen; no local ListState needed.
 
 		bool     redraw = true;
 		TimeSpan poll   = TimeSpan.FromMilliseconds(75);
@@ -91,7 +88,7 @@ public class RatatuiApp {
 		try {
 			while (true) {
 				if (redraw) {
-					Draw(term, projectPath, filesList!, filesState, symList!, symState, app);
+					Draw(term, projectPath, app);
 					redraw = false;
 				}
 
@@ -121,17 +118,13 @@ public class RatatuiApp {
 								}
 								switch (app) {
 									case { focus: Panel.Files, visibleFiles.Count: > 0 }:
-										app.fileSelected = Math.Min(app.fileSelected + 1, app.visibleFiles.Count - 1);
-										filesState.Selected(app.fileSelected);
-										EnsureVisible(ref app.fileOffset, app.fileSelected);
-										filesState.Offset(app.fileOffset);
+                                app.fileSelected = Math.Min(app.fileSelected + 1, app.visibleFiles.Count - 1);
+                                EnsureVisible(ref app.fileOffset, app.fileSelected);
 										redraw = true;
 										break;
 									case { focus: Panel.Symbols, visibleSymbols.Count: > 0 }:
-										app.symSelected = Math.Min(app.symSelected + 1, app.visibleSymbols.Count - 1);
-										symState.Selected(app.symSelected);
-										EnsureVisible(ref app.symOffset, app.symSelected);
-										symState.Offset(app.symOffset);
+                                app.symSelected = Math.Min(app.symSelected + 1, app.visibleSymbols.Count - 1);
+                                EnsureVisible(ref app.symOffset, app.symSelected);
 										app.summary = null;
 										redraw      = true;
 										break;
@@ -152,17 +145,13 @@ public class RatatuiApp {
 								}
 								switch (app) {
 									case { focus: Panel.Files, visibleFiles.Count: > 0 }:
-										app.fileSelected = Math.Max(app.fileSelected - 1, 0);
-										filesState.Selected(app.fileSelected);
-										EnsureVisible(ref app.fileOffset, app.fileSelected);
-										filesState.Offset(app.fileOffset);
+                                app.fileSelected = Math.Max(app.fileSelected - 1, 0);
+                                EnsureVisible(ref app.fileOffset, app.fileSelected);
 										redraw = true;
 										break;
 									case { focus: Panel.Symbols, visibleSymbols.Count: > 0 }:
-										app.symSelected = Math.Max(app.symSelected - 1, 0);
-										symState.Selected(app.symSelected);
-										EnsureVisible(ref app.symOffset, app.symSelected);
-										symState.Offset(app.symOffset);
+                                app.symSelected = Math.Max(app.symSelected - 1, 0);
+                                EnsureVisible(ref app.symOffset, app.symSelected);
 										app.summary = null;
 										redraw      = true;
 										break;
@@ -183,17 +172,13 @@ public class RatatuiApp {
 								}
 								switch (app) {
 									case { focus: Panel.Files, visibleFiles.Count: > 0 }:
-										app.fileSelected = Math.Min(app.fileSelected + 10, app.visibleFiles.Count - 1);
-										filesState.Selected(app.fileSelected);
-										EnsureVisible(ref app.fileOffset, app.fileSelected);
-										filesState.Offset(app.fileOffset);
+                                app.fileSelected = Math.Min(app.fileSelected + 10, app.visibleFiles.Count - 1);
+                                EnsureVisible(ref app.fileOffset, app.fileSelected);
 										redraw = true;
 										break;
 									case { focus: Panel.Symbols, visibleSymbols.Count: > 0 }:
-										app.symSelected = Math.Min(app.symSelected + 10, app.visibleSymbols.Count - 1);
-										symState.Selected(app.symSelected);
-										EnsureVisible(ref app.symOffset, app.symSelected);
-										symState.Offset(app.symOffset);
+                                app.symSelected = Math.Min(app.symSelected + 10, app.visibleSymbols.Count - 1);
+                                EnsureVisible(ref app.symOffset, app.symSelected);
 										app.summary = null;
 										redraw      = true;
 										break;
@@ -214,17 +199,13 @@ public class RatatuiApp {
 								}
 								switch (app) {
 									case { focus: Panel.Files, visibleFiles.Count: > 0 }:
-										app.fileSelected = Math.Max(app.fileSelected - 10, 0);
-										filesState.Selected(app.fileSelected);
-										EnsureVisible(ref app.fileOffset, app.fileSelected);
-										filesState.Offset(app.fileOffset);
+                                app.fileSelected = Math.Max(app.fileSelected - 10, 0);
+                                EnsureVisible(ref app.fileOffset, app.fileSelected);
 										redraw = true;
 										break;
 									case { focus: Panel.Symbols, visibleSymbols.Count: > 0 }:
-										app.symSelected = Math.Max(app.symSelected - 10, 0);
-										symState.Selected(app.symSelected);
-										EnsureVisible(ref app.symOffset, app.symSelected);
-										symState.Offset(app.symOffset);
+                                app.symSelected = Math.Max(app.symSelected - 10, 0);
+                                EnsureVisible(ref app.symOffset, app.symSelected);
 										app.summary = null;
 										redraw      = true;
 										break;
@@ -247,10 +228,7 @@ public class RatatuiApp {
 										app.visibleSymbols = SymbolsForFile(app, file).ToList();
 										app.symSelected    = 0;
 										app.symOffset      = 0;
-										app.summary        = null;
-										symList?.Dispose();
-										symList = BuildSymbolsList(app);
-										symState.Selected(app.symSelected).Offset(app.symOffset);
+                                app.summary        = null;
 										redraw = true;
 										break;
 									}
@@ -266,21 +244,21 @@ public class RatatuiApp {
 							case KeyCode.Char when ev.Key.Char == (uint)'o':
 								switch (app) {
 									// Open in editor from context
-									case { screen: Mode.Browser, visibleSymbols.Count: > 0 }: {
-										CodeSymbol s = app.visibleSymbols[app.symSelected];
-										OpenInEditor(projectPath, s.FilePath, Math.Max(1, s.StartCodeLoc.Line), out string msg, out bool ok);
-										break;
-									}
-									case { screen: Mode.Source, visibleSymbols.Count: > 0 }: {
-										CodeSymbol s = app.visibleSymbols[app.symSelected];
-										OpenInEditor(projectPath, s.FilePath, Math.Max(1, app.sourceSelected + 1), out string msg, out bool ok);
-										break;
-									}
-									case { screen: Mode.References, refs.Count: > 0 }: {
-										(string f, int ln, string _) = app.refs[Math.Min(app.refsSelected, app.refs.Count - 1)];
-										OpenInEditor(projectPath, f, Math.Max(1, ln), out string msg, out bool ok);
-										break;
-									}
+                                case { screen: Mode.Browser, visibleSymbols.Count: > 0 }: {
+                                    CodeSymbol s = app.visibleSymbols[app.symSelected];
+                                    opener.Open(projectPath, s.FilePath, Math.Max(1, s.StartCodeLoc.Line));
+                                    break;
+                                }
+                                case { screen: Mode.Source, visibleSymbols.Count: > 0 }: {
+                                    CodeSymbol s = app.visibleSymbols[app.symSelected];
+                                    opener.Open(projectPath, s.FilePath, Math.Max(1, app.sourceSelected + 1));
+                                    break;
+                                }
+                                case { screen: Mode.References, refs.Count: > 0 }: {
+                                    (string f, int ln, string _) = app.refs[Math.Min(app.refsSelected, app.refs.Count - 1)];
+                                    opener.Open(projectPath, f, Math.Max(1, ln));
+                                    break;
+                                }
 								}
 								redraw = true;
 								break;
@@ -327,38 +305,27 @@ public class RatatuiApp {
 										redraw     = true;
 										break;
 									}
-									if (app.focus == Panel.Files) {
-										app.fileFilter = string.Empty;
-										ApplyFileFilter(app);
-										filesList?.Dispose();
-										filesList = BuildFilesList(app, projectPath);
-										filesState.Selected(app.fileSelected).Offset(app.fileOffset);
-									} else {
-										app.symFilter = string.Empty;
-										ApplySymbolFilter(app);
-										symList?.Dispose();
-										symList = BuildSymbolsList(app);
-										symState.Selected(app.symSelected).Offset(app.symOffset);
-									}
+                            if (app.focus == Panel.Files) {
+                                app.fileFilter = string.Empty;
+                                ApplyFileFilter(app);
+                            } else {
+                                app.symFilter = string.Empty;
+                                ApplySymbolFilter(app);
+                            }
 									redraw = true;
 									break;
 								}
 								char ch = (char)ev.Key.Char;
 								if (char.IsLetterOrDigit(ch) || ch == ' ' || ch == '-' || ch == '_' || ch == '.' || ch == '/') {
-									if (app.screen != Mode.Browser) { /* ignore typing in op screens */
-									} else if (app.focus == Panel.Files) {
-										app.fileFilter += ch;
-										ApplyFileFilter(app);
-										filesList?.Dispose();
-										filesList = BuildFilesList(app, projectPath);
-										filesState.Selected(app.fileSelected).Offset(app.fileOffset);
-									} else {
-										app.symFilter += ch;
-										ApplySymbolFilter(app);
-										symList?.Dispose();
-										symList = BuildSymbolsList(app);
-										symState.Selected(app.symSelected).Offset(app.symOffset);
-									}
+                                if (app.screen != Mode.Browser) {
+                                    /* ignore typing in op screens */
+                                } else if (app.focus == Panel.Files) {
+                                    app.fileFilter += ch;
+                                    ApplyFileFilter(app);
+                                } else {
+                                    app.symFilter += ch;
+                                    ApplySymbolFilter(app);
+                                }
 									redraw = true;
 								}
 								break;
@@ -366,33 +333,26 @@ public class RatatuiApp {
 								if (app.screen != Mode.Browser) {
 									/* ignore */
 								} else
-									switch (app) {
-										case { focus: Panel.Files, fileFilter.Length: > 0 }:
-											app.fileFilter = app.fileFilter[..^1];
-											ApplyFileFilter(app);
-											filesList?.Dispose();
-											filesList = BuildFilesList(app, projectPath);
-											filesState.Selected(app.fileSelected).Offset(app.fileOffset);
-											redraw = true;
-											break;
-										case { focus: Panel.Symbols, symFilter.Length: > 0 }:
-											app.symFilter = app.symFilter[..^1];
-											ApplySymbolFilter(app);
-											symList?.Dispose();
-											symList = BuildSymbolsList(app);
-											symState.Selected(app.symSelected).Offset(app.symOffset);
-											redraw = true;
-											break;
-									}
+                                switch (app) {
+                                    case { focus: Panel.Files, fileFilter.Length: > 0 }:
+                                        app.fileFilter = app.fileFilter[..^1];
+                                        ApplyFileFilter(app);
+                                        redraw = true;
+                                        break;
+                                    case { focus: Panel.Symbols, symFilter.Length: > 0 }:
+                                        app.symFilter = app.symFilter[..^1];
+                                        ApplySymbolFilter(app);
+                                        redraw = true;
+                                        break;
+                                }
 								break;
 						}
 						break;
 				}
 			}
-		} finally {
-			filesList?.Dispose();
-			symList?.Dispose();
-		}
+        } finally {
+            // no lists to dispose; BrowserScreen constructs per-draw widgets
+        }
 	}
 
 	private async Task<string> LoadSymbolDetail(CodeSymbol symbol) {
@@ -410,7 +370,7 @@ public class RatatuiApp {
 		}
 	}
 
-	private static void Draw(Terminal term, string projectPath, List filesList, ListState filesState, List symList, ListState symState, AppState app) {
+private static void Draw(Terminal term, string projectPath, AppState app) {
 		(int w, int h) = term.Size();
 		Rect area = Rect.FromSize(Math.Max(1, w), Math.Max(1, h));
 
@@ -424,120 +384,11 @@ public class RatatuiApp {
         term.Draw(header, rows[0]);
 
 		switch (app.screen) {
-			case Mode.Browser: {
-				IReadOnlyList<Rect> cols = Layout.SplitVertical(rows[1], [
-					Constraint.Percentage(30),
-					Constraint.Percentage(30),
-					Constraint.Percentage(40)
-				], gap: 1, margin: 0);
-
-				using (Paragraph title = new Paragraph(app.fileFilter.Length == 0 ? "(type to filter)" : $"/{app.fileFilter}").Title("Files", border: true)) { term.Draw(title, new Rect(cols[0].X, cols[0].Y, cols[0].Width, 2)); }
-				term.Draw(filesList, new Rect(cols[0].X, cols[0].Y + 2, cols[0].Width, cols[0].Height - 2), filesState);
-
-				using (Paragraph title = new Paragraph(app.symFilter.Length == 0 ? "(type to filter)" : $"/{app.symFilter}").Title("Symbols", border: true)) { term.Draw(title, new Rect(cols[1].X, cols[1].Y, cols[1].Width, 2)); }
-				term.Draw(symList, new Rect(cols[1].X, cols[1].Y + 2, cols[1].Width, cols[1].Height - 2), symState);
-
-				bool hasSym = app.visibleSymbols.Count > 0;
-				using Paragraph meta = new Paragraph("").Title("Details", border: true)
-					.AppendLine(!hasSym ? "" : $"Name: {app.visibleSymbols[app.symSelected].Name}")
-					.AppendLine(!hasSym ? "" : $"Kind: {app.visibleSymbols[app.symSelected].Kind}")
-					.AppendLine(!hasSym ? "" : $"File: {app.visibleSymbols[app.symSelected].FilePath}")
-					.AppendLine(!hasSym ? "" : $"Span: L{app.visibleSymbols[app.symSelected].StartCodeLoc.Line}:C{app.visibleSymbols[app.symSelected].StartCodeLoc.Character}");
-
-				Rect right      = cols[2];
-				int  metaHeight = Math.Max(6, right.Height / 3);
-				term.Draw(meta, new Rect(right.X, right.Y, right.Width, metaHeight));
-                string          body   = app.isLoading ? $"Summarizing… {TuiTheme.Spinner()}" : (app.summary ?? "");
-                using Paragraph detail = new Paragraph("").Title("Summary", border: true);
-                if (body.StartsWith("Error:")) detail.AppendSpan(body, TuiTheme.Error); else detail.AppendSpan(body);
-                term.Draw(detail, new Rect(right.X, right.Y + metaHeight + 1, right.Width, Math.Max(1, right.Height - metaHeight - 1)));
-                break;
-            }
-            case Mode.Source: {
-                using Paragraph title = new Paragraph("Source").Title("Source", border: true);
-                term.Draw(title, new Rect(rows[1].X, rows[1].Y, rows[1].Width, 2));
-                List<string> lines = app.sourceLines ?? [];
-                using List   list  = new List();
-                int          start = Math.Max(0, app.sourceOffset);
-                int          end   = Math.Min(lines.Count, start + Math.Max(1, rows[1].Height - 3));
-                int symStartLine = 0, symEndLine = -1, symStartCol = 0, symEndCol = 0;
-                if (app.visibleSymbols.Count > 0) {
-                    CodeSymbol s = app.visibleSymbols[app.symSelected];
-                    symStartLine = Math.Max(1, s.StartCodeLoc.Line);
-                    symEndLine   = Math.Max(symStartLine, s.EndCodeLoc.Line);
-                    symStartCol  = Math.Max(0, s.StartCodeLoc.Character);
-                    symEndCol    = Math.Max(symStartCol, s.EndCodeLoc.Character);
-                }
-                for (int i = start; i < end; i++) {
-                    string                 num      = (i + 1).ToString().PadLeft(5) + "  ";
-                    Memory<byte>           ln       = Encoding.UTF8.GetBytes(num).AsMemory();
-                    string                 line     = lines[i];
-                    List<Batching.SpanRun> runs     = new List<Ratatui.Batching.SpanRun>(4) { new Ratatui.Batching.SpanRun(ln, TuiTheme.LineNumber) };
-                    int                    oneBased = i + 1;
-                    if (oneBased >= symStartLine && oneBased <= symEndLine) {
-                        int sc = (oneBased == symStartLine) ? symStartCol : 0;
-                        int ec = (oneBased == symEndLine) ? symEndCol : line.Length;
-                        sc = Math.Clamp(sc, 0, line.Length);
-                        ec = Math.Clamp(ec, sc, line.Length);
-                        string pre = line[..sc], mid = line[sc..ec], post = line[ec..];
-                        if (pre.Length > 0) runs.Add(new Ratatui.Batching.SpanRun(Encoding.UTF8.GetBytes(pre).AsMemory(), default));
-                        if (mid.Length > 0) runs.Add(new Ratatui.Batching.SpanRun(Encoding.UTF8.GetBytes(mid).AsMemory(), TuiTheme.CodeHi));
-                        if (post.Length > 0) runs.Add(new Ratatui.Batching.SpanRun(Encoding.UTF8.GetBytes(post).AsMemory(), default));
-                    } else {
-                        runs.Add(new Ratatui.Batching.SpanRun(Encoding.UTF8.GetBytes(line).AsMemory(), default));
-                    }
-                    list.AppendItem(CollectionsMarshal.AsSpan(runs));
-                }
-                term.Draw(list, new Rect(rows[1].X, rows[1].Y + 2, rows[1].Width, rows[1].Height - 2));
-                break;
-            }
-            case Mode.Summary: {
-                using Paragraph title = new Paragraph("Summary").Title("Summary", border: true);
-                term.Draw(title, new Rect(rows[1].X, rows[1].Y, rows[1].Width, 2));
-                string          body = app.isLoading ? $"Summarizing… {TuiTheme.Spinner()}" : (app.summary ?? "No summary yet. Press 3 to (re)generate.");
-                using Paragraph para = new Paragraph("");
-                if (body.StartsWith("Error:")) para.AppendSpan(body, TuiTheme.Error); else para.AppendSpan(body);
-                term.Draw(para, new Rect(rows[1].X, rows[1].Y + 2, rows[1].Width, rows[1].Height - 2));
-                break;
-            }
-            case Mode.References: {
-                using Paragraph title = new Paragraph("References").Title("References", border: true);
-                term.Draw(title, new Rect(rows[1].X, rows[1].Y, rows[1].Width, 2));
-                using List                                 list  = new List();
-                List<(string File, int Line, string Name)> refs  = app.refs ?? [];
-                int                                        start = Math.Max(0, app.refsOffset);
-                int                                        end   = Math.Min(refs.Count, start + Math.Max(1, rows[1].Height - 2));
-                for (int i = start; i < end; i++) {
-                    (string f, int ln, string nm) = refs[i];
-                    Memory<byte> lhs = Encoding.UTF8.GetBytes($"{Path.GetFileName(f)}:{ln}  ").AsMemory();
-                    Memory<byte> rhs = Encoding.UTF8.GetBytes(nm).AsMemory();
-                    ReadOnlyMemory<Ratatui.Batching.SpanRun> runs = new[] {
-                        new Ratatui.Batching.SpanRun(lhs, Theme.FilePath),
-                        new Ratatui.Batching.SpanRun(rhs, default)
-                    };
-                    list.AppendItem(runs.Span);
-                }
-                term.Draw(list, new Rect(rows[1].X, rows[1].Y + 2, rows[1].Width, rows[1].Height - 2));
-                break;
-            }
-            case Mode.Info: {
-                using Paragraph title = new Paragraph("Info").Title("Info", border: true);
-                term.Draw(title, new Rect(rows[1].X, rows[1].Y, rows[1].Width, 2));
-                if (app.visibleSymbols.Count > 0) {
-                    CodeSymbol s = app.visibleSymbols[app.symSelected];
-                    using Paragraph para = new Paragraph("");
-                    para.AppendSpan("Name: ", Theme.Hint).AppendSpan(s.Name, StyleForKind(s.Kind)).AppendLine("");
-                    para.AppendSpan("Kind: ", Theme.Hint).AppendSpan(s.Kind.ToString(), Theme.Info).AppendLine("");
-                    para.AppendSpan("File: ", Theme.Hint).AppendSpan(s.FilePath, Theme.FilePath).AppendLine("");
-                    para.AppendSpan("Start: ", Theme.Hint).AppendSpan($"L{s.StartCodeLoc.Line}", Theme.LineNumber).AppendSpan(":", Theme.Hint).AppendSpan($"C{s.StartCodeLoc.Character}", Theme.LineNumber).AppendLine("");
-                    para.AppendSpan("End:   ", Theme.Hint).AppendSpan($"L{s.EndCodeLoc.Line}", Theme.LineNumber).AppendSpan(":", Theme.Hint).AppendSpan($"C{s.EndCodeLoc.Character}", Theme.LineNumber).AppendLine("");
-                    para.AppendSpan("Children: ", Theme.Hint).AppendSpan((s.Children?.Count ?? 0).ToString(), Theme.Info).AppendLine("");
-                    para.AppendSpan("Deps: ", Theme.Hint).AppendSpan((s.Dependencies?.Count ?? 0).ToString(), Theme.Info).AppendLine("");
-                    para.AppendSpan("Last: ", Theme.Hint).AppendSpan((s.LastModified?.ToString("u") ?? "n/a"), Theme.Info);
-                    term.Draw(para, new Rect(rows[1].X, rows[1].Y + 2, rows[1].Width, rows[1].Height - 2));
-                }
-                break;
-            }
+            case Mode.Browser: { new BrowserScreen().Draw(term, rows[1], app, projectPath); break; }
+            case Mode.Source: { new SourceScreen().Draw(term, rows[1], app, projectPath); break; }
+            case Mode.Summary: { new SummaryScreen().Draw(term, rows[1], app, projectPath); break; }
+            case Mode.References: { new ReferencesScreen().Draw(term, rows[1], app, projectPath); break; }
+            case Mode.Info: { new InfoScreen().Draw(term, rows[1], app, projectPath); break; }
 		}
 
         using Paragraph footer = MakeFooter(app);
@@ -548,7 +399,7 @@ public class RatatuiApp {
         string focusText = app.focus == Panel.Files ? "Files" : "Symbols";
         string modeText  = app.screen switch { Mode.Browser => "Browser", Mode.Source => "Source", Mode.Summary => "Summary", Mode.References => "References", Mode.Info => "Info", _ => "" };
         return new Paragraph($"Thaum — {projectName}  Mode: {modeText}  Focus: {focusText}")
-            .AppendLine("1 Browser 2 Source 3 Summary 4 Refs 5 Info    Tab switch    / filter    o open  q quit", Theme.Hint);
+            .AppendLine("1 Browser 2 Source 3 Summary 4 Refs 5 Info    Tab switch    / filter    o open  q quit", TuiTheme.Hint);
     }
 
     private static Paragraph MakeFooter(AppState app) {
@@ -560,27 +411,11 @@ public class RatatuiApp {
             Mode.Info       => "1 Browser 2 Source 3 Summary 4 Refs",
             _               => string.Empty
         };
-        return new Paragraph(text).AppendSpan("   o open   ", Theme.Hint).AppendSpan("Ratatui.cs", Theme.Hint);
+        return new Paragraph(text).AppendSpan("   o open   ", TuiTheme.Hint).AppendSpan("Ratatui.cs", TuiTheme.Hint);
     }
 
-	private static IEnumerable<CodeSymbol> SymbolsForFile(AppState app, string? file)
-		=> string.IsNullOrEmpty(file) ? app.allSymbols : app.allSymbols.Where(s => s.FilePath == file);
-
-	private static string FileLine(string projectPath, string path) {
-		try { return Path.GetRelativePath(projectPath, path); } catch { return Path.GetFileName(path); }
-	}
-
-	private static List BuildFilesList(AppState app, string projectPath) {
-		List list = new List().Title("Files").HighlightSymbol("→ ").HighlightStyle(new Style(bold: true));
-		foreach (string f in app.visibleFiles) list.AppendItem(FileLine(projectPath, f));
-		return list;
-	}
-
-	private static List BuildSymbolsList(AppState app) {
-		List list = new List().Title("Symbols").HighlightSymbol("→ ").HighlightStyle(new Style(bold: true));
-		foreach (CodeSymbol s in app.visibleSymbols) list.AppendItem(SymbolLine(s), StyleForKind(s.Kind));
-		return list;
-	}
+    private static IEnumerable<CodeSymbol> SymbolsForFile(AppState app, string? file)
+        => string.IsNullOrEmpty(file) ? app.allSymbols : app.allSymbols.Where(s => s.FilePath == file);
 
 	private static void ApplyFileFilter(AppState app) {
 		if (string.IsNullOrWhiteSpace(app.fileFilter)) app.visibleFiles = app.allFiles.ToList();
@@ -610,31 +445,9 @@ public class RatatuiApp {
 		app.summary     = null;
 	}
 
-	private static string SymbolLine(CodeSymbol s) {
-		string name = s.Name.Replace('\n', ' ');
-		return $"{Icon(s)} {name}";
-	}
+    // Symbol formatting handled by BrowserScreen
 
-	private static string Icon(CodeSymbol s) => s.Kind switch {
-		SymbolKind.Class     => "[C]",
-		SymbolKind.Method    => "[M]",
-		SymbolKind.Function  => "[F]",
-		SymbolKind.Interface => "[I]",
-		SymbolKind.Enum      => "[E]",
-		_                    => "[·]"
-	};
-
-	private static Style StyleForKind(SymbolKind k) => k switch {
-		SymbolKind.Class     => new Style(fg: Color.LightYellow),
-		SymbolKind.Method    => new Style(fg: Color.LightGreen),
-		SymbolKind.Function  => new Style(fg: Color.LightGreen),
-		SymbolKind.Interface => new Style(fg: Color.LightBlue),
-		SymbolKind.Enum      => new Style(fg: Color.Magenta),
-		SymbolKind.Property  => new Style(fg: Color.White),
-		SymbolKind.Field     => new Style(fg: Color.White),
-		SymbolKind.Variable  => new Style(fg: Color.White),
-		_                    => new Style(fg: Color.Gray)
-	};
+    // StyleForKind moved to TuiTheme
 
 	private async Task EnsureSource(AppState app) {
 		if (app.visibleSymbols.Count == 0) {
@@ -668,75 +481,7 @@ public class RatatuiApp {
 		if (selected >= max) offset   = Math.Max(0, selected - 19);
 	}
 
-	private static string Truncate(string s, int width) {
-		if (width <= 1) return s;
-		return s.Length <= width ? s : s[..Math.Max(0, width - 1)] + "…";
-	}
+    // Text wrapping helpers removed; screens render directly
 
-	private static List<string> Wrap(string s, int width) {
-		if (width < 5) return [Truncate(s, width)];
-		string[]     words = s.Replace("\r", string.Empty).Split('\n');
-		List<string> lines = [];
-		foreach (string para in words) {
-			string[]      parts = para.Split(' ');
-			StringBuilder line  = new StringBuilder();
-			foreach (string p in parts) {
-				if (line.Length + p.Length + 1 > width) {
-					lines.Add(line.ToString());
-					line.Clear();
-				}
-				if (line.Length > 0) line.Append(' ');
-				line.Append(p);
-			}
-			if (line.Length > 0) lines.Add(line.ToString());
-			lines.Add(string.Empty);
-		}
-		return lines;
-	}
-
-	private static string Spinner() {
-		int t = (int)((DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond / 120) % 4);
-		return "-\\|/"[t].ToString();
-	}
-
-        private static void OpenInEditor(string projectPath, string filePath, int line, out string message, out bool success) {
-            success = false;
-            message = string.Empty;
-            try {
-                string full = Path.IsPathRooted(filePath) ? filePath : Path.Combine(projectPath, filePath);
-                string? cmd = Environment.GetEnvironmentVariable("THAUM_EDITOR") ?? Environment.GetEnvironmentVariable("EDITOR");
-                string args = string.Empty;
-
-                bool isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-                bool isMac     = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
-
-                if (string.IsNullOrWhiteSpace(cmd)) {
-                    if (isWindows) {
-                        cmd  = "code"; // VS Code
-                        args = $"-g \"{full}\":{line}";
-                    } else if (isMac) {
-                        cmd  = "open";
-                        args = $"-a \"Visual Studio Code\" --args -g \"{full}\":{line}";
-                    } else {
-                        if (File.Exists("/usr/bin/code") || File.Exists("/usr/local/bin/code")) { cmd = "code"; args = $"-g \"{full}\":{line}"; }
-                        else if (File.Exists("/usr/bin/nvim") || File.Exists("/usr/local/bin/nvim")) { cmd = "nvim"; args = $"+{line} \"{full}\""; }
-                        else if (File.Exists("/usr/bin/vim") || File.Exists("/usr/local/bin/vim")) { cmd = "vim"; args = $"+{line} \"{full}\""; }
-                        else { message = $"Open: {full}:{line}"; return; }
-                    }
-                } else {
-                    string c = cmd.ToLowerInvariant();
-                    if (c.Contains("code")) args = $"-g \"{full}\":{line}";
-                    else if (c.Contains("nvim") || c.Contains("vim")) args = $"+{line} \"{full}\"";
-                    else if (isMac && c == "open") args = $"\"{full}\"";
-                    else args = $"\"{full}\"";
-                }
-
-                ProcessStartInfo psi = new ProcessStartInfo(cmd, args) { UseShellExecute = false };
-                Process.Start(psi);
-                success = true;
-                message = $"Opened {Path.GetFileName(full)}:{line}";
-            } catch (Exception ex) {
-                message = $"Open failed: {ex.Message}";
-            }
-        }
+    // Spinner and editor logic moved to TuiTheme and DefaultEditorOpener
 }

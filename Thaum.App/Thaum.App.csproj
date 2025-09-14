@@ -55,6 +55,8 @@
     <!-- Prefer local Ratatui.cs binding during dogfooding -->
     <!-- <PackageReference Include="Ratatui.cs" Version="0.2.1" /> -->
     <ProjectReference Include="../reference/Ratatui.cs/src/Ratatui/Ratatui.csproj" />
+    <ProjectReference Include="../Ratatui.Reload.Abstractions/Ratatui.Reload.Abstractions.csproj" />
+    <ProjectReference Include="../Ratatui.Reload/Ratatui.Reload.csproj" />
   </ItemGroup>
 
     <!-- Exclude legacy Terminal.Gui based TUI implementation (TUI_old) -->

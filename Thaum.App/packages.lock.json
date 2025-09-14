@@ -602,6 +602,21 @@
       "Ratatui.cs": {
         "type": "Project"
       },
+      "ratatui.reload": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.Extensions.Logging": "[8.0.1, )",
+          "Ratatui.Reload.Abstractions": "[1.0.0, )",
+          "Ratatui.cs": "[1.0.0, )"
+        }
+      },
+      "ratatui.reload.abstractions": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "[8.0.1, )",
+          "Ratatui.cs": "[1.0.0, )"
+        }
+      },
       "thaum.core": {
         "type": "Project",
         "dependencies": {

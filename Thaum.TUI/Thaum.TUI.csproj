@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Ratatui.Reload.Abstractions/Ratatui.Reload.Abstractions.csproj" />
+    <ProjectReference Include="../reference/Ratatui.cs/src/Ratatui/Ratatui.csproj" />
+  </ItemGroup>
+</Project>
+

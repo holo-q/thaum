@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text;
 using Ratatui;
 using Thaum.Core.Models;
