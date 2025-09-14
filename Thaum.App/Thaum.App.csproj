@@ -51,11 +51,21 @@
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
         <PackageReference Include="System.CommandLine" Version="2.0.0-beta7.25380.108" />
     <ProjectReference Include="../Thaum.Core/Thaum.Core.csproj" />
-    <ProjectReference Include="../Terminal.Gui/Terminal.Gui/Terminal.Gui.csproj" />
+    <!-- Prefer local Ratatui.cs binding during dogfooding -->
+    <!-- <PackageReference Include="Ratatui.cs" Version="0.2.1" /> -->
+    <ProjectReference Include="../reference/Ratatui.cs/src/Ratatui/Ratatui.csproj" />
   </ItemGroup>
 
+    <!-- Exclude legacy Terminal.Gui based TUI implementation -->
     <ItemGroup>
-        <TrimmerRootAssembly Include="Terminal.Gui" />
+        <Compile Remove="TUI/**" />
+        <None Include="TUI/**" />
+    </ItemGroup>
+
+    <!-- Exclude experimental CLI_try that references old TUI/Interactive types -->
+    <ItemGroup>
+        <Compile Remove="CLI_try.cs" />
+        <None Include="CLI_try.cs" />
     </ItemGroup>
 
     <ItemGroup>

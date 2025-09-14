@@ -1,18 +1,13 @@
 using Microsoft.Extensions.Logging;
-using Thaum.TUI.Views;
-using Terminal.Gui;
-using Terminal.Gui.App;
-using Terminal.Gui.Views;
-using Terminal.Gui.ViewBase;
 using static Thaum.Core.Utils.Tracer;
 using System.Diagnostics.CodeAnalysis;
+using Thaum.App.RatatuiTUI;
 
 namespace Thaum.CLI;
 
 /// <summary>
-/// Partial CLI class containing TUI command implementation where interactive symbol browser
-/// provides navigation through codebase symbols with real-time compression capabilities
-/// where Terminal.Gui creates immersive development experience
+/// TUI command implementation using Ratatui-style rendering.
+/// Fully removes Terminal.Gui and drives a split-view console UI.
 /// </summary>
 public partial class CLI {
 	[RequiresUnreferencedCode("Uses reflection for TUI component initialization")]
@@ -32,34 +27,9 @@ public partial class CLI {
 			println($"Found {codeMap.Count} symbols across {codeMap.FileCount} files");
 			println("Starting interactive symbol browser...");
 
-            // Configure color mode from env (default: 16 colors to honor terminal theme)
-            var force16Env = Environment.GetEnvironmentVariable("THAUM_TUI_16COLORS");
-            bool use16 = string.IsNullOrEmpty(force16Env)
-                         || force16Env.Equals("1")
-                         || force16Env.Equals("true", StringComparison.OrdinalIgnoreCase)
-                         || force16Env.Equals("yes", StringComparison.OrdinalIgnoreCase);
-            Application.Force16Colors = use16;
-
-            // Launch TUI application
-            Application.Init();
-
-            try {
-                var power = Environment.GetEnvironmentVariable("THAUM_TUI_POWER");
-                bool usePower = string.IsNullOrEmpty(power)
-                                || power.Equals("1")
-                                || power.Equals("true", StringComparison.OrdinalIgnoreCase)
-                                || power.Equals("yes", StringComparison.OrdinalIgnoreCase);
-
-                if (usePower) {
-                    var win = new PowerWorkspaceWindow(_crawler, _compressor, codeMap, projectPath);
-                    Application.Run(win);
-                } else {
-                    var win = new SymbolBrowserWindowV2(_crawler, _compressor, codeMap, projectPath);
-                    Application.Run(win);
-                }
-            } finally {
-                Application.Shutdown();
-            }
+			// Run the new Ratatui-based TUI
+			var app = new RatatuiApp(_crawler, _compressor, _logger);
+			await app.RunAsync(codeMap, projectPath, language);
 		} catch (Exception ex) {
 			_logger.LogError(ex, "Error launching TUI symbol browser");
 			println($"Error: {ex.Message}");

@@ -23,5 +23,8 @@
     
     <!-- XML docs only in Release -->
     <DocumentationFile Condition="'$(Configuration)' != 'Release'"></DocumentationFile>
+
+    <!-- Dogfood Ratatui.cs without native FFI coverage checks -->
+    <SkipFfiCoverage>true</SkipFfiCoverage>
   </PropertyGroup>
 </Project>

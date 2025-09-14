@@ -136,20 +136,10 @@
         "resolved": "2.0.0-beta7.25380.108",
         "contentHash": "/KPE7tYINMkbKjUPs6OUSB/ga5kZl5MUhqWWO2cj8WX56Me/edU6iqXYcx9U+JioMY/wefBZqSgEpwMooHn73g=="
       },
-      "ColorHelper": {
-        "type": "Transitive",
-        "resolved": "1.8.1",
-        "contentHash": "rblWXd/02TfwJjX53xEfQnbnDRKxCm09VtavV8JaIcmIFWt9efNf6xTQ3WeXgy/she5R31eRTtnizFoUoDrs5w=="
-      },
       "FSharp.Core": {
         "type": "Transitive",
         "resolved": "6.0.5",
         "contentHash": "FwdQVtpj34xt8vKyFUUeNIS+obWlEnSrSW7y1ivRVts/ZsrUsKyOd0bZehgFhWdnB/NBsa9DCWvNFMTO0XDFcg=="
-      },
-      "JetBrains.Annotations": {
-        "type": "Transitive",
-        "resolved": "2024.3.0",
-        "contentHash": "ox5pkeLQXjvJdyAB4b2sBYAlqZGLh3PjSnP1bQNVx72ONuTJ9+34/+Rq91Fc0dG29XG9RgZur9+NcP4riihTug=="
       },
       "MediatR": {
         "type": "Transitive",
@@ -237,8 +227,8 @@
       },
       "Microsoft.Extensions.DependencyInjection.Abstractions": {
         "type": "Transitive",
-        "resolved": "9.0.2",
-        "contentHash": "MNe7GSTBf3jQx5vYrXF0NZvn6l7hUKF6J54ENfAgCO8y6xjN1XUmKKWG464LP2ye6QqDiA1dkaWEZBYnhoZzjg=="
+        "resolved": "8.0.2",
+        "contentHash": "3iE7UF7MQkCv1cxzCahz+Y/guQbTqieyxyaWKhrRO91itI9cOKO76OHeQDahqG4MmW5umr3CcCvGmK92lWNlbg=="
       },
       "Microsoft.Extensions.Diagnostics": {
         "type": "Transitive",
@@ -309,10 +299,10 @@
       },
       "Microsoft.Extensions.Logging.Abstractions": {
         "type": "Transitive",
-        "resolved": "9.0.2",
-        "contentHash": "dV9s2Lamc8jSaqhl2BQSPn/AryDIH2sSbQUyLitLXV0ROmsb+SROnn2cH939JFbsNrnf3mIM3GNRKT7P0ldwLg==",
+        "resolved": "8.0.2",
+        "contentHash": "nroMDjS7hNBPtkZqVBbSiQaQjWRDxITI8Y7XnDs97rqG3EbzVTNLZQf7bIeUJcaHOV8bca47s1Uxq94+2oGdxA==",
         "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.2"
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2"
         }
       },
       "Microsoft.Extensions.Logging.Configuration": {
@@ -546,15 +536,6 @@
         "resolved": "8.0.1",
         "contentHash": "n1ZP7NM2Gkn/MgD8+eOT5MulMj6wfeQMNS2Pizvq5GHCZfjlFMXV2irQlQmJhwA2VABC57M0auudO89Iu2uRLg=="
       },
-      "System.IO.Abstractions": {
-        "type": "Transitive",
-        "resolved": "22.0.11",
-        "contentHash": "puMhRgC2Nw0UbkVXiGsRZMfQBon0qweJ/KxkDmdAa0UrAh3t3J/y96J7e8RLRJ5aqFpt6go5BTyGCdE46fFDxA==",
-        "dependencies": {
-          "TestableIO.System.IO.Abstractions": "22.0.11",
-          "TestableIO.System.IO.Abstractions.Wrappers": "22.0.11"
-        }
-      },
       "System.IO.Pipelines": {
         "type": "Transitive",
         "resolved": "7.0.0",
@@ -604,41 +585,8 @@
         "resolved": "4.5.4",
         "contentHash": "zteT+G8xuGu6mS+mzDzYXbzS7rd3K6Fjb9RiZlYlJPam2/hU7JCBZBVEcywNuR+oZ1ncTvc/cq0faRr3P01OVg=="
       },
-      "TestableIO.System.IO.Abstractions": {
-        "type": "Transitive",
-        "resolved": "22.0.11",
-        "contentHash": "U/Oo6IX9HPvz4+5O4ftGN9kL26s83pNKyoDB7T1LMM5zsMSJr0qH1QAKstHIu0NQcmJkrTcsr5mcZ0Uw/3KmKQ==",
-        "dependencies": {
-          "Testably.Abstractions.FileSystem.Interface": "9.0.0"
-        }
-      },
-      "TestableIO.System.IO.Abstractions.Wrappers": {
-        "type": "Transitive",
-        "resolved": "22.0.11",
-        "contentHash": "HsaKBbeY1qRmaALkNt3qWfF3QpXCm+Q3KB8f34hQ1vXax3gmtZo2s56xRZPcFiW08N77LrX9GvAYZdV6rVQYEw==",
-        "dependencies": {
-          "Testably.Abstractions.FileSystem.Interface": "9.0.0"
-        }
-      },
-      "Testably.Abstractions.FileSystem.Interface": {
-        "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "uksk86YlnzAdyfVNu3wICU0X5iXVe9LF7Q3UkngNliHWEvM5gvAlOUr+jmd9JwmbJWISH5+i1vyXE02lEVz7WQ=="
-      },
-      "Wcwidth": {
-        "type": "Transitive",
-        "resolved": "2.0.0",
-        "contentHash": "eGZYH/V+X1DwEXrPUlUcAp8pU5a38d8IvaQzq4pclJxF1x8bizssIo4uWc3qxmS64BNGK5WnDxyBYJz84+Msqg=="
-      },
-      "terminal.gui": {
-        "type": "Project",
-        "dependencies": {
-          "ColorHelper": "[1.8.1, 2.0.0)",
-          "JetBrains.Annotations": "[2024.3.0, )",
-          "Microsoft.Extensions.Logging.Abstractions": "[9.0.2, 10.0.0)",
-          "System.IO.Abstractions": "[22.0.11, 23.0.0)",
-          "Wcwidth": "[2.0.0, 3.0.0)"
-        }
+      "Ratatui.cs": {
+        "type": "Project"
       },
       "thaum.core": {
         "type": "Project",

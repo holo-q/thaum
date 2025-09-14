@@ -92,10 +92,11 @@ public partial class CLI {
 		root.Subcommands.Add(CreateLsCommand(cli));
 		root.Subcommands.Add(CreateLsEnvCommand(cli));
 		root.Subcommands.Add(CreateLsCacheCommand(cli));
-		root.Subcommands.Add(CreateLsLspCommand(cli));
-        root.Subcommands.Add(CreateTryCommand(cli));
+        // Temporarily disabled legacy interactive/try commands during TUI migration
+        // root.Subcommands.Add(CreateLsLspCommand(cli));
+        // root.Subcommands.Add(CreateTryCommand(cli));
         root.Subcommands.Add(CreateOptimizeCommand(cli));
-        root.Subcommands.Add(CreateEvalCommand(cli));
+        // root.Subcommands.Add(CreateEvalCommand(cli));
         root.Subcommands.Add(CreateEvalCompressionCommand(cli));
         root.Subcommands.Add(CreateCompressBatchCommand(cli));
         root.Subcommands.Add(CreateTuiCommand(cli));
@@ -219,77 +220,18 @@ public partial class CLI {
 	/// <summary>
 	/// ls-lsp command: Manage auto-downloaded LSP servers
 	/// </summary>
-	private static Command CreateLsLspCommand(CLI cli) {
-		var optAll     = new Option<bool>("--all", "-a") { Description     = "Show detailed information about cached servers" };
-		var optCleanup = new Option<bool>("--cleanup", "-c") { Description = "Remove old LSP server versions" };
-
-		var cmd = new Command("ls-lsp", "Manage auto-downloaded LSP servers");
-		cmd.Options.Add(optAll);
-		cmd.Options.Add(optCleanup);
-
-		cmd.SetAction(async (parseResult, cancellationToken) => {
-			var all     = parseResult.GetValue(optAll);
-			var cleanup = parseResult.GetValue(optCleanup);
-
-			await cli.CMD_try_lsp(all, cleanup);
-		});
-
-		return cmd;
-	}
+    private static Command CreateLsLspCommand(CLI cli) {
+        var cmd = new Command("ls-lsp", "(Temporarily disabled during TUI migration)");
+        cmd.SetAction((_, __) => { Console.WriteLine("ls-lsp is temporarily disabled."); return Task.CompletedTask; });
+        return cmd;
+    }
 
 	/// <summary>
 	/// try command: Test prompts on individual symbols
 	/// </summary>
     private static Command CreateTryCommand(CLI cli) {
-        // Accept either combined path-spec (<file>::<symbol>) or split args (<file> <symbol> [prompt])
-        var argPathSpec  = new Argument<string>("file-or-pathspec") { Description = "Either '<file>::<symbol>' or '<file> <symbol> [prompt]" };
-        var argSymbolOpt = new Argument<string?>("symbol-name") { Description = "Name of symbol to test (omit if using '<file>::<symbol>')", Arity = ArgumentArity.ZeroOrOne };
-        var argPromptPos = new Argument<string?>("prompt") { Description = "Optional prompt name (e.g., compress_function_v5)", Arity = ArgumentArity.ZeroOrOne };
-        var optPrompt      = new Option<string?>("--prompt") { Description = "[Deprecated] Prompt file name (use positional 'prompt' instead)" };
-        var optDry         = new Option<bool>("--dry") { Description = "Do not call LLM; print and save constructed prompt only" };
-        var optInteractive = new Option<bool>("--interactive") { Description = "Launch interactive TUI with live updates" };
-        var optN = new Option<int>("--n") {
-            Description         = "Number of rollouts for fusion",
-            DefaultValueFactory = _ => 1
-        };
-
-        var cmd = new Command("try", "Test prompts on individual symbols");
-        cmd.Arguments.Add(argPathSpec);
-        cmd.Arguments.Add(argSymbolOpt);
-        cmd.Arguments.Add(argPromptPos);
-        cmd.Options.Add(optPrompt);
-        cmd.Options.Add(optInteractive);
-        cmd.Options.Add(optDry);
-        cmd.Options.Add(optN);
-
-        cmd.SetAction(async (parseResult, cancellationToken) => {
-            var pathSpec    = parseResult.GetValue(argPathSpec)!;
-            var symbolArg   = parseResult.GetValue(argSymbolOpt);
-            var promptPos   = parseResult.GetValue(argPromptPos);
-            var prompt      = parseResult.GetValue(optPrompt) ?? promptPos;
-            var interactive = parseResult.GetValue(optInteractive);
-            var dryRun      = parseResult.GetValue(optDry);
-            var n           = parseResult.GetValue(optN);
-
-            string file;
-            string symbol;
-            if (pathSpec.Contains("::")) {
-                var parts = pathSpec.Split("::", 2);
-                file   = parts[0];
-                symbol = parts.Length > 1 ? parts[1] : string.Empty;
-            } else {
-                file   = pathSpec;
-                symbol = symbolArg ?? string.Empty;
-            }
-
-            if (string.IsNullOrWhiteSpace(file) || string.IsNullOrWhiteSpace(symbol)) {
-                Console.WriteLine("Error: Provide '<file>::<symbol>' or '<file> <symbol>'");
-                return;
-            }
-
-            await cli.CMD_try(file, symbol, prompt, interactive, n, dryRun);
-        });
-
+        var cmd = new Command("try", "(Temporarily disabled during TUI migration)");
+        cmd.SetAction((_, __) => { Console.WriteLine("try is temporarily disabled."); return Task.CompletedTask; });
         return cmd;
     }
 
@@ -334,23 +276,8 @@ public partial class CLI {
     }
 
     private static Command CreateEvalCommand(CLI cli) {
-        var argFile   = new Argument<string>("file-path") { Description = "Path to source file" };
-        var argSymbol = new Argument<string>("symbol-name") { Description = "Name of symbol to evaluate" };
-        var optTriad  = new Option<string?>("--triad") { Description = "Path to triad JSON (optional)" };
-
-        var cmd = new Command("eval", "Evaluate compression fidelity for a single function triad");
-        cmd.Arguments.Add(argFile);
-        cmd.Arguments.Add(argSymbol);
-        cmd.Options.Add(optTriad);
-
-        cmd.SetAction(async (parseResult, cancellationToken) => {
-            var file   = parseResult.GetValue(argFile)!;
-            var symbol = parseResult.GetValue(argSymbol)!;
-            var triad  = parseResult.GetValue(optTriad);
-
-            await cli.CMD_eval(file, symbol, triad);
-        });
-
+        var cmd = new Command("eval", "(Temporarily disabled during TUI migration)");
+        cmd.SetAction((_, __) => { Console.WriteLine("eval is temporarily disabled."); return Task.CompletedTask; });
         return cmd;
     }
 
