@@ -1,12 +1,11 @@
 using Microsoft.Extensions.Logging;
-using System.CommandLine;
+using McMaster.Extensions.CommandLineUtils;
 using Thaum.Core.Services;
 using Thaum.Core.Models;
 using Thaum.Core.Utils;
 using static Thaum.Core.Utils.Tracer;
 using Thaum.Core;
 using Thaum.Utils;
-using Command = System.CommandLine.Command;
 
 namespace Thaum.CLI;
 
@@ -29,350 +28,247 @@ public partial class CLI {
 	/// TreeSitterCrawler enables code analysis where PerceptualColorer creates visual semantics
 	/// where EnvLoader enables hierarchical config where trace logging captures execution flow
 	/// </summary>
-    public CLI() {
-        HttpClient httpClient = new HttpClient();
+	public CLI() {
+		HttpClient httpClient = new HttpClient();
 
-        _crawler = new TreeSitterCrawler();
-        _logger  = Logging.For<CLI>();
-        _colorer = new PerceptualColorer();
+		_crawler = new TreeSitterCrawler();
+		_logger  = Logging.For<CLI>();
+		_colorer = new PerceptualColorer();
 
-        // Initialize trace logger first
-        Initialize(_logger);
-        tracein();
+		// Initialize trace logger first
+		Initialize(_logger);
+		tracein();
 
-        // Load .env files before constructing components that read configuration
-        EnvLoader.LoadAndApply();
+		// Load .env files before constructing components that read configuration
+		EnvLoader.LoadAndApply();
 
-        // Now construct LLM and dependent services with environment-applied configuration
-        _llm      = new HttpLLM(httpClient, GLB.AppConfig);
-        _prompter = new Prompter(_llm);
+		// Now construct LLM and dependent services with environment-applied configuration
+		_llm      = new HttpLLM(httpClient, GLB.AppConfig);
+		_prompter = new Prompter(_llm);
 
-        Cache        cache        = new Cache(GLB.AppConfig);
-        PromptLoader promptLoader = new PromptLoader();
+		Cache        cache        = new Cache(GLB.AppConfig);
+		PromptLoader promptLoader = new PromptLoader();
 
-        _compressor = new Compressor(_llm, _crawler, cache, promptLoader);
-        traceout();
-    }
+		_compressor = new Compressor(_llm, _crawler, cache, promptLoader);
+		traceout();
+	}
 
 	/// <summary>
-	/// Main entry point using System.CommandLine for robust argument parsing where commands
-	/// are defined declaratively with automatic help generation where type safety prevents
-	/// errors where validation happens before handlers execute eliminating manual parsing
+	/// Main entry point now using McMaster.Extensions.CommandLineUtils where commands
+	/// are defined fluently with automatic help and sensible defaults.
 	/// </summary>
 	public async Task RunAsync(string[] args) {
 		tracein(parameters: new { args = string.Join(" ", args) });
-
 		using var scope = trace_scope("RunAsync");
 
-		// Create root command with all subcommands
-		var rootCommand = CreateRootCommand(this);
+		var app = new CommandLineApplication();
+		app.Name        = "thaum";
+		app.Description = "Thaum - Hierarchical Compression Engine";
+		app.HelpOption(inherited: true);
 
-		// If no arguments, show help
-		if (args.Length == 0) {
+		ConfigureCommands(app, this);
+
+		// Default to help when no args provided
+		app.OnExecute(() => {
 			trace("No arguments provided, showing help");
-			args = ["--help"];
-		}
+			app.ShowHelp();
+			return 0;
+		});
 
-		trace($"Processing command with System.CommandLine: {string.Join(" ", args)}");
-
-		// Execute command through System.CommandLine
-		int result = await rootCommand.Parse(args).InvokeAsync();
-
+		trace($"Processing command with CommandLineUtils: {string.Join(" ", args)}");
+		int result = await app.ExecuteAsync(args);
 		trace($"Command completed with exit code: {result}");
 		traceout();
 	}
 
 	/// <summary>
-	/// Creates root command with all subcommands configured where System.CommandLine handles
-	/// parsing/validation/help generation where commands maintain semantic hierarchy
+	/// Configure root and subcommands using McMaster.CommandLineUtils.
 	/// </summary>
-	public static RootCommand CreateRootCommand(CLI cli) {
-		var root = new RootCommand("Thaum - Hierarchical Compression Engine");
-
-		root.Subcommands.Add(CMD_ls(cli));
-		root.Subcommands.Add(CreateLsEnvCommand(cli));
-		root.Subcommands.Add(CreateLsCacheCommand(cli));
-        // Temporarily disabled legacy interactive/try commands during TUI migration
-        // root.Subcommands.Add(CreateLsLspCommand(cli));
-        // root.Subcommands.Add(CreateTryCommand(cli));
-        root.Subcommands.Add(CreateOptimizeCommand(cli));
-        // root.Subcommands.Add(CreateEvalCommand(cli));
-        root.Subcommands.Add(CreateEvalCompressionCommand(cli));
-        root.Subcommands.Add(CreateCompressBatchCommand(cli));
-        root.Subcommands.Add(CreateTuiCommand(cli));
-
-		return root;
+	private static void ConfigureCommands(CommandLineApplication app, CLI cli) {
+		app.Command("ls", cmd => ConfigureLs(cmd, cli));
+		app.Command("ls-env", cmd => ConfigureLsEnv(cmd, cli));
+		app.Command("ls-cache", cmd => ConfigureLsCache(cmd, cli));
+		app.Command("optimize", cmd => ConfigureOptimize(cmd, cli));
+		app.Command("eval-compression", cmd => ConfigureEvalCompression(cmd, cli));
+		app.Command("compress-batch", cmd => ConfigureCompressBatch(cmd, cli));
+		app.Command("tui", cmd => ConfigureTui(cmd, cli));
+		app.Command("ls-lsp", cmd => {
+			cmd.Description = "(Temporarily disabled during TUI migration)";
+			cmd.OnExecute(() => {
+				Console.WriteLine("ls-lsp is temporarily disabled.");
+				return 0;
+			});
+		});
+		app.Command("try", cmd => {
+			cmd.Description = "(Temporarily disabled during TUI migration)";
+			cmd.OnExecute(() => {
+				Console.WriteLine("try is temporarily disabled.");
+				return 0;
+			});
+		});
 	}
 
 	/// <summary>
 	/// ls command: List symbols in hierarchical format
 	/// </summary>
-	private static Command CMD_ls(CLI cli) {
-		var argPath = new Argument<string>("path") {
-			Description         = "Project path or assembly specifier (e.g., 'assembly:TreeSitter')",
-			DefaultValueFactory = _ => Directory.GetCurrentDirectory()
-		};
+	private static void ConfigureLs(CommandLineApplication cmd, CLI cli) {
+		cmd.Description = "List symbols or, if batchJson is provided, print triads from a batch report";
+		cmd.HelpOption(inherited: true);
 
-		var optLang = new Option<string>("--lang") {
-			Description         = "Programming language",
-			DefaultValueFactory = _ => "auto"
-		};
+		var argPath     = cmd.Argument("path", "Project path or assembly specifier (e.g., 'assembly:TreeSitter')");
+		var argBatch    = cmd.Argument("batchJson", "Optional path to eval JSON (report.json) to print matched triads");
+		var optLang     = cmd.Option("--lang", "Programming language", CommandOptionType.SingleValue);
+		var optDepth    = cmd.Option("--depth", "Maximum nesting depth", CommandOptionType.SingleValue);
+		var optTypes    = cmd.Option("--types", "Show symbol types", CommandOptionType.NoValue);
+		var optNoColors = cmd.Option("--no-colors", "Disable colored output", CommandOptionType.NoValue);
+		var optBatch    = cmd.Option("--batch", "(Deprecated) Path to eval JSON (report.json) to print matched triads", CommandOptionType.SingleValue);
+		var optSplit    = cmd.Option("--split", "Align triad fragments at mid-column (50%)", CommandOptionType.NoValue);
 
-		var optDepth = new Option<int>("--depth") {
-			Description         = "Maximum nesting depth",
-			DefaultValueFactory = _ => 10
-		};
+		cmd.OnExecuteAsync(async cancellationToken => {
+			string path                                          = string.IsNullOrWhiteSpace(argPath.Value) ? Directory.GetCurrentDirectory() : argPath.Value!;
+			string lang                                          = string.IsNullOrWhiteSpace(optLang.Value()) ? "auto" : optLang.Value()!;
+			int    depth                                         = 10;
+			if (int.TryParse(optDepth.Value(), out var d)) depth = d;
+			bool    types                                        = optTypes.HasValue();
+			bool    noColors                                     = optNoColors.HasValue();
+			string? batchPos                                     = string.IsNullOrWhiteSpace(argBatch.Value) ? null : argBatch.Value;
+			string? batchOpt                                     = string.IsNullOrWhiteSpace(optBatch.Value()) ? null : optBatch.Value();
+			string? batch                                        = string.IsNullOrWhiteSpace(batchPos) ? batchOpt : batchPos; // positional overrides
+			bool    split                                        = optSplit.HasValue();
 
-		var optTypes = new Option<bool>("--types") {
-			Description = "Show symbol types"
-		};
-        var optNoColors = new Option<bool>("--no-colors") {
-            Description = "Disable colored output"
-        };
-        var optSplit = new Option<bool>("--split") {
-            Description = "Align triad fragments at mid-column (50%)"
-        };
-
-        var argBatch = new Argument<string?>("batchJson") {
-            Description = "Optional path to eval JSON (report.json) to print matched triads",
-            Arity = ArgumentArity.ZeroOrOne
-        };
-        var optBatch = new Option<string?>("--batch") { // backward-compatible toggle
-            Description = "(Deprecated) Path to eval JSON (report.json) to print matched triads"
-        };
-
-        var cmd = new Command("ls", "List symbols or, if batchJson is provided, print triads from a batch report");
-        cmd.Arguments.Add(argPath);
-        cmd.Arguments.Add(argBatch);
-        cmd.Options.Add(optLang);
-        cmd.Options.Add(optDepth);
-        cmd.Options.Add(optTypes);
-        cmd.Options.Add(optNoColors);
-        cmd.Options.Add(optBatch);
-        cmd.Options.Add(optSplit);
-
-		cmd.SetAction(async (parseResult, cancellationToken) => {
-            var path      = parseResult.GetValue(argPath)!;
-            var lang      = parseResult.GetValue(optLang)!;
-            var depth     = parseResult.GetValue(optDepth);
-            var types     = parseResult.GetValue(optTypes);
-            var noColors  = parseResult.GetValue(optNoColors);
-            var batchPos  = parseResult.GetValue(argBatch);
-            var batchOpt  = parseResult.GetValue(optBatch);
-            var batch     = string.IsNullOrWhiteSpace(batchPos) ? batchOpt : batchPos; // positional overrides
-            var split     = parseResult.GetValue(optSplit);
-
-            var options = new LsOptions(path, lang, depth, types, noColors, batch, split);
-            await cli.HandleLs(options);
-        });
-
-		return cmd;
+			var options = new LsOptions(path, lang, depth, types, noColors, batch, split);
+			await cli.HandleLs(options);
+			return 0;
+		});
 	}
 
 	/// <summary>
 	/// ls-env command: Show environment file detection and merging
 	/// </summary>
-	private static Command CreateLsEnvCommand(CLI cli) {
-		var optValues = new Option<bool>("--values", "-v") {
-			Description = "Show actual environment variable values"
-		};
-
-		var cmd = new Command("ls-env", "Show .env file detection and merging trace");
-		cmd.Options.Add(optValues);
-
-		cmd.SetAction((parseResult, _) => {
-			var values = parseResult.GetValue(optValues);
-			cli.CMD_ls_env(values);
-			return Task.CompletedTask;
+	private static void ConfigureLsEnv(CommandLineApplication cmd, CLI cli) {
+		cmd.Description = "Show .env file detection and merging trace";
+		cmd.HelpOption(inherited: true);
+		var optValues = cmd.Option("-v|--values", "Show actual environment variable values", CommandOptionType.NoValue);
+		cmd.OnExecute(() => {
+			cli.CMD_ls_env(optValues.HasValue());
+			return 0;
 		});
-
-		return cmd;
 	}
 
 	/// <summary>
 	/// ls-cache command: Browse cached symbol compressions
 	/// </summary>
-	private static Command CreateLsCacheCommand(CLI cli) {
-		var patternArg = new Argument<string>("pattern") {
-			Description         = "Filter cached symbols by pattern",
-			DefaultValueFactory = _ => ""
-		};
-
-		var optKeys = new Option<bool>("--keys", "-k") { Description = "Show K1/K2 architectural keys" };
-		var optAll  = new Option<bool>("--all", "-a") { Description  = "Show both optimizations and keys" };
-
-		var cmd = new Command("ls-cache", "Browse cached symbol compressions");
-		cmd.Arguments.Add(patternArg);
-		cmd.Options.Add(optKeys);
-		cmd.Options.Add(optAll);
-
-		cmd.SetAction(async (parseResult, _) => {
-			var pattern = parseResult.GetValue(patternArg)!;
-			var keys    = parseResult.GetValue(optKeys);
-			var all     = parseResult.GetValue(optAll);
-
+	private static void ConfigureLsCache(CommandLineApplication cmd, CLI cli) {
+		cmd.Description = "Browse cached symbol compressions";
+		cmd.HelpOption(inherited: true);
+		var argPattern = cmd.Argument("pattern", "Filter cached symbols by pattern");
+		var optKeys    = cmd.Option("-k|--keys", "Show K1/K2 architectural keys", CommandOptionType.NoValue);
+		var optAll     = cmd.Option("-a|--all", "Show both optimizations and keys", CommandOptionType.NoValue);
+		cmd.OnExecuteAsync(async _ => {
+			string pattern = argPattern.Value ?? string.Empty;
+			bool   keys    = optKeys.HasValue();
+			bool   all     = optAll.HasValue();
 			await cli.CMD_ls_cache(pattern, keys, all);
+			return 0;
 		});
-
-		return cmd;
 	}
 
 	/// <summary>
 	/// ls-lsp command: Manage auto-downloaded LSP servers
 	/// </summary>
-    private static Command CreateLsLspCommand(CLI cli) {
-        var cmd = new Command("ls-lsp", "(Temporarily disabled during TUI migration)");
-        cmd.SetAction((_, __) => { Console.WriteLine("ls-lsp is temporarily disabled."); return Task.CompletedTask; });
-        return cmd;
-    }
+	// handled inline in ConfigureCommands
 
 	/// <summary>
 	/// try command: Test prompts on individual symbols
 	/// </summary>
-    private static Command CreateTryCommand(CLI cli) {
-        var cmd = new Command("try", "(Temporarily disabled during TUI migration)");
-        cmd.SetAction((_, __) => { Console.WriteLine("try is temporarily disabled."); return Task.CompletedTask; });
-        return cmd;
-    }
+	// handled inline in ConfigureCommands
 
 	/// <summary>
 	/// optimize command: Generate codebase optimizations
 	/// </summary>
-    private static Command CreateOptimizeCommand(CLI cli) {
-		var optPath = new Option<string>("--path") {
-			Description         = "Project path",
-			DefaultValueFactory = _ => Directory.GetCurrentDirectory()
-		};
+	private static void ConfigureOptimize(CommandLineApplication cmd, CLI cli) {
+		cmd.Description = "Generate codebase optimizations";
+		cmd.HelpOption(inherited: true);
+		var optPath    = cmd.Option("--path", "Project path", CommandOptionType.SingleValue);
+		var optLang    = cmd.Option("--lang", "Programming language", CommandOptionType.SingleValue);
+		var optPrompt  = cmd.Option("-p|--prompt", "Prompt template name (e.g., compress_function_v5, optimize_class, golf_function)", CommandOptionType.SingleValue);
+		var optEndgame = cmd.Option("--endgame", "Use maximum endgame compression", CommandOptionType.NoValue);
 
-		var optLang = new Option<string>("--lang") {
-			Description         = "Programming language",
-			DefaultValueFactory = _ => "auto"
-		};
-
-		var optPrompt = new Option<string?>("--prompt", "-p") {
-			Description = "Prompt template name (e.g., compress_function_v5, optimize_class, golf_function)"
-		};
-
-		var optEndgame = new Option<bool>("--endgame") {
-			Description = "Use maximum endgame compression"
-		};
-
-		var cmd = new Command("optimize", "Generate codebase optimizations");
-		cmd.Options.Add(optPath);
-		cmd.Options.Add(optLang);
-		cmd.Options.Add(optPrompt);
-		cmd.Options.Add(optEndgame);
-
-		cmd.SetAction(async (parseResult, cancellationToken) => {
-			var path    = parseResult.GetValue(optPath)!;
-			var lang    = parseResult.GetValue(optLang)!;
-			var prompt  = parseResult.GetValue(optPrompt);
-			var endgame = parseResult.GetValue(optEndgame);
-
+		cmd.OnExecuteAsync(async _ => {
+			string  path    = string.IsNullOrWhiteSpace(optPath.Value()) ? Directory.GetCurrentDirectory() : optPath.Value()!;
+			string  lang    = string.IsNullOrWhiteSpace(optLang.Value()) ? "auto" : optLang.Value()!;
+			string? prompt  = string.IsNullOrWhiteSpace(optPrompt.Value()) ? null : optPrompt.Value();
+			bool    endgame = optEndgame.HasValue();
 			await cli.CMD_optimize(path, lang, prompt, endgame);
+			return 0;
 		});
+	}
 
-		return cmd;
-    }
+	// eval (disabled) handled inline in ConfigureCommands if needed later
 
-    private static Command CreateEvalCommand(CLI cli) {
-        var cmd = new Command("eval", "(Temporarily disabled during TUI migration)");
-        cmd.SetAction((_, __) => { Console.WriteLine("eval is temporarily disabled."); return Task.CompletedTask; });
-        return cmd;
-    }
+	private static void ConfigureEvalCompression(CommandLineApplication cmd, CLI cli) {
+		cmd.Description = "Batch evaluation across a directory";
+		cmd.HelpOption(inherited: true);
+		var argPath       = cmd.Argument("path", "Root directory to evaluate");
+		var argLang       = cmd.Argument("language", "Programming language (or 'auto')");
+		var optOut        = cmd.Option("--out", "CSV output path (optional)", CommandOptionType.SingleValue);
+		var optJson       = cmd.Option("--json", "JSON output path (optional)", CommandOptionType.SingleValue);
+		var optNoTriads   = cmd.Option("--no-triads", "Disable triad loading (source-only baseline)", CommandOptionType.NoValue);
+		var optN          = cmd.Option("--n", "Randomly sample N functions across the directory", CommandOptionType.SingleValue);
+		var optTriadsFrom = cmd.Option("--triads-from", "Load triads only from this session directory (overrides default scan)", CommandOptionType.SingleValue);
+		var optSeed       = cmd.Option("--seed", "Seed for reproducible sampling", CommandOptionType.SingleValue);
 
-    private static Command CreateEvalCompressionCommand(CLI cli) {
-        var argPath = new Argument<string>("path") { Description = "Root directory to evaluate" };
-        var argLang = new Argument<string?>("language") { Description = "Programming language (or 'auto')", Arity = ArgumentArity.ZeroOrOne };
-        var optOut = new Option<string?>("--out") { Description = "CSV output path (optional)" };
-        var optJson = new Option<string?>("--json") { Description = "JSON output path (optional)" };
-        var optNoTriads = new Option<bool>("--no-triads") { Description = "Disable triad loading (source-only baseline)" };
-        var optN = new Option<int?>("--n") { Description = "Randomly sample N functions across the directory" };
-        var optTriadsFrom = new Option<string?>("--triads-from") { Description = "Load triads only from this session directory (overrides default scan)" };
-        var optSeed = new Option<int?>("--seed") { Description = "Seed for reproducible sampling" };
+		cmd.OnExecuteAsync(async _ => {
+			var     path     = string.IsNullOrWhiteSpace(argPath.Value) ? Directory.GetCurrentDirectory() : argPath.Value!;
+			var     lang     = string.IsNullOrWhiteSpace(argLang.Value) ? "auto" : argLang.Value!;
+			string? outp     = string.IsNullOrWhiteSpace(optOut.Value()) ? null : optOut.Value();
+			string? json     = string.IsNullOrWhiteSpace(optJson.Value()) ? null : optJson.Value();
+			int?    n        = int.TryParse(optN.Value(), out var nVal) ? nVal : (int?)null;
+			bool    noTriads = optNoTriads.HasValue();
+			string? triFrom  = string.IsNullOrWhiteSpace(optTriadsFrom.Value()) ? null : optTriadsFrom.Value();
+			int?    seed     = int.TryParse(optSeed.Value(), out var sVal) ? sVal : (int?)null;
+			await cli.CMD_eval_compression(path, lang, outp, json, n, useTriads: !noTriads, triadsFrom: triFrom, seed: seed);
+			return 0;
+		});
+	}
 
-        var cmd = new Command("eval-compression", "Batch evaluation across a directory");
-        cmd.Arguments.Add(argPath);
-        cmd.Arguments.Add(argLang);
-        cmd.Options.Add(optOut);
-        cmd.Options.Add(optJson);
-        cmd.Options.Add(optNoTriads);
-        cmd.Options.Add(optN);
-        cmd.Options.Add(optTriadsFrom);
-        cmd.Options.Add(optSeed);
+	private static void ConfigureCompressBatch(CommandLineApplication cmd, CLI cli) {
+		cmd.Description = "Batch-generate triads across a directory";
+		cmd.HelpOption(inherited: true);
+		var argPath            = cmd.Argument("path", "Root directory to compress");
+		var argLang            = cmd.Argument("language", "Programming language (or 'auto')");
+		var optPrompt          = cmd.Option("--prompt", "Prompt name (default: compress_function_v5)", CommandOptionType.SingleValue);
+		var optConcurrency     = cmd.Option("--concurrency", "Max concurrent compressions", CommandOptionType.SingleValue);
+		var optN               = cmd.Option("--n", "Randomly sample N functions across the directory", CommandOptionType.SingleValue);
+		var optRetryIncomplete = cmd.Option("--retry-incomplete", "Retries for symbols with incomplete triads", CommandOptionType.SingleValue);
+		var optSeed            = cmd.Option("--seed", "Seed for reproducible sampling", CommandOptionType.SingleValue);
 
-        cmd.SetAction(async (parseResult, cancellationToken) => {
-            var path = parseResult.GetValue(argPath)!;
-            var lang = parseResult.GetValue(argLang) ?? "auto";
-            var outp = parseResult.GetValue(optOut);
-            var json = parseResult.GetValue(optJson);
-            var n        = parseResult.GetValue(optN);
-            var noTriads = parseResult.GetValue(optNoTriads);
-            var triFrom  = parseResult.GetValue(optTriadsFrom);
-            var seed     = parseResult.GetValue(optSeed);
-            await cli.CMD_eval_compression(path, lang, outp, json, n, useTriads: !noTriads, triadsFrom: triFrom, seed: seed);
-        });
+		cmd.OnExecuteAsync(async cancellationToken => {
+			string  path        = string.IsNullOrWhiteSpace(argPath.Value) ? Directory.GetCurrentDirectory() : argPath.Value!;
+			string  lang        = string.IsNullOrWhiteSpace(argLang.Value) ? "auto" : argLang.Value!;
+			string? prompt      = string.IsNullOrWhiteSpace(optPrompt.Value()) ? null : optPrompt.Value();
+			int     concurrency = int.TryParse(optConcurrency.Value(), out var c) ? c : 4;
+			int?    n           = int.TryParse(optN.Value(), out var nVal) ? nVal : (int?)null;
+			int     retry       = int.TryParse(optRetryIncomplete.Value(), out var r) ? r : 0;
+			int?    seed        = int.TryParse(optSeed.Value(), out var s) ? s : (int?)null;
+			await cli.CMD_compress_batch(path, lang, prompt, concurrency, n, cancellationToken, retry, seed);
+			return 0;
+		});
+	}
 
-        return cmd;
-    }
-
-    private static Command CreateCompressBatchCommand(CLI cli) {
-        var argPath = new Argument<string>("path") { Description = "Root directory to compress" };
-        var argLang = new Argument<string?>("language") { Description = "Programming language (or 'auto')", Arity = ArgumentArity.ZeroOrOne };
-
-        var optPrompt = new Option<string?>("--prompt") { Description = "Prompt name (default: compress_function_v5)" };
-        var optConcurrency = new Option<int>("--concurrency") { Description = "Max concurrent compressions", DefaultValueFactory = _ => 4 };
-        var optN = new Option<int?>("--n") { Description = "Randomly sample N functions across the directory" };
-        var optRetryIncomplete = new Option<int>("--retry-incomplete") { Description = "Retries for symbols with incomplete triads", DefaultValueFactory = _ => 0 };
-        var optSeed = new Option<int?>("--seed") { Description = "Seed for reproducible sampling" };
-
-        var cmd = new Command("compress-batch", "Batch-generate triads across a directory");
-        cmd.Arguments.Add(argPath);
-        cmd.Arguments.Add(argLang);
-        cmd.Options.Add(optPrompt);
-        cmd.Options.Add(optConcurrency);
-        cmd.Options.Add(optN);
-        cmd.Options.Add(optRetryIncomplete);
-        cmd.Options.Add(optSeed);
-
-        cmd.SetAction(async (parseResult, cancellationToken) => {
-            var path = parseResult.GetValue(argPath)!;
-            var lang = parseResult.GetValue(argLang) ?? "auto";
-            var prompt = parseResult.GetValue(optPrompt);
-            var concurrency = parseResult.GetValue(optConcurrency);
-            var n = parseResult.GetValue(optN);
-            var retry = parseResult.GetValue(optRetryIncomplete);
-            var seed  = parseResult.GetValue(optSeed);
-            await cli.CMD_compress_batch(path, lang, prompt, concurrency, n, cancellationToken, retry, seed);
-        });
-
-        return cmd;
-    }
 	/// <summary>
 	/// tui command: Launch interactive symbol browser
 	/// </summary>
-	private static Command CreateTuiCommand(CLI cli) {
-		var optPath = new Option<string>("--path", "-p") {
-			Description         = "Project path to browse",
-			DefaultValueFactory = _ => Directory.GetCurrentDirectory()
-		};
-
-		var optLang = new Option<string>("--lang", "-l") {
-			Description         = "Programming language",
-			DefaultValueFactory = _ => "auto"
-		};
-
-		var cmd = new Command("tui", "Launch interactive symbol browser");
-		cmd.Options.Add(optPath);
-		cmd.Options.Add(optLang);
-
-		cmd.SetAction(async (parseResult, cancellationToken) => {
-			var path = parseResult.GetValue(optPath)!;
-			var lang = parseResult.GetValue(optLang)!;
-
+	private static void ConfigureTui(CommandLineApplication cmd, CLI cli) {
+		cmd.Description = "Launch interactive symbol browser";
+		cmd.HelpOption(inherited: true);
+		var optPath = cmd.Option("-p|--path", "Project path to browse", CommandOptionType.SingleValue);
+		var optLang = cmd.Option("-l|--lang", "Programming language", CommandOptionType.SingleValue);
+		cmd.OnExecuteAsync(async _ => {
+			string path = string.IsNullOrWhiteSpace(optPath.Value()) ? Directory.GetCurrentDirectory() : optPath.Value()!;
+			string lang = string.IsNullOrWhiteSpace(optLang.Value()) ? "auto" : optLang.Value()!;
 			await cli.CMD_tui(path, lang);
+			return 0;
 		});
-
-		return cmd;
 	}
 }

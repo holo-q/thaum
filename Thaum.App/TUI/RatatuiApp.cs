@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Thaum.Core.Models;
@@ -61,7 +62,8 @@ public class RatatuiApp {
 		public static readonly Style Error      = new Style(fg: Color.LightRed, bold: true);
 		public static readonly Style Success    = new Style(fg: Color.LightGreen, bold: true);
 		public static readonly Style Info       = new Style(fg: Color.LightBlue);
-		public static readonly Style Title      = new Style(bold: true);
+        public static readonly Style Title      = new Style(bold: true);
+        public static readonly Style CodeHi     = new Style(fg: Color.LightYellow, bold: true);
 	}
 
 	public async Task RunAsync(CodeMap codeMap, string projectPath, string language) {
@@ -457,77 +459,97 @@ public class RatatuiApp {
 				Rect right      = cols[2];
 				int  metaHeight = Math.Max(6, right.Height / 3);
 				term.Draw(meta, new Rect(right.X, right.Y, right.Width, metaHeight));
-				string          body   = app.isLoading ? $"Summarizing… {Spinner()}" : (app.summary ?? "");
-				using Paragraph detail = new Paragraph(body).Title("Summary", border: true);
-				term.Draw(detail, new Rect(right.X, right.Y + metaHeight + 1, right.Width, Math.Max(1, right.Height - metaHeight - 1)));
-				break;
-			}
-			case Mode.Source: {
-				using Paragraph title = new Paragraph("Source").Title("Source", border: true);
-				term.Draw(title, new Rect(rows[1].X, rows[1].Y, rows[1].Width, 2));
-				List<string> lines = app.sourceLines ?? [];
-				using List   list  = new List();
-				int          start = Math.Max(0, app.sourceOffset);
-				int          end   = Math.Min(lines.Count, start + Math.Max(1, rows[1].Height - 3));
-				for (int i = start; i < end; i++) {
-					string       num  = (i + 1).ToString().PadLeft(5) + "  ";
-					Memory<byte> ln   = Encoding.UTF8.GetBytes(num).AsMemory();
-					Memory<byte> code = Encoding.UTF8.GetBytes(lines[i]).AsMemory();
-					ReadOnlyMemory<Ratatui.Batching.SpanRun> runs = new[] {
-						new Ratatui.Batching.SpanRun(ln, Theme.LineNumber),
-						new Ratatui.Batching.SpanRun(code, default)
-					};
-					list.AppendItem(runs.Span);
-				}
-				term.Draw(list, new Rect(rows[1].X, rows[1].Y + 2, rows[1].Width, rows[1].Height - 2));
-				break;
-			}
-			case Mode.Summary: {
-				using Paragraph title = new Paragraph("Summary").Title("Summary", border: true);
-				term.Draw(title, new Rect(rows[1].X, rows[1].Y, rows[1].Width, 2));
-				string          body = app.isLoading ? $"Summarizing… {Spinner()}" : (app.summary ?? "No summary yet. Press 3 to (re)generate.");
-				using Paragraph para = new Paragraph(body);
-				term.Draw(para, new Rect(rows[1].X, rows[1].Y + 2, rows[1].Width, rows[1].Height - 2));
-				break;
-			}
-			case Mode.References: {
-				using Paragraph title = new Paragraph("References").Title("References", border: true);
-				term.Draw(title, new Rect(rows[1].X, rows[1].Y, rows[1].Width, 2));
-				using List                                 list  = new List();
-				List<(string File, int Line, string Name)> refs  = app.refs ?? [];
-				int                                        start = Math.Max(0, app.refsOffset);
-				int                                        end   = Math.Min(refs.Count, start + Math.Max(1, rows[1].Height - 2));
-				for (int i = start; i < end; i++) {
-					(string f, int ln, string nm) = refs[i];
-					Memory<byte> lhs = Encoding.UTF8.GetBytes($"{Path.GetFileName(f)}:{ln}  ").AsMemory();
-					Memory<byte> rhs = Encoding.UTF8.GetBytes(nm).AsMemory();
-					ReadOnlyMemory<Ratatui.Batching.SpanRun> runs = new[] {
-						new Ratatui.Batching.SpanRun(lhs, Theme.FilePath),
-						new Ratatui.Batching.SpanRun(rhs, default)
-					};
-					list.AppendItem(runs.Span);
-				}
-				term.Draw(list, new Rect(rows[1].X, rows[1].Y + 2, rows[1].Width, rows[1].Height - 2));
-				break;
-			}
-			case Mode.Info: {
-				using Paragraph title = new Paragraph("Info").Title("Info", border: true);
-				term.Draw(title, new Rect(rows[1].X, rows[1].Y, rows[1].Width, 2));
-				if (app.visibleSymbols.Count > 0) {
-					CodeSymbol s = app.visibleSymbols[app.symSelected];
-					using Paragraph para = new Paragraph("")
-						.AppendLine($"Name: {s.Name}")
-						.AppendLine($"Kind: {s.Kind}")
-						.AppendLine($"File: {s.FilePath}")
-						.AppendLine($"Start: L{s.StartCodeLoc.Line}:C{s.StartCodeLoc.Character}")
-						.AppendLine($"End:   L{s.EndCodeLoc.Line}:C{s.EndCodeLoc.Character}")
-						.AppendLine($"Children: {s.Children?.Count ?? 0}")
-						.AppendLine($"Deps: {s.Dependencies?.Count ?? 0}")
-						.AppendLine($"Last: {(s.LastModified?.ToString("u") ?? "n/a")}");
-					term.Draw(para, new Rect(rows[1].X, rows[1].Y + 2, rows[1].Width, rows[1].Height - 2));
-				}
-				break;
-			}
+                string          body   = app.isLoading ? $"Summarizing… {Spinner()}" : (app.summary ?? "");
+                using Paragraph detail = new Paragraph("").Title("Summary", border: true);
+                if (body.StartsWith("Error:")) detail.AppendSpan(body, Theme.Error); else detail.AppendSpan(body);
+                term.Draw(detail, new Rect(right.X, right.Y + metaHeight + 1, right.Width, Math.Max(1, right.Height - metaHeight - 1)));
+                break;
+            }
+            case Mode.Source: {
+                using Paragraph title = new Paragraph("Source").Title("Source", border: true);
+                term.Draw(title, new Rect(rows[1].X, rows[1].Y, rows[1].Width, 2));
+                List<string> lines = app.sourceLines ?? [];
+                using List   list  = new List();
+                int          start = Math.Max(0, app.sourceOffset);
+                int          end   = Math.Min(lines.Count, start + Math.Max(1, rows[1].Height - 3));
+                int symStartLine = 0, symEndLine = -1, symStartCol = 0, symEndCol = 0;
+                if (app.visibleSymbols.Count > 0) {
+                    CodeSymbol s = app.visibleSymbols[app.symSelected];
+                    symStartLine = Math.Max(1, s.StartCodeLoc.Line);
+                    symEndLine   = Math.Max(symStartLine, s.EndCodeLoc.Line);
+                    symStartCol  = Math.Max(0, s.StartCodeLoc.Character);
+                    symEndCol    = Math.Max(symStartCol, s.EndCodeLoc.Character);
+                }
+                for (int i = start; i < end; i++) {
+                    string num = (i + 1).ToString().PadLeft(5) + "  ";
+                    Memory<byte> ln = Encoding.UTF8.GetBytes(num).AsMemory();
+                    string line = lines[i];
+                    var runs = new List<Ratatui.Batching.SpanRun>(4) { new Ratatui.Batching.SpanRun(ln, Theme.LineNumber) };
+                    int oneBased = i + 1;
+                    if (oneBased >= symStartLine && oneBased <= symEndLine) {
+                        int sc = (oneBased == symStartLine) ? symStartCol : 0;
+                        int ec = (oneBased == symEndLine) ? symEndCol : line.Length;
+                        sc = Math.Clamp(sc, 0, line.Length);
+                        ec = Math.Clamp(ec, sc, line.Length);
+                        string pre = line[..sc], mid = line[sc..ec], post = line[ec..];
+                        if (pre.Length > 0) runs.Add(new Ratatui.Batching.SpanRun(Encoding.UTF8.GetBytes(pre).AsMemory(), default));
+                        if (mid.Length > 0) runs.Add(new Ratatui.Batching.SpanRun(Encoding.UTF8.GetBytes(mid).AsMemory(), Theme.CodeHi));
+                        if (post.Length > 0) runs.Add(new Ratatui.Batching.SpanRun(Encoding.UTF8.GetBytes(post).AsMemory(), default));
+                    } else {
+                        runs.Add(new Ratatui.Batching.SpanRun(Encoding.UTF8.GetBytes(line).AsMemory(), default));
+                    }
+                    list.AppendItem(CollectionsMarshal.AsSpan(runs));
+                }
+                term.Draw(list, new Rect(rows[1].X, rows[1].Y + 2, rows[1].Width, rows[1].Height - 2));
+                break;
+            }
+            case Mode.Summary: {
+                using Paragraph title = new Paragraph("Summary").Title("Summary", border: true);
+                term.Draw(title, new Rect(rows[1].X, rows[1].Y, rows[1].Width, 2));
+                string          body = app.isLoading ? $"Summarizing… {Spinner()}" : (app.summary ?? "No summary yet. Press 3 to (re)generate.");
+                using Paragraph para = new Paragraph("");
+                if (body.StartsWith("Error:")) para.AppendSpan(body, Theme.Error); else para.AppendSpan(body);
+                term.Draw(para, new Rect(rows[1].X, rows[1].Y + 2, rows[1].Width, rows[1].Height - 2));
+                break;
+            }
+            case Mode.References: {
+                using Paragraph title = new Paragraph("References").Title("References", border: true);
+                term.Draw(title, new Rect(rows[1].X, rows[1].Y, rows[1].Width, 2));
+                using List                                 list  = new List();
+                List<(string File, int Line, string Name)> refs  = app.refs ?? [];
+                int                                        start = Math.Max(0, app.refsOffset);
+                int                                        end   = Math.Min(refs.Count, start + Math.Max(1, rows[1].Height - 2));
+                for (int i = start; i < end; i++) {
+                    (string f, int ln, string nm) = refs[i];
+                    Memory<byte> lhs = Encoding.UTF8.GetBytes($"{Path.GetFileName(f)}:{ln}  ").AsMemory();
+                    Memory<byte> rhs = Encoding.UTF8.GetBytes(nm).AsMemory();
+                    ReadOnlyMemory<Ratatui.Batching.SpanRun> runs = new[] {
+                        new Ratatui.Batching.SpanRun(lhs, Theme.FilePath),
+                        new Ratatui.Batching.SpanRun(rhs, default)
+                    };
+                    list.AppendItem(runs.Span);
+                }
+                term.Draw(list, new Rect(rows[1].X, rows[1].Y + 2, rows[1].Width, rows[1].Height - 2));
+                break;
+            }
+            case Mode.Info: {
+                using Paragraph title = new Paragraph("Info").Title("Info", border: true);
+                term.Draw(title, new Rect(rows[1].X, rows[1].Y, rows[1].Width, 2));
+                if (app.visibleSymbols.Count > 0) {
+                    CodeSymbol s = app.visibleSymbols[app.symSelected];
+                    using Paragraph para = new Paragraph("");
+                    para.AppendSpan("Name: ", Theme.Hint).AppendSpan(s.Name, StyleForKind(s.Kind)).AppendLine("");
+                    para.AppendSpan("Kind: ", Theme.Hint).AppendSpan(s.Kind.ToString(), Theme.Info).AppendLine("");
+                    para.AppendSpan("File: ", Theme.Hint).AppendSpan(s.FilePath, Theme.FilePath).AppendLine("");
+                    para.AppendSpan("Start: ", Theme.Hint).AppendSpan($"L{s.StartCodeLoc.Line}", Theme.LineNumber).AppendSpan(":", Theme.Hint).AppendSpan($"C{s.StartCodeLoc.Character}", Theme.LineNumber).AppendLine("");
+                    para.AppendSpan("End:   ", Theme.Hint).AppendSpan($"L{s.EndCodeLoc.Line}", Theme.LineNumber).AppendSpan(":", Theme.Hint).AppendSpan($"C{s.EndCodeLoc.Character}", Theme.LineNumber).AppendLine("");
+                    para.AppendSpan("Children: ", Theme.Hint).AppendSpan((s.Children?.Count ?? 0).ToString(), Theme.Info).AppendLine("");
+                    para.AppendSpan("Deps: ", Theme.Hint).AppendSpan((s.Dependencies?.Count ?? 0).ToString(), Theme.Info).AppendLine("");
+                    para.AppendSpan("Last: ", Theme.Hint).AppendSpan((s.LastModified?.ToString("u") ?? "n/a"), Theme.Info);
+                    term.Draw(para, new Rect(rows[1].X, rows[1].Y + 2, rows[1].Width, rows[1].Height - 2));
+                }
+                break;
+            }
 		}
 
 		using Paragraph footer = new Paragraph(app.screen switch {
@@ -678,45 +700,44 @@ public class RatatuiApp {
 		return "-\\|/"[t].ToString();
 	}
 
-	private static void OpenInEditor(string projectPath, string filePath, int line, out string message, out bool success) {
-		success = false;
-		message = string.Empty;
-		try {
-			string  full = Path.IsPathRooted(filePath) ? filePath : Path.Combine(projectPath, filePath);
-			string? cmd  = Environment.GetEnvironmentVariable("THAUM_EDITOR") ?? Environment.GetEnvironmentVariable("EDITOR");
-			string  args;
-			if (string.IsNullOrWhiteSpace(cmd)) {
-				// Try known editors
-				if (File.Exists("/usr/bin/code") || File.Exists("/usr/local/bin/code")) {
-					cmd  = "code";
-					args = $"-g \"{full}\":{line}";
-				} else if (File.Exists("/usr/bin/nvim") || File.Exists("/usr/local/bin/nvim")) {
-					cmd  = "nvim";
-					args = $"+{line} \"{full}\"";
-				} else if (File.Exists("/usr/bin/vim") || File.Exists("/usr/local/bin/vim")) {
-					cmd  = "vim";
-					args = $"+{line} \"{full}\"";
-				} else {
-					message = $"Open: {full}:{line}";
-					return;
-				}
-			} else {
-				// Heuristic per editor
-				if (cmd.Contains("code")) args                             = $"-g \"{full}\":{line}";
-				else if (cmd.Contains("nvim") || cmd.Contains("vim")) args = $"+{line} \"{full}\"";
-				else args                                                  = $"\"{full}\""; // generic
-			}
+        private static void OpenInEditor(string projectPath, string filePath, int line, out string message, out bool success) {
+            success = false;
+            message = string.Empty;
+            try {
+                string full = Path.IsPathRooted(filePath) ? filePath : Path.Combine(projectPath, filePath);
+                string? cmd = Environment.GetEnvironmentVariable("THAUM_EDITOR") ?? Environment.GetEnvironmentVariable("EDITOR");
+                string args = string.Empty;
 
-			ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo(cmd, args) {
-				UseShellExecute        = false,
-				RedirectStandardError  = false,
-				RedirectStandardOutput = false,
-			};
-			System.Diagnostics.Process.Start(psi);
-			success = true;
-			message = $"Opened {Path.GetFileName(full)}:{line}";
-		} catch (Exception ex) {
-			message = $"Open failed: {ex.Message}";
-		}
-	}
+                bool isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+                bool isMac     = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+
+                if (string.IsNullOrWhiteSpace(cmd)) {
+                    if (isWindows) {
+                        cmd  = "code"; // VS Code
+                        args = $"-g \"{full}\":{line}";
+                    } else if (isMac) {
+                        cmd  = "open";
+                        args = $"-a \"Visual Studio Code\" --args -g \"{full}\":{line}";
+                    } else {
+                        if (File.Exists("/usr/bin/code") || File.Exists("/usr/local/bin/code")) { cmd = "code"; args = $"-g \"{full}\":{line}"; }
+                        else if (File.Exists("/usr/bin/nvim") || File.Exists("/usr/local/bin/nvim")) { cmd = "nvim"; args = $"+{line} \"{full}\""; }
+                        else if (File.Exists("/usr/bin/vim") || File.Exists("/usr/local/bin/vim")) { cmd = "vim"; args = $"+{line} \"{full}\""; }
+                        else { message = $"Open: {full}:{line}"; return; }
+                    }
+                } else {
+                    string c = cmd.ToLowerInvariant();
+                    if (c.Contains("code")) args = $"-g \"{full}\":{line}";
+                    else if (c.Contains("nvim") || c.Contains("vim")) args = $"+{line} \"{full}\"";
+                    else if (isMac && c == "open") args = $"\"{full}\"";
+                    else args = $"\"{full}\"";
+                }
+
+                ProcessStartInfo psi = new ProcessStartInfo(cmd, args) { UseShellExecute = false };
+                Process.Start(psi);
+                success = true;
+                message = $"Opened {Path.GetFileName(full)}:{line}";
+            } catch (Exception ex) {
+                message = $"Open failed: {ex.Message}";
+            }
+        }
 }
