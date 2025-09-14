@@ -14,10 +14,10 @@ internal sealed class ReferencesScreen : Screen {
 	public override void Draw(Terminal term, Rect area, ThaumTUI.State app, string projectPath) {
 		using Paragraph title = Paragraph("", title: "References", title_border: true);
 		term.Draw(title, R(area.X, area.Y, area.Width, 2));
-		using List                                 list  = List();
-		List<(string File, int Line, string Name)> refs  = app.refs ?? new List<(string File, int Line, string Name)>();
-		int                                        start = Math.Max(0, app.refsOffset);
-		int                                        end   = Math.Min(refs.Count, start + Math.Max(1, area.Height - 2));
+		using List          list  = List();
+		List<CodeRef>       refs  = app.refs ?? new List<CodeRef>();
+		int                 start = Math.Max(0, app.refsOffset);
+		int                 end   = Math.Min(refs.Count, start + Math.Max(1, area.Height - 2));
 		for (int i = start; i < end; i++) {
 			(string f, int ln, string nm) = refs[i];
 			Memory<byte> lhs = Encoding.UTF8.GetBytes($"{Path.GetFileName(f)}:{ln}  ").AsMemory();

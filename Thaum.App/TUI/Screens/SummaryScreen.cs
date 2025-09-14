@@ -1,7 +1,7 @@
 using Ratatui;
-using Thaum.Core.Models;
 using static Thaum.App.RatatuiTUI.Rat;
 using static Thaum.App.RatatuiTUI.RatLayout;
+using Thaum.Core.Models;
 
 namespace Thaum.App.RatatuiTUI;
 

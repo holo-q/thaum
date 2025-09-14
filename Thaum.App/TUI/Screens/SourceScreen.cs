@@ -31,7 +31,7 @@ internal sealed class SourceScreen : Screen {
 		}
 
 		for (int i = start; i < end; i++) {
-			string                 num      = (i + 1).ToString().PadLeft(5) + "  ";
+			string                 num      = $"{(i + 1).ToString().PadLeft(5)}  ";
 			Memory<byte>           ln       = Encoding.UTF8.GetBytes(num).AsMemory();
 			string                 line     = lines[i];
 			List<Batching.SpanRun> runs     = new List<Batching.SpanRun>(4) { new Batching.SpanRun(ln, TuiTheme.LineNumber) };

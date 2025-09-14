@@ -1,0 +1,7 @@
+    private async Task<T> Spinner<T>(string message, Func<Task<T>> action)
+    {
+        return await AnsiConsole.Status()
+            .Spinner(Spinner.Known.Dots)
+            .SpinnerStyle(Style.Parse("yellow"))
+            .StartAsync(message, action);
+    }

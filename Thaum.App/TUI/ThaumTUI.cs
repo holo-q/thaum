@@ -32,19 +32,27 @@ public class ThaumTUI {
 		public int           sourceSelected;
 		public int           sourceOffset;
 
-		public List<(string File, int Line, string Name)>? refs;
-		public int                                         refsSelected;
-		public int                                         refsOffset;
+		public List<CodeRef>? refs;
+		public int            refsSelected;
+		public int            refsOffset;
 	}
 
-	private string _projectPath;
-	private State  _app;
-	private Screen _browser, _source, _summary, _refs, _info;
+    private string _projectPath;
+    private State  _app;
+    private Screen _browser, _source, _summary, _refs, _info;
+
+    // Expose screen references for keybinding navigation
+    public Screen ScreenBrowser    => _browser;
+    public Screen ScreenSource     => _source;
+    public Screen ScreenSummary    => _summary;
+    public Screen ScreenReferences => _refs;
+    public Screen ScreenInfo       => _info;
 
 	private readonly Crawler _crawler;
 	private readonly Golfer  _golfer;
 	private readonly ILogger _logger;
 
+	private bool _dirty;
 
 	public enum Panel { Files, Symbols }
 
@@ -80,13 +88,6 @@ public class ThaumTUI {
 		_logger = Logging.For<ThaumTUI>();
 	}
 
-	// Expose screen references for navigation from screens
-	public Screen? ScreenBrowser    { get; private set; }
-	public Screen? ScreenSource     { get; private set; }
-	public Screen? ScreenSummary    { get; private set; }
-	public Screen? ScreenReferences { get; private set; }
-	public Screen? ScreenInfo       { get; private set; }
-
 	public void NavigateTo(Screen? target, State app) {
 		if (target is null) return;
 		app.active = target;
@@ -99,16 +100,8 @@ public class ThaumTUI {
 		string? firstFile = _app.visibleFiles.FirstOrDefault();
 		_app.visibleSymbols = firstFile == null ? [] : SymbolsForFile(_app, firstFile).ToList();
 
-		// Expose screens for navigation
-		ScreenBrowser    = _browser;
-		ScreenSource     = _source;
-		ScreenSummary    = _summary;
-		ScreenReferences = _refs;
-		ScreenInfo       = _info;
-
 		// Browser lists are now built inside BrowserScreen; no local ListState needed.
-		bool     redraw = true;
-		TimeSpan poll   = TimeSpan.FromMilliseconds(75);
+		TimeSpan poll = TimeSpan.FromMilliseconds(75);
 		_app.active = _browser;
 
 		Screen lastScreen = _app.active;
@@ -117,9 +110,9 @@ public class ThaumTUI {
 		// initial OnEnter already called above
 
 		while (true) {
-			if (redraw) {
+			if (_dirty) {
 				Draw(term);
-				redraw = false;
+				_dirty = false;
 			}
 
 			if (!term.NextEvent(poll, out Event ev)) {
@@ -127,45 +120,50 @@ public class ThaumTUI {
 				// Use a lightweight dt based on poll interval
 				(_app.active ?? _browser).OnTick(poll, _app);
 				if (_app.isLoading)
-					redraw = true;
+					Invalidate();
 				continue;
 			}
 
 			switch (ev.Kind) {
 				case EventKind.Resize:
-					redraw = true;
+					Invalidate();
 					(int Width, int Height) size = term.Size();
 					(_app.active ?? _browser).OnResize(size.Width, size.Height, _app);
 					continue;
 				case EventKind.Key:
 					if ((_app.active ?? _browser).HandleKey(ev, _app)) {
-						redraw = true;
+						Invalidate();
 					}
 					break;
 			}
 
 			// Screen lifecycle
 			if ((_app.active ?? _browser) != lastScreen) {
-				Screen oldScreen = lastScreen;
-				Screen newScreen = _app.active ?? _browser;
-				await oldScreen.OnLeave(_app);
-				await newScreen.OnEnter(_app);
-				lastScreen = newScreen;
-				redraw     = true;
+				Screen old  = lastScreen;
+				Screen @new = _app.active ?? _browser;
+				await old.OnLeave(_app);
+				await @new.OnEnter(_app);
+				lastScreen = @new;
+				Invalidate();
 			}
 		}
 	}
 
-	internal async Task<string> LoadSymbolDetail(CodeSymbol symbol) {
+	public void Invalidate() {
+		_dirty = true;
+	}
+
+	internal async Task<string> LoadSymbolDetail(CodeSymbol sym) {
 		try {
-			string? source = await _crawler.GetCode(symbol);
+			string? source = await _crawler.GetCode(sym);
 			if (string.IsNullOrEmpty(source)) return "No source available for symbol.";
-			OptimizationContext ctx = new OptimizationContext(Level: symbol.Kind is SymbolKind.Function or SymbolKind.Method ? 1 : 2,
+			OptimizationContext ctx = new OptimizationContext(
+				Level: sym.Kind is SymbolKind.Function or SymbolKind.Method ? 1 : 2,
 				AvailableKeys: [],
-				PromptName: GLB.GetDefaultPrompt(symbol));
-			return await _golfer.RewriteAsync(symbol, ctx, source);
+				PromptName: GLB.GetDefaultPrompt(sym));
+			return await _golfer.RewriteAsync(sym, ctx, source);
 		} catch (Exception ex) {
-			_logger.LogError(ex, "Error summarizing symbol {Name}", symbol.Name);
+			_logger.LogError(ex, "Error summarizing symbol {Name}", sym.Name);
 			return $"Error: {ex.Message}";
 		}
 	}
@@ -192,7 +190,7 @@ public class ThaumTUI {
 
 	private string ComposeHeaderTitle(Screen active, State app) {
 		string title                                                            = active.Title(app);
-		if (active is { IsBusy: true }) title                                   += "  " + TuiTheme.Spinner();
+		if (active is { IsBusy: true }) title                                   += $"  {TuiTheme.Spinner()}";
 		if (!string.IsNullOrWhiteSpace((active as Screen)?.ErrorMessage)) title += "  [error]";
 		return title;
 	}
@@ -260,7 +258,7 @@ public class ThaumTUI {
 		if (app.refs is { Count: > 0 }) return;
 		CodeSymbol       s    = app.visibleSymbols[app.symSelected];
 		List<CodeSymbol> refs = await _crawler.GetReferencesFor(s.Name, s.StartCodeLoc);
-		app.refs         = refs.Select(r => (r.FilePath, r.StartCodeLoc.Line, r.Name)).ToList();
+		app.refs         = refs.Select(r => new CodeRef(r.FilePath, r.StartCodeLoc.Line, r.Name)).ToList();
 		app.refsSelected = 0;
 		app.refsOffset   = 0;
 	}
