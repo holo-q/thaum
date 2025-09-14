@@ -475,7 +475,7 @@ private static void Draw(Terminal term, string projectPath, AppState app) {
 		app.refsOffset   = 0;
 	}
 
-	private static void EnsureVisible(ref int offset, int selected) {
+    internal static void EnsureVisible(ref int offset, int selected) {
 		if (selected < offset) offset = selected;
 		int max                       = offset + 20;
 		if (selected >= max) offset   = Math.Max(0, selected - 19);

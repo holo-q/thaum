@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Ratatui.Reload;
+using static Thaum.Core.Utils.Tracer;
 using Thaum.Utils;
 
 namespace Thaum.CLI;
