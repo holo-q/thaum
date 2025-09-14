@@ -112,7 +112,7 @@ public sealed class HotReloadRunner : IReloadContext, IDisposable
                     if (ev.Kind == EventKind.Resize)
                     {
                         var size = sizeProvider();
-                        _currentApp?.OnResize(size.width, size.height);
+                        _currentApp?.OnResize(size.Item1, size.Item2);
                     }
                 }
             }
@@ -133,8 +133,8 @@ public sealed class HotReloadRunner : IReloadContext, IDisposable
     private void DrawBuildOverlay(Terminal term, string log)
     {
         var size = term.Size();
-        int width = Math.Max(20, Math.Min(120, size.width - 4));
-        int height = Math.Max(6, Math.Min(30, size.height - 4));
+        int width = Math.Max(20, Math.Min(120, size.Width - 4));
+        int height = Math.Max(6, Math.Min(30, size.Height - 4));
         var rect = new Ratatui.Rect(2, 1, width, height);
         using var para = new Ratatui.Paragraph("").Title("Build Error", border: true);
         string tail = string.Join('\n', log.Split('\n').TakeLast(height - 4));
@@ -288,4 +288,3 @@ public sealed class HotReloadRunner : IReloadContext, IDisposable
         try { _currentAlc?.Unload(); } catch { }
     }
 }
-

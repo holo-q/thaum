@@ -52,7 +52,8 @@ public sealed class ReloadableSampleApp : IReloadableApp
         using var p = new Paragraph("").Title("Ratatui Hot Reload Demo", border: true);
         var sb = new StringBuilder();
         sb.AppendLine($"Now: {DateTime.UtcNow:HH:mm:ss}");
-        sb.AppendLine($"Uptime: {(DateTime.UtcNow - _start):hh\:mm\:ss}");
+        var up = (DateTime.UtcNow - _start).ToString(@"hh\:mm\:ss");
+        sb.AppendLine($"Uptime: {up}");
         sb.AppendLine($"Counter (+/-): {_counter}");
         sb.AppendLine($"Project: {_ctx.ProjectPath}");
         sb.AppendLine("Edit this file and save to see reload!");
@@ -71,4 +72,3 @@ public sealed class ReloadableSampleApp : IReloadableApp
     {
     }
 }
-
