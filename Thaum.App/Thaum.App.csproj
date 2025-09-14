@@ -38,6 +38,7 @@
     </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="4.1.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
         <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
@@ -56,10 +57,10 @@
     <ProjectReference Include="../reference/Ratatui.cs/src/Ratatui/Ratatui.csproj" />
   </ItemGroup>
 
-    <!-- Exclude legacy Terminal.Gui based TUI implementation -->
+    <!-- Exclude legacy Terminal.Gui based TUI implementation (TUI_old) -->
     <ItemGroup>
-        <Compile Remove="TUI/**" />
-        <None Include="TUI/**" />
+        <Compile Remove="TUI_old/**" />
+        <None Include="TUI_old/**" />
     </ItemGroup>
 
     <!-- Exclude experimental CLI_try that references old TUI/Interactive types -->

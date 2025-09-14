@@ -22,7 +22,7 @@ namespace Thaum.CLI;
 /// </summary>
 public partial class CLI {
 	[RequiresUnreferencedCode("Uses reflection for object serialization")]
-    public async Task CMD_ls(LsOptions options) {
+    public async Task HandleLs(LsOptions options) {
 		trace($"Executing ls command with options: {options}");
 
 		// If a batch JSON is provided, print triads for its rows instead of symbol tree

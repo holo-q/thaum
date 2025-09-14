@@ -89,7 +89,7 @@ public partial class CLI {
 	public static RootCommand CreateRootCommand(CLI cli) {
 		var root = new RootCommand("Thaum - Hierarchical Compression Engine");
 
-		root.Subcommands.Add(CreateLsCommand(cli));
+		root.Subcommands.Add(CMD_ls(cli));
 		root.Subcommands.Add(CreateLsEnvCommand(cli));
 		root.Subcommands.Add(CreateLsCacheCommand(cli));
         // Temporarily disabled legacy interactive/try commands during TUI migration
@@ -107,7 +107,7 @@ public partial class CLI {
 	/// <summary>
 	/// ls command: List symbols in hierarchical format
 	/// </summary>
-	private static Command CreateLsCommand(CLI cli) {
+	private static Command CMD_ls(CLI cli) {
 		var argPath = new Argument<string>("path") {
 			Description         = "Project path or assembly specifier (e.g., 'assembly:TreeSitter')",
 			DefaultValueFactory = _ => Directory.GetCurrentDirectory()
@@ -163,7 +163,7 @@ public partial class CLI {
             var split     = parseResult.GetValue(optSplit);
 
             var options = new LsOptions(path, lang, depth, types, noColors, batch, split);
-            await cli.CMD_ls(options);
+            await cli.HandleLs(options);
         });
 
 		return cmd;
