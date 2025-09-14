@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.CommandLine;
 using System.Text;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
@@ -9,7 +8,6 @@ using Thaum.Core.Models;
 using Thaum.Core.Services;
 using Thaum.Core.Triads;
 using Thaum.Utils;
-using static System.Console;
 using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.CLI;
@@ -44,7 +42,7 @@ public partial class CLI {
             .SpinnerStyle(Style.Parse("green"))
             .StartAsync("Scanning workspace for functions", async _ => await _crawler.CrawlDir(root));
         List<CodeSymbol> symbols = codeMap.Where(s => s.Kind is SymbolKind.Method or SymbolKind.Function).ToList();
-        if (sampleN is int n && n > 0 && n < symbols.Count) {
+        if (sampleN is int n and > 0 && n < symbols.Count) {
             Random rng = seed is int s ? new Random(s) : Random.Shared;
             symbols = symbols.OrderBy(_ => rng.Next()).Take(n).ToList();
         }
@@ -80,7 +78,7 @@ public partial class CLI {
                     PromptName: null
                 );
 
-                string builtPrompt = await Thaum.Core.PromptUtil.BuildCustomPromptAsync(prompt, sym, context, src);
+                string builtPrompt = await Core.PromptUtil.BuildCustomPromptAsync(prompt, sym, context, src);
 
                 // Stream and capture output
                 StringBuilder            sb     = new StringBuilder();
@@ -89,7 +87,7 @@ public partial class CLI {
 
                 // Parse triad and log a dense summary
                 string text = sb.ToString();
-                FunctionTriad triad = Thaum.Core.Triads.TriadSerializer.ParseTriadText(text, sym, sym.FilePath, null);
+                FunctionTriad triad = TriadSerializer.ParseTriadText(text, sym, sym.FilePath, null);
                 symSw.Stop();
                 int tLen = triad.Topology?.Length ?? 0;
                 int mLen = triad.Morphism?.Length ?? 0;
@@ -167,7 +165,7 @@ public partial class CLI {
                         IAsyncEnumerable<string> stream2 = await _llm.StreamCompleteAsync(builtPrompt, GLB.CompressionOptions(model));
                         await foreach (string token in stream2.WithCancellation(cancellationToken)) sb2.Append(token);
                         string rerollText = sb2.ToString();
-                        triad = Thaum.Core.Triads.TriadSerializer.ParseTriadText(rerollText, sym, sym.FilePath, null);
+                        triad = TriadSerializer.ParseTriadText(rerollText, sym, sym.FilePath, null);
                         complete = triad.IsComplete;
                         SessionSaveResult rrRes = await ArtifactSaver.SaveSessionAsync(sym, sym.FilePath, builtPrompt, rerollText, null, sessionRoot, fileSuffix: $"-retry{attempt}");
                         indexItems.Add(new {

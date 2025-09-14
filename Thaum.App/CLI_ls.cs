@@ -2,15 +2,11 @@ using Microsoft.Extensions.Logging;
 using System.Reflection;
 using System.Diagnostics.CodeAnalysis;
 using Thaum.Core.Models;
-using Thaum.Core.Services;
-using Thaum.Core.Utils;
-using Thaum.Utils;
 using Thaum.Core.Triads;
 using Thaum.Core.Eval;
 using System.Text.Json;
 using Spectre.Console;
 using CoreTreeNode = Thaum.Core.Utils.TreeNode;
-using static System.Console;
 using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.CLI;

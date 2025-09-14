@@ -20,7 +20,7 @@ public partial class CLI {
 	private readonly LLM               _llm;
 	private readonly Crawler           _crawler;
 	private readonly Prompter          _prompter;
-	private readonly Compressor        _compressor;
+	private readonly Golfer        _golfer;
 	private readonly PerceptualColorer _colorer;
 
 	/// <summary>
@@ -49,7 +49,7 @@ public partial class CLI {
 		Cache        cache        = new Cache(GLB.AppConfig);
 		PromptLoader promptLoader = new PromptLoader();
 
-		_compressor = new Compressor(_llm, _crawler, cache, promptLoader);
+		_golfer = new Golfer(_llm, _crawler, cache, promptLoader);
 		traceout();
 	}
 
@@ -175,10 +175,10 @@ public partial class CLI {
 				string  lang     = string.IsNullOrWhiteSpace(argLang.Value) ? "auto" : argLang.Value!;
 				string? outp     = string.IsNullOrWhiteSpace(optOut.Value()) ? null : optOut.Value();
 				string? json     = string.IsNullOrWhiteSpace(optJson.Value()) ? null : optJson.Value();
-				int?    n        = int.TryParse(optN.Value(), out int nVal) ? nVal : (int?)null;
+				int?    n        = int.TryParse(optN.Value(), out int nVal) ? nVal : null;
 				bool    noTriads = optNoTriads.HasValue();
 				string? triFrom  = string.IsNullOrWhiteSpace(optTriadsFrom.Value()) ? null : optTriadsFrom.Value();
-				int?    seed     = int.TryParse(optSeed.Value(), out int sVal) ? sVal : (int?)null;
+				int?    seed     = int.TryParse(optSeed.Value(), out int sVal) ? sVal : null;
 				await cli.CMD_eval_compression(path, lang, outp, json, n, useTriads: !noTriads, triadsFrom: triFrom, seed: seed);
 				return 0;
 			});
@@ -200,9 +200,9 @@ public partial class CLI {
 				string  lang        = string.IsNullOrWhiteSpace(argLang.Value) ? "auto" : argLang.Value!;
 				string? prompt      = string.IsNullOrWhiteSpace(optPrompt.Value()) ? null : optPrompt.Value();
 				int     concurrency = int.TryParse(optConcurrency.Value(), out int c) ? c : 4;
-				int?    n           = int.TryParse(optN.Value(), out int nVal) ? nVal : (int?)null;
+				int?    n           = int.TryParse(optN.Value(), out int nVal) ? nVal : null;
 				int     retry       = int.TryParse(optRetryIncomplete.Value(), out int r) ? r : 0;
-				int?    seed        = int.TryParse(optSeed.Value(), out int s) ? s : (int?)null;
+				int?    seed        = int.TryParse(optSeed.Value(), out int s) ? s : null;
 				await cli.CMD_compress_batch(path, lang, prompt, concurrency, n, cancellationToken, retry, seed);
 				return 0;
 			});
@@ -224,7 +224,7 @@ public partial class CLI {
 		app.Command("tui-watch", cmd => {
 			cmd.Description = "Launch TUI with hot reload (watch plugin project)";
 			cmd.HelpOption(inherited: true);
-			var optPlugin = cmd.Option("--plugin", "Path to plugin .csproj (default: Thaum.TUI/Thaum.TUI.csproj)", CommandOptionType.SingleValue);
+			CommandOption optPlugin = cmd.Option("--plugin", "Path to plugin .csproj (default: Thaum.TUI/Thaum.TUI.csproj)", CommandOptionType.SingleValue);
 			cmd.OnExecuteAsync(async _ => {
 				string? plugin = string.IsNullOrWhiteSpace(optPlugin.Value()) ? null : optPlugin.Value();
 				await cli.CMD_tui_watch(plugin);

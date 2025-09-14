@@ -1,7 +1,5 @@
-using System.CommandLine;
 using Spectre.Console;
 using Thaum.Core.Eval;
-using Thaum.Core.Services;
 using Thaum.Core.Models;
 using Thaum.Utils;
 using static System.Console;
@@ -25,11 +23,11 @@ public partial class CLI {
             .Where(f => LangUtil.IsSourceFileForLanguage(f, lang))
             .ToList();
 
-        List<string>   rows     = new List<string> { "file,symbol,await,branch,calls,blocks,elses,passed,notes" };
-        List<BatchRow> jsonRows = new List<Thaum.Core.Eval.BatchRow>();
+        List<string>   rows     = ["file,symbol,await,branch,calls,blocks,elses,passed,notes"];
+        List<BatchRow> jsonRows = [];
 
         // Pre-scan to collect all function symbols across files
-        List<(string file, CodeSymbol sym)> allSymbols = new List<(string file, Core.Models.CodeSymbol sym)>();
+        List<(string file, CodeSymbol sym)> allSymbols = [];
         await AnsiConsole.Progress()
             .Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
             .StartAsync(async ctx => {
@@ -37,20 +35,20 @@ public partial class CLI {
                 foreach (string file in files) {
                     try {
                         CodeMap codeMap = await _crawler.CrawlFile(file);
-                        foreach (CodeSymbol sym in codeMap.Where(s => s.Kind is Core.Models.SymbolKind.Method or Core.Models.SymbolKind.Function)) {
+                        foreach (CodeSymbol sym in codeMap.Where(s => s.Kind is SymbolKind.Method or SymbolKind.Function)) {
                             allSymbols.Add((file, sym));
                         }
                     } catch (Exception ex) {
                         string rel = Path.GetRelativePath(root,file);
                         rows.Add($"{rel},<error>,0,0,0,0,0,false,{ex.Message.Replace(',', ' ')}");
-                        jsonRows.Add(new Thaum.Core.Eval.BatchRow { File = rel, Symbol = "<error>", Await = 0, Branch = 0, Calls = 0, Blocks = 0, Elses = 0, Passed = false, Notes = ex.Message });
+                        jsonRows.Add(new BatchRow { File = rel, Symbol = "<error>", Await = 0, Branch = 0, Calls = 0, Blocks = 0, Elses = 0, Passed = false, Notes = ex.Message });
                     }
                     task.Increment(1);
                 }
             });
 
         // Random sampling if requested
-        if (sampleN is int n && n > 0 && n < allSymbols.Count) {
+        if (sampleN is int n and > 0 && n < allSymbols.Count) {
             Random rng = seed is int s ? new Random(s) : Random.Shared;
             allSymbols = allSymbols.OrderBy(_ => rng.Next()).Take(n).ToList();
         }
@@ -96,22 +94,22 @@ public partial class CLI {
                         string src = await _crawler.GetCode(sym) ?? string.Empty;
                         FunctionTriad? triad = null;
                         if (useTriads && triadsMap.TryGetValue((Path.GetFullPath(file), sym.Name), out triad)) matchedTriads++;
-                        FidelityReport report = Thaum.Core.Eval.FidelityEvaluator.EvaluateFunction(sym, src, triad, lang);
+                        FidelityReport report = FidelityEvaluator.EvaluateFunction(sym, src, triad, lang);
                         string rel = Path.GetRelativePath(root,file);
                         string note = string.Join("; ", report.Notes);
                         rows.Add($"{rel},{sym.Name},{report.AwaitCountSrc},{report.BranchCountSrc},{report.CallHeurSrc},{report.BlockCountSrc},{report.ElseCountSrc},{report.PassedMinGate},{note.Replace(',', ' ')}");
-                        jsonRows.Add(new Thaum.Core.Eval.BatchRow { File = rel, Symbol = sym.Name, Await = report.AwaitCountSrc, Branch = report.BranchCountSrc, Calls = report.CallHeurSrc, Blocks = report.BlockCountSrc, Elses = report.ElseCountSrc, Passed = report.PassedMinGate, Notes = note });
+                        jsonRows.Add(new BatchRow { File = rel, Symbol = sym.Name, Await = report.AwaitCountSrc, Branch = report.BranchCountSrc, Calls = report.CallHeurSrc, Blocks = report.BlockCountSrc, Elses = report.ElseCountSrc, Passed = report.PassedMinGate, Notes = note });
                     } catch (Exception ex) {
                         string rel = Path.GetRelativePath(root,file);
                         rows.Add($"{rel},<error>,0,0,0,0,0,false,{ex.Message.Replace(',', ' ')}");
-                        jsonRows.Add(new Thaum.Core.Eval.BatchRow { File = rel, Symbol = "<error>", Await = 0, Branch = 0, Calls = 0, Blocks = 0, Elses = 0, Passed = false, Notes = ex.Message });
+                        jsonRows.Add(new BatchRow { File = rel, Symbol = "<error>", Await = 0, Branch = 0, Calls = 0, Blocks = 0, Elses = 0, Passed = false, Notes = ex.Message });
                     }
                     task.Increment(1);
                 }
             });
 
         // Build summary report
-        BatchReport reportObj = Thaum.Core.Eval.BatchReport.FromRows(jsonRows, lang);
+        BatchReport reportObj = BatchReport.FromRows(jsonRows, lang);
 
         // Default output directory under cache/evals if none provided
         // Intent: keep eval artifacts out of git and consistently organized.

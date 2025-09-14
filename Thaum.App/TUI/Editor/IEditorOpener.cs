@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace Thaum.App.RatatuiTUI;
 
-internal interface IEditorOpener
+public interface IEditorOpener
 {
     void Open(string projectPath, string filePath, int line);
 }
@@ -36,8 +36,7 @@ internal sealed class DefaultEditorOpener : IEditorOpener
             else args = $"\"{full}\"";
         }
 
-        var psi = new ProcessStartInfo(cmd!, args) { UseShellExecute = false };
+        ProcessStartInfo psi = new ProcessStartInfo(cmd!, args) { UseShellExecute = false };
         Process.Start(psi);
     }
 }
-

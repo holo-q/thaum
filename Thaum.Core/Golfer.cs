@@ -15,11 +15,11 @@ public record CompressorOptions(string ProjectPath, string Language, string? Def
 /// builds on previous discoveries creating progressive refinement of understanding
 /// </summary>
 public record OptimizationContext(
-	int              Level,
-	List<string>     AvailableKeys,
-	string?          PromptName       = null,
-	string?          ParentContext    = null,
-	List<string>?    SiblingContexts  = null
+	int           Level,
+	List<string>  AvailableKeys,
+	string?       PromptName      = null,
+	string?       ParentContext   = null,
+	List<string>? SiblingContexts = null
 ) {
 	private async Task<string> BuildCustomPrompt(string promptName, CodeSymbol symbol, string sourceCode) {
 		return await new PromptLoader().FormatPrompt(promptName, new Dictionary<string, object> {
@@ -38,23 +38,19 @@ public record OptimizationContext(
 /// where final pass uses K1+K2 achieving maximum semantic density where caching prevents
 /// redundant LLM calls where streaming enables real-time progress visualization
 /// </summary>
-public class Compressor {
-	private readonly LLM                 _llm;
+public class Golfer {
+	private readonly LLM             _llm;
 	private readonly Crawler         _crawler;
-	private readonly ICache              _cache;
-	private readonly PromptLoader        _promptLoader;
-	private readonly ILogger<Compressor> _logger;
+	private readonly ICache          _cache;
+	private readonly PromptLoader    _promptLoader;
+	private readonly ILogger<Golfer> _logger;
 
-	public Compressor(
-		LLM          llm,
-		Crawler  crawler,
-		ICache       cache,
-		PromptLoader promptLoader) {
-		_llm                = llm;
-		_crawler = crawler;
-		_cache              = cache;
-		_promptLoader       = promptLoader;
-		_logger             = Logging.For<Compressor>();
+	public Golfer(LLM llm, Crawler crawler, ICache cache, PromptLoader promptLoader) {
+		_llm          = llm;
+		_crawler      = crawler;
+		_cache        = cache;
+		_promptLoader = promptLoader;
+		_logger       = Logging.For<Golfer>();
 	}
 
 	/// <summary>
@@ -62,21 +58,22 @@ public class Compressor {
 	/// construction uses discovered keys where LLM temperature 0.3 balances consistency
 	/// with creativity where result caching enables incremental processing
 	/// </summary>
-	public async Task<string> OptimizeSymbolAsync(CodeSymbol symbol, OptimizationContext context, string code) {
-		string cacheKey = $"optimization_{symbol.Name}_{symbol.FilePath}_{symbol.StartCodeLoc.Line}_{context.Level}";
+	public async Task<string> RewriteAsync(CodeSymbol sym, OptimizationContext ctx, string code) { // TODO take enum of the rewrite operationa to perform
+		string cacheKey = $"optimization_{sym.Name}_{sym.FilePath}_{sym.StartCodeLoc.Line}_{ctx.Level}";
 
 		if (await _cache.TryGetAsync<string>(cacheKey) is { } cached) {
 			return cached;
 		}
 
 		// Get the prompt name - use context override or default
-		string promptName = context.PromptName ?? GLB.GetDefaultPrompt(symbol);
-		string prompt = await BuildOptimizationPromptAsync(symbol, context, code, promptName);
+		string promptName = ctx.PromptName ?? GLB.GetDefaultPrompt(sym);
+		string prompt     = await BuildOptimizationPromptAsync(sym, ctx, code, promptName);
 
 		// Get the raw prompt template content
 		string promptContent = await _promptLoader.LoadPrompt(promptName);
 
 		// Get model from configuration - fail fast if not available
+		// TODO lots of stuff that should be moved to Glb
 		string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ??
 		               throw new InvalidOperationException("LLM__DefaultModel environment variable is required");
 
@@ -104,12 +101,13 @@ public class Compressor {
 		}
 
 		string actualKeyPromptName = keyPromptName ?? GLB.DefaultKeyPrompt;
-		string prompt = await BuildKeyExtractionPromptAsync(summaries, level, actualKeyPromptName);
+		string prompt              = await BuildKeyExtractionPromptAsync(summaries, level, actualKeyPromptName);
 
 		// Get prompt content for metadata
 		string promptContent = await _promptLoader.LoadPrompt(actualKeyPromptName);
 
 		// Get model from configuration - fail fast if not available
+		// TODO lots of stuff that should be moved to Glb
 		string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ??
 		               throw new InvalidOperationException("LLM__DefaultModel environment variable is required");
 
@@ -138,11 +136,11 @@ public class Compressor {
 			.Spinner(Spinner.Known.Dots)
 			.SpinnerStyle(Style.Parse("green"))
 			.StartAsync("Scanning workspace for symbols", async _ => await _crawler.CrawlDir(projectPath));
-		List<CodeSymbol> allSymbols = codeMap.ToList();
+		List<CodeSymbol> allSymbols       = codeMap.ToList();
 		HierarchyBuilder hierarchyBuilder = new HierarchyBuilder();
 
 		// Phase 1: Optimize functions (deepest scope)
-		using var _p1 = Logging.Scope("PHASE 1: Function Analysis");
+		using var        p1        = Logging.Scope("PHASE 1: Function Analysis");
 		List<CodeSymbol> functions = allSymbols.Where(s => s.Kind is SymbolKind.Function or SymbolKind.Method).ToList();
 
 		List<string> functionOptimizations = new List<string>(functions.Count);
@@ -151,9 +149,9 @@ public class Compressor {
 			.StartAsync(async ctx => {
 				var task = ctx.AddTask($"Functions ({functions.Count})", maxValue: functions.Count);
 				var results = await Task.WhenAll(functions.Select(async function => {
-					string sourceCode = await GetSymbolSourceCode(function);
-					OptimizationContext context = new OptimizationContext(Level: 1, AvailableKeys: [], PromptName: defaultPromptName);
-					string summary = await OptimizeSymbolWithStreamAsync(function, context, sourceCode);
+					string              sourceCode = await GetSymbolSourceCode(function);
+					OptimizationContext context    = new OptimizationContext(Level: 1, AvailableKeys: [], PromptName: defaultPromptName);
+					string              summary    = await OptimizeSymbolWithStreamAsync(function, context, sourceCode);
 					task.Increment(1);
 					return summary;
 				}));
@@ -161,7 +159,7 @@ public class Compressor {
 			});
 
 		// Phase 2: Extract K1 from function summaries
-		using var _p2 = Logging.Scope("PHASE 2: K1 Extraction");
+		using var p2 = Logging.Scope("PHASE 2: K1 Extraction");
 		string k1 = await AnsiConsole.Status()
 			.Spinner(Spinner.Known.Dots)
 			.SpinnerStyle(Style.Parse("yellow"))
@@ -170,21 +168,21 @@ public class Compressor {
 		_logger.LogInformation("K1: {Sample}", k1.Length > 50 ? $"{k1[..47]}..." : k1);
 
 		// Phase 3: Re-summarize functions with K1
-		using var _p3 = Logging.Scope("PHASE 3: Function Re-analysis with K1");
+		using var p3 = Logging.Scope("PHASE 3: Function Re-analysis with K1");
 		await AnsiConsole.Progress()
 			.Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
 			.StartAsync(async ctx => {
 				var task = ctx.AddTask($"Functions ({functions.Count})", maxValue: functions.Count);
 				await Task.WhenAll(functions.Select(async function => {
-					string sourceCode = await GetSymbolSourceCode(function);
-					OptimizationContext context = new OptimizationContext(Level: 1, AvailableKeys: [k1], PromptName: defaultPromptName);
+					string              sourceCode = await GetSymbolSourceCode(function);
+					OptimizationContext context    = new OptimizationContext(Level: 1, AvailableKeys: [k1], PromptName: defaultPromptName);
 					await OptimizeSymbolWithStreamAsync(function, context, sourceCode);
 					task.Increment(1);
 				}));
 			});
 
 		// Phase 4: Optimize classes with K1
-		using var _p4 = Logging.Scope("PHASE 4: Class Analysis with K1");
+		using var        p4      = Logging.Scope("PHASE 4: Class Analysis with K1");
 		List<CodeSymbol> classes = allSymbols.Where(s => s.Kind == SymbolKind.Class).ToList();
 
 		List<string> classOptimizations = new List<string>(classes.Count);
@@ -193,9 +191,9 @@ public class Compressor {
 			.StartAsync(async ctx => {
 				var task = ctx.AddTask($"Classes ({classes.Count})", maxValue: classes.Count);
 				var results = await Task.WhenAll(classes.Select(async cls => {
-					string sourceCode = await GetSymbolSourceCode(cls);
-					OptimizationContext context = new OptimizationContext(Level: 2, AvailableKeys: [k1], PromptName: defaultPromptName);
-					string summary = await OptimizeSymbolWithStreamAsync(cls, context, sourceCode);
+					string              sourceCode = await GetSymbolSourceCode(cls);
+					OptimizationContext context    = new OptimizationContext(Level: 2, AvailableKeys: [k1], PromptName: defaultPromptName);
+					string              summary    = await OptimizeSymbolWithStreamAsync(cls, context, sourceCode);
 					task.Increment(1);
 					return summary;
 				}));
@@ -203,7 +201,7 @@ public class Compressor {
 			});
 
 		// Phase 5: Extract K2 from class summaries
-		using var _p5 = Logging.Scope("PHASE 5: K2 Extraction");
+		using var p5 = Logging.Scope("PHASE 5: K2 Extraction");
 		string k2 = await AnsiConsole.Status()
 			.Spinner(Spinner.Known.Dots)
 			.SpinnerStyle(Style.Parse("yellow"))
@@ -212,8 +210,8 @@ public class Compressor {
 		_logger.LogInformation("K2: {Sample}", k2.Length > 50 ? $"{k2[..47]}..." : k2);
 
 		// Phase 6: Re-summarize everything with K1+K2
-		using var _p6 = Logging.Scope("PHASE 6: Final Re-analysis with K1+K2");
-		var all = functions.Concat(classes).ToList();
+		using var p6  = Logging.Scope("PHASE 6: Final Re-analysis with K1+K2");
+		var       all = functions.Concat(classes).ToList();
 		await AnsiConsole.Progress()
 			.Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
 			.StartAsync(async ctx => {
@@ -229,7 +227,7 @@ public class Compressor {
 				}));
 			});
 
-		using var _p7 = Logging.Scope("Hierarchy Construction");
+		using var        p7          = Logging.Scope("Hierarchy Construction");
 		List<CodeSymbol> rootSymbols = hierarchyBuilder.BuildHierarchy(allSymbols);
 
 		_logger.LogInformation("Done: {Count} symbols processed", allSymbols.Count);
@@ -321,7 +319,7 @@ public class Compressor {
 		}
 
 		string promptName = context.PromptName ?? GLB.GetDefaultPrompt(symbol);
-		string prompt = await BuildOptimizationPromptAsync(symbol, context, sourceCode, promptName);
+		string prompt     = await BuildOptimizationPromptAsync(symbol, context, sourceCode, promptName);
 
 		// Get model from configuration - fail fast if not available
 		string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ??
@@ -352,7 +350,7 @@ public class Compressor {
 		}
 
 		string actualKeyPromptName = keyPromptName ?? GLB.DefaultKeyPrompt;
-		string prompt = await BuildKeyExtractionPromptAsync(summaries, level, actualKeyPromptName);
+		string prompt              = await BuildKeyExtractionPromptAsync(summaries, level, actualKeyPromptName);
 
 		// Get model from configuration - fail fast if not available
 		string model = Environment.GetEnvironmentVariable("LLM__DefaultModel") ??

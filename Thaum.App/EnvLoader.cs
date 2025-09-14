@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace Thaum.Core.Utils;
 
 public static class EnvLoader {
-	private static readonly Regex EnvLineRegex = new(@"^(?<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<value>.*)$",
+	private static readonly Regex _envLineRegex = new(@"^(?<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<value>.*)$",
 		RegexOptions.Compiled | RegexOptions.Multiline);
 
 	public record EnvFile(string Path, Dictionary<string, string> Variables, bool Exists);
@@ -78,7 +78,7 @@ public static class EnvLoader {
 		if (exists) {
 			try {
 				string          content = File.ReadAllText(filePath);
-				MatchCollection matches = EnvLineRegex.Matches(content);
+				MatchCollection matches = _envLineRegex.Matches(content);
 
 				foreach (Match match in matches) {
 					if (match.Success) {
@@ -213,16 +213,17 @@ public static class EnvLoader {
 
 		int length = value.Length;
 
-		// For very short values (like config values), show them as-is
-		if (length <= 4)
-			return value;
-
-		// For typical API keys, show first 3-4 chars + stars + last 3-4 chars
-		if (length >= 8) {
-			string start     = value[..Math.Min(4, length / 3)];
-			string end       = value[^Math.Min(4, length / 3)..];
-			int    starCount = Math.Max(8, length - start.Length - end.Length);
-			return $"{start}{'*'.ToString().PadRight(starCount, '*')}{end}";
+		switch (length) {
+			// For very short values (like config values), show them as-is
+			case <= 4:
+				return value;
+			// For typical API keys, show first 3-4 chars + stars + last 3-4 chars
+			case >= 8: {
+				string start     = value[..Math.Min(4, length / 3)];
+				string end       = value[^Math.Min(4, length / 3)..];
+				int    starCount = Math.Max(8, length - start.Length - end.Length);
+				return $"{start}{'*'.ToString().PadRight(starCount, '*')}{end}";
+			}
 		}
 
 		// For medium length values, show first few chars + stars

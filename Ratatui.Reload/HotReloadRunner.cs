@@ -25,6 +25,9 @@ public sealed class HotReloadRunner : IReloadContext, IDisposable
 
     private volatile bool _rebuildRequested;
     private volatile bool _buildFailed;
+    private volatile bool _building;
+    private volatile bool _swapPending;
+    private Task? _buildTask;
     private string _lastBuildLog = string.Empty;
 
     private FileSystemWatcher? _watcher;
@@ -54,20 +57,22 @@ public sealed class HotReloadRunner : IReloadContext, IDisposable
 
     public async Task<int> RunAsync(Func<(int width, int height)> sizeProvider, CancellationToken cancel)
     {
-        // Initial build and load
-        if (!await BuildPluginAsync(cancel))
+        // Initial build and load (background) so UI can show spinner
+        _building = true;
+        _buildTask = Task.Run(async () =>
         {
-            _buildFailed = true;
-        }
-        else
-        {
-            _buildFailed = false;
-            if (!TryLoadPlugin(out string err))
+            bool ok = await BuildPluginAsync(cancel);
+            if (ok)
+            {
+                _buildFailed = false;
+                _swapPending = true;
+            }
+            else
             {
                 _buildFailed = true;
-                _lastBuildLog = err + "\n" + _lastBuildLog;
             }
-        }
+            _building = false;
+        }, cancel);
 
         StartWatcher();
 
@@ -81,22 +86,34 @@ public sealed class HotReloadRunner : IReloadContext, IDisposable
 
         while (!cancel.IsCancellationRequested && !AppCancellation.IsCancellationRequested)
         {
-            // Handle rebuild requests
-            if (_rebuildRequested)
+            // Handle rebuild requests (kick off background build)
+            if (_rebuildRequested && !_building)
             {
                 _rebuildRequested = false;
-                if (await BuildPluginAsync(cancel))
+                _building = true;
+                _buildTask = Task.Run(async () =>
                 {
-                    _buildFailed = false;
-                    ReloadSwap();
-                    // reapply size
-                    (w, h) = sizeProvider();
-                    _currentApp?.OnResize(w, h);
-                }
-                else
-                {
-                    _buildFailed = true;
-                }
+                    bool ok = await BuildPluginAsync(cancel);
+                    if (ok)
+                    {
+                        _buildFailed = false;
+                        _swapPending = true;
+                    }
+                    else
+                    {
+                        _buildFailed = true;
+                    }
+                    _building = false;
+                }, cancel);
+            }
+
+            // Perform swap after successful build
+            if (_swapPending)
+            {
+                _swapPending = false;
+                ReloadSwap();
+                (w, h) = sizeProvider();
+                _currentApp?.OnResize(w, h);
             }
 
             // Pump a frame
@@ -121,9 +138,15 @@ public sealed class HotReloadRunner : IReloadContext, IDisposable
 
             // Draw app or error overlay
             _currentApp?.Draw(term);
-            if (_buildFailed)
+            if (_building)
+            {
+                DrawBuildingOverlay(term);
+                DrawSpinner(term);
+            }
+            else if (_buildFailed)
             {
                 DrawBuildOverlay(term, _lastBuildLog);
+                DrawSpinner(term);
             }
         }
 
@@ -140,6 +163,42 @@ public sealed class HotReloadRunner : IReloadContext, IDisposable
         string tail = string.Join('\n', log.Split('\n').TakeLast(height - 4));
         para.AppendSpan(tail, new Ratatui.Style(fg: Ratatui.Color.LightRed));
         term.Draw(para, rect);
+    }
+
+    private void DrawBuildingOverlay(Terminal term)
+    {
+        var (W, H) = term.Size();
+        // Scrim
+        var sb = new StringBuilder();
+        string line = new string('░', Math.Max(1, W - 2));
+        for (int i = 0; i < Math.Max(1, H - 2); i++) sb.AppendLine(line);
+        using var scrim = new Ratatui.Paragraph(sb.ToString());
+        term.Draw(scrim, new Ratatui.Rect(1, 1, Math.Max(1, W - 2), Math.Max(1, H - 2)));
+
+        // Center modal
+        int mw = Math.Max(24, Math.Min(60, W - 4));
+        int mh = 5;
+        int mx = (W - mw) / 2;
+        int my = (H - mh) / 2;
+        using var modal = new Ratatui.Paragraph($" {Spinner()} Rebuilding plugin…").Title("Reloading", border: true).Align(Ratatui.Alignment.Center);
+        term.Draw(modal, new Ratatui.Rect(mx, my, mw, mh));
+    }
+
+    private void DrawSpinner(Terminal term)
+    {
+        var (W, H) = term.Size();
+        string msg = $" {Spinner()} Reload";
+        int w = Math.Min(16, Math.Max(10, msg.Length + 2));
+        int x = Math.Max(0, W - w - 1);
+        int y = Math.Max(0, H - 2);
+        using var p = new Ratatui.Paragraph(msg);
+        term.Draw(p, new Ratatui.Rect(x, y, w, 1));
+    }
+
+    private static string Spinner()
+    {
+        int t = (int)((DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond / 120) % 4);
+        return "-\\|/"[t].ToString();
     }
 
     private async Task<bool> BuildPluginAsync(CancellationToken cancel)

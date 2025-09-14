@@ -1,11 +1,9 @@
 using System.Text.Json;
 using System.Diagnostics.CodeAnalysis;
-using Thaum.Core;
 using Thaum.Core.Models;
 using Thaum.Core.Services;
 using static Thaum.Core.Utils.Tracer;
 using Thaum.Core.Utils;
-using Thaum.Utils;
 using static System.Console;
 
 namespace Thaum.CLI;

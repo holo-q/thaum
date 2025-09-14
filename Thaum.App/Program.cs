@@ -1,5 +1,4 @@
 using Serilog;
-using Thaum.Core.Utils;
 using Thaum.Utils;
 using static Thaum.Core.Utils.Tracer;
 

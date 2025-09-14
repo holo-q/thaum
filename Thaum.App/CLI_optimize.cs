@@ -24,7 +24,7 @@ public partial class CLI {
 
 		try {
 			DateTime        startTime = DateTime.UtcNow;
-			SymbolHierarchy hierarchy = await _compressor.ProcessCodebaseAsync(options.ProjectPath, options.Language, options.DefaultPromptName);
+			SymbolHierarchy hierarchy = await _golfer.ProcessCodebaseAsync(options.ProjectPath, options.Language, options.DefaultPromptName);
 			TimeSpan        duration  = DateTime.UtcNow - startTime;
 
 			// Display extracted keys

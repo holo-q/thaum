@@ -29,8 +29,8 @@ public partial class CLI {
 			println("Starting interactive symbol browser...");
 
 			// Run the new Ratatui-based TUI
-			RatatuiApp app = new RatatuiApp(_crawler, _compressor, _logger);
-			await app.RunAsync(codeMap, projectPath, language);
+			ThaumTUI app = new ThaumTUI(projectPath, codeMap, _crawler, _golfer);
+			await app.RunAsync();
 		} catch (Exception ex) {
 			_logger.LogError(ex, "Error launching TUI symbol browser");
 			println($"Error: {ex.Message}");

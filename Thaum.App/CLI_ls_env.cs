@@ -1,6 +1,4 @@
-using Thaum.Utils;
 using Thaum.Core.Utils;
-using static System.Console;
 using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.CLI;
