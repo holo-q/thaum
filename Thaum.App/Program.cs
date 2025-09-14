@@ -22,8 +22,8 @@ public static class Program {
 				await cliApp.RunAsync(args);
 			} catch (Exception ex) {
 				// Log to both console and file
-				var errorMsg = $"Error: {ex.Message}";
-				var stackMsg = $"Stack trace: {ex.StackTrace}";
+				string errorMsg = $"Error: {ex.Message}";
+				string stackMsg = $"Stack trace: {ex.StackTrace}";
 
 				println(errorMsg);
 				println(stackMsg);

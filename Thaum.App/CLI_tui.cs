@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using static Thaum.Core.Utils.Tracer;
 using System.Diagnostics.CodeAnalysis;
 using Thaum.App.RatatuiTUI;
+using Thaum.Core.Models;
 
 namespace Thaum.CLI;
 
@@ -17,7 +18,7 @@ public partial class CLI {
 		try {
 			// Initialize symbols from project
 			println($"Loading symbols from {projectPath}...");
-			var codeMap = await _crawler.CrawlDir(projectPath);
+			CodeMap codeMap = await _crawler.CrawlDir(projectPath);
 
 			if (codeMap.Count == 0) {
 				println("No symbols found in the specified path.");
@@ -28,7 +29,7 @@ public partial class CLI {
 			println("Starting interactive symbol browser...");
 
 			// Run the new Ratatui-based TUI
-			var app = new RatatuiApp(_crawler, _compressor, _logger);
+			RatatuiApp app = new RatatuiApp(_crawler, _compressor, _logger);
 			await app.RunAsync(codeMap, projectPath, language);
 		} catch (Exception ex) {
 			_logger.LogError(ex, "Error launching TUI symbol browser");

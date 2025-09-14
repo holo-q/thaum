@@ -56,8 +56,8 @@ public partial class CLI {
 		if (!Directory.Exists(options.ProjectPath) && !File.Exists(options.ProjectPath)) {
 			println($"Path '{options.ProjectPath}' not found.");
 			println("\nAvailable loaded assemblies:");
-			foreach (var asm in AppDomain.CurrentDomain.GetAssemblies().OrderBy(a => a.GetName().Name)) {
-				var name = asm.GetName().Name;
+			foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies().OrderBy(a => a.GetName().Name)) {
+				string? name = asm.GetName().Name;
 				println($"  - {name}");
 			}
 			println("\nTry 'thaum ls assembly:<assembly-name>' where <assembly-name> is one of the above.");
@@ -67,7 +67,7 @@ public partial class CLI {
 		println($"Scanning {options.ProjectPath} for {options.Language} symbols...");
 
 		// Get symbols
-		var codeMap = await _crawler.CrawlDir(options.ProjectPath);
+		CodeMap codeMap = await _crawler.CrawlDir(options.ProjectPath);
 
 		if (codeMap.Count == 0) {
 			println("No symbols found.");
@@ -94,7 +94,7 @@ public partial class CLI {
 		string json = await File.ReadAllTextAsync(batchJsonPath);
 		// Try parse as batch report first
 		try {
-			var report = JsonSerializer.Deserialize<BatchReport>(json, GLB.JsonOptions);
+			BatchReport? report = JsonSerializer.Deserialize<BatchReport>(json, GLB.JsonOptions);
 			if (report is not null && report.Rows.Count > 0) {
 				await PrintTriadsForBatchRows(root, report.Rows, split);
 				return;
@@ -103,16 +103,16 @@ public partial class CLI {
 
 		// Otherwise, treat as session index (from compress-batch)
 		try {
-			using var doc = JsonDocument.Parse(json);
-			if (doc.RootElement.TryGetProperty("triads", out var triads) && triads.ValueKind == JsonValueKind.Array) {
-				var triadObjs = new List<FunctionTriad>();
-				foreach (var t in triads.EnumerateArray()) {
+			using JsonDocument doc = JsonDocument.Parse(json);
+			if (doc.RootElement.TryGetProperty("triads", out JsonElement triads) && triads.ValueKind == JsonValueKind.Array) {
+				List<FunctionTriad> triadObjs = new List<FunctionTriad>();
+				foreach (JsonElement t in triads.EnumerateArray()) {
 					string triadPath = t.GetProperty("triadPath").GetString() ?? string.Empty;
 					if (string.IsNullOrEmpty(triadPath)) continue;
 					string absTriad = ResolveTriadPath(Path.GetDirectoryName(batchJsonPath)!, triadPath, root);
 					try {
-						var triadJson = await File.ReadAllTextAsync(absTriad);
-						var triad     = JsonSerializer.Deserialize<FunctionTriad>(triadJson, GLB.JsonOptions);
+						string         triadJson = await File.ReadAllTextAsync(absTriad);
+						FunctionTriad? triad     = JsonSerializer.Deserialize<FunctionTriad>(triadJson, GLB.JsonOptions);
 						if (triad is null) continue;
 						triadObjs.Add(triad);
 					} catch { /* ignore per-file errors */ }
@@ -120,16 +120,16 @@ public partial class CLI {
 				PrintTriadsTree(root, triadObjs, split);
 				return;
 			}
-			if (doc.RootElement.TryGetProperty("items", out var items) && items.ValueKind == JsonValueKind.Array) {
-				var triadObjs = new List<FunctionTriad>();
-				foreach (var it in items.EnumerateArray()) {
-					if (!it.TryGetProperty("triadPath", out var p) || p.ValueKind != JsonValueKind.String) continue;
+			if (doc.RootElement.TryGetProperty("items", out JsonElement items) && items.ValueKind == JsonValueKind.Array) {
+				List<FunctionTriad> triadObjs = new List<FunctionTriad>();
+				foreach (JsonElement it in items.EnumerateArray()) {
+					if (!it.TryGetProperty("triadPath", out JsonElement p) || p.ValueKind != JsonValueKind.String) continue;
 					string triadPath = p.GetString() ?? string.Empty;
 					if (string.IsNullOrEmpty(triadPath)) continue;
 					string absTriad = ResolveTriadPath(Path.GetDirectoryName(batchJsonPath)!, triadPath, root);
 					try {
-						var triadJson = await File.ReadAllTextAsync(absTriad);
-						var triad     = JsonSerializer.Deserialize<FunctionTriad>(triadJson, GLB.JsonOptions);
+						string         triadJson = await File.ReadAllTextAsync(absTriad);
+						FunctionTriad? triad     = JsonSerializer.Deserialize<FunctionTriad>(triadJson, GLB.JsonOptions);
 						if (triad is null) continue;
 						triadObjs.Add(triad);
 					} catch { /* ignore per-file errors */ }
@@ -149,24 +149,24 @@ public partial class CLI {
 
 	private async Task PrintTriadsForBatchRows(string root, IEnumerable<BatchRow> rows, bool split = false) {
 		// Load triads from cache/sessions
-		string sessionsDir = Path.Combine(GLB.CacheDir, "sessions");
-		var    triadsMap   = new Dictionary<(string file, string symbol), FunctionTriad>();
+		string                                                  sessionsDir = Path.Combine(GLB.CacheDir, "sessions");
+		Dictionary<(string file, string symbol), FunctionTriad> triadsMap   = new Dictionary<(string file, string symbol), FunctionTriad>();
 		if (Directory.Exists(sessionsDir)) {
-			foreach (var triadPath in Directory.GetFiles(sessionsDir, "*.triad.json", SearchOption.AllDirectories)) {
+			foreach (string triadPath in Directory.GetFiles(sessionsDir, "*.triad.json", SearchOption.AllDirectories)) {
 				try {
-					string triadJson = await File.ReadAllTextAsync(triadPath);
-					var    triad     = JsonSerializer.Deserialize<FunctionTriad>(triadJson, GLB.JsonOptions);
+					string         triadJson = await File.ReadAllTextAsync(triadPath);
+					FunctionTriad? triad     = JsonSerializer.Deserialize<FunctionTriad>(triadJson, GLB.JsonOptions);
 					if (triad is null) continue;
 					triadsMap[(Path.GetFullPath(triad.FilePath), triad.SymbolName)] = triad;
 				} catch { /* ignore */ }
 			}
 		}
 
-		var triads  = new List<FunctionTriad>();
-		int missing = 0;
-		foreach (var row in rows) {
+		List<FunctionTriad> triads  = new List<FunctionTriad>();
+		int    missing = 0;
+		foreach (BatchRow row in rows) {
 			string absFile = Path.GetFullPath(Path.Combine(root, row.File));
-			if (!triadsMap.TryGetValue((absFile, row.Symbol), out var triad)) { missing++; continue; }
+			if (!triadsMap.TryGetValue((absFile, row.Symbol), out FunctionTriad? triad)) { missing++; continue; }
 			triads.Add(triad);
 		}
 		PrintTriadsTree(root, triads, split);
@@ -174,25 +174,25 @@ public partial class CLI {
 	}
 
 	private static void PrintTriadsTree(string root, IEnumerable<FunctionTriad> triads, bool split = false) {
-		var ordered = triads.OrderBy(x => x.FilePath).ThenBy(x => x.SymbolName).ToList();
-		int c1      = RenderSection("topology", "blue",    ordered.Where(t => !string.IsNullOrWhiteSpace(t.Topology)) .Select(t => (t, t.Topology!)),  root, split);
-		int c2      = RenderSection("morphism", "magenta", ordered.Where(t => !string.IsNullOrWhiteSpace(t.Morphism)).Select(t => (t, t.Morphism!)), root, split);
-		int c3      = RenderSection("policy",   "yellow",  ordered.Where(t => !string.IsNullOrWhiteSpace(t.Policy))  .Select(t => (t, t.Policy!)),   root, split);
-		int c4      = RenderSection("manifest", "green",   ordered.Where(t => !string.IsNullOrWhiteSpace(t.Manifest)).Select(t => (t, t.Manifest!)), root, split);
+		List<FunctionTriad> ordered = triads.OrderBy(x => x.FilePath).ThenBy(x => x.SymbolName).ToList();
+		int    c1      = RenderSection("topology", "blue",    ordered.Where(t => !string.IsNullOrWhiteSpace(t.Topology)) .Select(t => (t, t.Topology!)),  root, split);
+		int    c2      = RenderSection("morphism", "magenta", ordered.Where(t => !string.IsNullOrWhiteSpace(t.Morphism)).Select(t => (t, t.Morphism!)), root, split);
+		int    c3      = RenderSection("policy",   "yellow",  ordered.Where(t => !string.IsNullOrWhiteSpace(t.Policy))  .Select(t => (t, t.Policy!)),   root, split);
+		int    c4      = RenderSection("manifest", "green",   ordered.Where(t => !string.IsNullOrWhiteSpace(t.Manifest)).Select(t => (t, t.Manifest!)), root, split);
 		if (c1 + c2 + c3 + c4 == 0) {
 			AnsiConsole.MarkupLine("[dim]No non-empty triad blocks to display for this session.[/]");
 		}
 	}
 
 	private static int RenderSection(string label, string color, IEnumerable<(FunctionTriad triad, string content)> items, string root, bool split) {
-		var list = items.ToList();
+		List<(FunctionTriad triad, string content)> list = items.ToList();
 		if (list.Count == 0) return 0;
 		AnsiConsole.MarkupLine($"└── [bold {color}]{label}[/]");
 		string basePrefix = "    ";
 		int    totalWidth = GetConsoleWidth();
 		// Compute alignment column from longest left label (file::function:)
 		int maxRelSymLen = 0;
-		foreach (var (triad, _) in list) {
+		foreach ((FunctionTriad triad, string _) in list) {
 			string rel                           = Path.GetRelativePath(root, triad.FilePath);
 			string sym                           = triad.SymbolName;
 			int    len                           = rel.Length + 2 + sym.Length + 2; // "rel::sym: " (include trailing ': ')
@@ -201,7 +201,7 @@ public partial class CLI {
 		int connectorLen = "└── ".Length; // same visual width as "├── "
 		int col          = Math.Min(totalWidth - 8, basePrefix.Length + connectorLen + maxRelSymLen);
 		for (int i = 0; i < list.Count; i++) {
-			var (triad, contentRaw) = list[i];
+			(FunctionTriad triad, string? contentRaw) = list[i];
 			string rel       = Path.GetRelativePath(root, triad.FilePath);
 			string sym       = triad.SymbolName;
 			string content   = (contentRaw ?? string.Empty).Replace("\r", "\\r").Replace("\n", "\\n");
@@ -245,8 +245,8 @@ public partial class CLI {
 	[RequiresUnreferencedCode("Calls Thaum.CLI.CLI.CMD_ls_binary(Assembly, LsOptions)")]
 	private async Task CMD_ls_dotnet(string assemblyName, LsOptions options) {
 		// Load and handle assembly listing
-		var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-		var matchedAssembly = assemblies.FirstOrDefault(a =>
+		Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+		Assembly? matchedAssembly = assemblies.FirstOrDefault(a =>
 			a.GetName().Name?.Contains(assemblyName, StringComparison.OrdinalIgnoreCase) == true);
 
 		if (matchedAssembly != null) {
@@ -254,8 +254,8 @@ public partial class CLI {
 		} else {
 			println($"Assembly '{assemblyName}' not found.");
 			println("\nAvailable loaded assemblies:");
-			foreach (var asm in assemblies.OrderBy(a => a.GetName().Name)) {
-				var name = asm.GetName().Name;
+			foreach (Assembly asm in assemblies.OrderBy(a => a.GetName().Name)) {
+				string? name = asm.GetName().Name;
 				println($"  - {name}");
 			}
 		}

@@ -39,13 +39,13 @@ public partial class CLI {
         Directory.CreateDirectory(sessionRoot);
         _logger.LogInformation("Session: {SessionRoot}", sessionRoot);
 
-        var codeMap = await AnsiConsole.Status()
+        CodeMap codeMap = await AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse("green"))
             .StartAsync("Scanning workspace for functions", async _ => await _crawler.CrawlDir(root));
-        var symbols = codeMap.Where(s => s.Kind is SymbolKind.Method or SymbolKind.Function).ToList();
+        List<CodeSymbol> symbols = codeMap.Where(s => s.Kind is SymbolKind.Method or SymbolKind.Function).ToList();
         if (sampleN is int n && n > 0 && n < symbols.Count) {
-            var rng = seed is int s ? new Random(s) : Random.Shared;
+            Random rng = seed is int s ? new Random(s) : Random.Shared;
             symbols = symbols.OrderBy(_ => rng.Next()).Take(n).ToList();
         }
 
@@ -57,24 +57,24 @@ public partial class CLI {
         // Model from environment; fail fast if missing
         string model = GLB.DefaultModel;
 
-        var throttler = new SemaphoreSlim(Math.Max(1, concurrency));
-        var errors = new ConcurrentBag<(string file, string symbol, string message)>();
-        var triadPaths = new ConcurrentBag<string>();
-        var indexItems = new ConcurrentBag<object>();
-        int completed = 0;
+        SemaphoreSlim                                               throttler  = new SemaphoreSlim(Math.Max(1, concurrency));
+        ConcurrentBag<(string file, string symbol, string message)> errors     = new ConcurrentBag<(string file, string symbol, string message)>();
+        ConcurrentBag<string>                                       triadPaths = new ConcurrentBag<string>();
+        ConcurrentBag<object>                                       indexItems = new ConcurrentBag<object>();
+        int                                                         completed  = 0;
 
         async Task ProcessSymbol(CodeSymbol sym) {
             await throttler.WaitAsync(cancellationToken);
             try {
                 if (cancellationToken.IsCancellationRequested) return;
-                var symSw = Stopwatch.StartNew();
+                Stopwatch symSw = Stopwatch.StartNew();
                 string src = await _crawler.GetCode(sym) ?? string.Empty;
                 if (string.IsNullOrWhiteSpace(src)) {
                     errors.Add((sym.FilePath, sym.Name, "Empty source slice"));
                     return;
                 }
 
-                var context = new OptimizationContext(
+                OptimizationContext context = new OptimizationContext(
                     Level: sym.Kind is SymbolKind.Function or SymbolKind.Method ? 1 : 2,
                     AvailableKeys: [],
                     PromptName: null
@@ -83,13 +83,13 @@ public partial class CLI {
                 string builtPrompt = await Thaum.Core.PromptUtil.BuildCustomPromptAsync(prompt, sym, context, src);
 
                 // Stream and capture output
-                var sb = new StringBuilder();
-                var stream = await _llm.StreamCompleteAsync(builtPrompt, GLB.CompressionOptions(model));
-                await foreach (var token in stream.WithCancellation(cancellationToken)) sb.Append(token);
+                StringBuilder            sb     = new StringBuilder();
+                IAsyncEnumerable<string> stream = await _llm.StreamCompleteAsync(builtPrompt, GLB.CompressionOptions(model));
+                await foreach (string token in stream.WithCancellation(cancellationToken)) sb.Append(token);
 
                 // Parse triad and log a dense summary
-                var text = sb.ToString();
-                var triad = Thaum.Core.Triads.TriadSerializer.ParseTriadText(text, sym, sym.FilePath, null);
+                string text = sb.ToString();
+                FunctionTriad triad = Thaum.Core.Triads.TriadSerializer.ParseTriadText(text, sym, sym.FilePath, null);
                 symSw.Stop();
                 int tLen = triad.Topology?.Length ?? 0;
                 int mLen = triad.Morphism?.Length ?? 0;
@@ -109,12 +109,12 @@ public partial class CLI {
                     complete);
 
                 // Persist artifacts (prompt + response + parsed triad)
-                var saveRes = await ArtifactSaver.SaveSessionAsync(sym, sym.FilePath, builtPrompt, text, null, sessionRoot);
+                SessionSaveResult saveRes = await ArtifactSaver.SaveSessionAsync(sym, sym.FilePath, builtPrompt, text, null, sessionRoot);
                 string triadPath = saveRes.TriadPath;
 
                 // If incomplete, log missing tags and the full raw output (explicit as requested)
                 if (!complete) {
-                    var missing = new List<string>();
+                    List<string> missing = new List<string>();
                     if (tLen == 0) missing.Add("TOPOLOGY");
                     if (mLen == 0) missing.Add("MORPHISM");
                     if (pLen == 0) missing.Add("POLICY");
@@ -142,8 +142,8 @@ public partial class CLI {
                 if (!complete && retryIncomplete > 0) {
                     for (int attempt = 1; attempt <= retryIncomplete && !complete; attempt++) {
                         // First try a repair pass (fill ONLY missing tags)
-                        var (merged, rawRepair) = await TriadRepairer.RepairAsync(_llm, sym, src, triad, GLB.CompressionOptions(model));
-                        var repRes = await ArtifactSaver.SaveSessionAsync(sym, sym.FilePath, builtPrompt, rawRepair, null, sessionRoot, fileSuffix: $"-repair{attempt}");
+                        (FunctionTriad merged, string rawRepair) = await TriadRepairer.RepairAsync(_llm, sym, src, triad, GLB.CompressionOptions(model));
+                        SessionSaveResult repRes = await ArtifactSaver.SaveSessionAsync(sym, sym.FilePath, builtPrompt, rawRepair, null, sessionRoot, fileSuffix: $"-repair{attempt}");
                         triad = merged;
                         complete = triad.IsComplete;
                         indexItems.Add(new {
@@ -163,13 +163,13 @@ public partial class CLI {
                         if (complete) break;
 
                         // Fallback: full re-roll
-                        var sb2 = new StringBuilder();
-                        var stream2 = await _llm.StreamCompleteAsync(builtPrompt, GLB.CompressionOptions(model));
-                        await foreach (var token in stream2.WithCancellation(cancellationToken)) sb2.Append(token);
-                        var rerollText = sb2.ToString();
+                        StringBuilder            sb2     = new StringBuilder();
+                        IAsyncEnumerable<string> stream2 = await _llm.StreamCompleteAsync(builtPrompt, GLB.CompressionOptions(model));
+                        await foreach (string token in stream2.WithCancellation(cancellationToken)) sb2.Append(token);
+                        string rerollText = sb2.ToString();
                         triad = Thaum.Core.Triads.TriadSerializer.ParseTriadText(rerollText, sym, sym.FilePath, null);
                         complete = triad.IsComplete;
-                        var rrRes = await ArtifactSaver.SaveSessionAsync(sym, sym.FilePath, builtPrompt, rerollText, null, sessionRoot, fileSuffix: $"-retry{attempt}");
+                        SessionSaveResult rrRes = await ArtifactSaver.SaveSessionAsync(sym, sym.FilePath, builtPrompt, rerollText, null, sessionRoot, fileSuffix: $"-retry{attempt}");
                         indexItems.Add(new {
                             file = rel,
                             symbol = sym.Name,
@@ -198,15 +198,15 @@ public partial class CLI {
             }
         }
 
-        var sw = Stopwatch.StartNew();
+        Stopwatch sw = Stopwatch.StartNew();
         await AnsiConsole.Progress()
             .Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
             .StartAsync(async ctx => {
-                var task = ctx.AddTask($"Compressing (0/{symbols.Count})", maxValue: symbols.Count);
+                ProgressTask task = ctx.AddTask($"Compressing (0/{symbols.Count})", maxValue: symbols.Count);
 
                 async Task Wrap(CodeSymbol s) {
                     await ProcessSymbol(s);
-                    var done = Interlocked.Increment(ref completed);
+                    int done = Interlocked.Increment(ref completed);
                     task.Value = Math.Min(done, symbols.Count);
                     // Compact live stats in description
                     double rate = done / Math.Max(0.5, sw.Elapsed.TotalSeconds);
@@ -214,13 +214,13 @@ public partial class CLI {
                     task.Description = $"Compressing ({done}/{symbols.Count}) @ {rate:F1}/s ETA {eta:mm\\:ss}";
                 }
 
-                var tasks = symbols.Select(Wrap).ToArray();
+                Task[] tasks = symbols.Select(Wrap).ToArray();
                 await Task.WhenAll(tasks);
             });
 
         if (!errors.IsEmpty) {
             println("Errors:");
-            foreach (var e in errors.Take(20)) println($"  - {Path.GetRelativePath(root, e.file)}::{e.symbol} -> {e.message}");
+            foreach ((string file, string symbol, string message) e in errors.Take(20)) println($"  - {Path.GetRelativePath(root, e.file)}::{e.symbol} -> {e.message}");
             if (errors.Count > 20) println($"  ... and {errors.Count - 20} more");
         }
 

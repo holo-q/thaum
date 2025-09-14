@@ -429,11 +429,8 @@ public class RatatuiApp {
 			Constraint.Length(1)
 		], gap: 0, margin: 0);
 
-		string focusText = app.focus == Panel.Files ? "Files" : "Symbols";
-		string modeText  = app.screen switch { Mode.Browser => "Browser", Mode.Source => "Source", Mode.Summary => "Summary", Mode.References => "References", Mode.Info => "Info", _ => "" };
-		using Paragraph header = new Paragraph($"Thaum — {Path.GetFileName(projectPath)}  Mode: {modeText}  Focus: {focusText}")
-			.AppendLine("1 Browser 2 Source 3 Summary 4 Refs 5 Info    Tab switch    / filter    o open  q quit", Theme.Hint);
-		term.Draw(header, rows[0]);
+        using Paragraph header = MakeHeader(Path.GetFileName(projectPath), app);
+        term.Draw(header, rows[0]);
 
 		switch (app.screen) {
 			case Mode.Browser: {
@@ -481,11 +478,11 @@ public class RatatuiApp {
                     symEndCol    = Math.Max(symStartCol, s.EndCodeLoc.Character);
                 }
                 for (int i = start; i < end; i++) {
-                    string num = (i + 1).ToString().PadLeft(5) + "  ";
-                    Memory<byte> ln = Encoding.UTF8.GetBytes(num).AsMemory();
-                    string line = lines[i];
-                    var runs = new List<Ratatui.Batching.SpanRun>(4) { new Ratatui.Batching.SpanRun(ln, Theme.LineNumber) };
-                    int oneBased = i + 1;
+                    string                 num      = (i + 1).ToString().PadLeft(5) + "  ";
+                    Memory<byte>           ln       = Encoding.UTF8.GetBytes(num).AsMemory();
+                    string                 line     = lines[i];
+                    List<Batching.SpanRun> runs     = new List<Ratatui.Batching.SpanRun>(4) { new Ratatui.Batching.SpanRun(ln, Theme.LineNumber) };
+                    int                    oneBased = i + 1;
                     if (oneBased >= symStartLine && oneBased <= symEndLine) {
                         int sc = (oneBased == symStartLine) ? symStartCol : 0;
                         int ec = (oneBased == symEndLine) ? symEndCol : line.Length;
@@ -552,17 +549,28 @@ public class RatatuiApp {
             }
 		}
 
-		using Paragraph footer = new Paragraph(app.screen switch {
-				Mode.Browser    => "↑/↓ move  Tab switch  / filter  Enter open/summarize  2 Source 3 Summary 4 Refs 5 Info",
-				Mode.Source     => "↑/↓ scroll  1 Browser 3 Summary 4 Refs 5 Info",
-				Mode.Summary    => (app.isLoading ? "Summarizing…" : "") + " 1 Browser 2 Source 4 Refs 5 Info",
-				Mode.References => "↑/↓ scroll  1 Browser 2 Source 3 Summary 5 Info",
-				Mode.Info       => "1 Browser 2 Source 3 Summary 4 Refs",
-				_               => ""
-			}).AppendSpan("   o open   ", Theme.Hint)
-			.AppendSpan("Ratatui.cs", Theme.Hint);
-		term.Draw(footer, rows[2]);
-	}
+        using Paragraph footer = MakeFooter(app);
+        term.Draw(footer, rows[2]);
+    }
+
+    private static Paragraph MakeHeader(string projectName, AppState app) {
+        string focusText = app.focus == Panel.Files ? "Files" : "Symbols";
+        string modeText  = app.screen switch { Mode.Browser => "Browser", Mode.Source => "Source", Mode.Summary => "Summary", Mode.References => "References", Mode.Info => "Info", _ => "" };
+        return new Paragraph($"Thaum — {projectName}  Mode: {modeText}  Focus: {focusText}")
+            .AppendLine("1 Browser 2 Source 3 Summary 4 Refs 5 Info    Tab switch    / filter    o open  q quit", Theme.Hint);
+    }
+
+    private static Paragraph MakeFooter(AppState app) {
+        string text = app.screen switch {
+            Mode.Browser    => "↑/↓ move  Tab switch  / filter  Enter open/summarize  2 Source 3 Summary 4 Refs 5 Info",
+            Mode.Source     => "↑/↓ scroll  1 Browser 3 Summary 4 Refs 5 Info",
+            Mode.Summary    => (app.isLoading ? "Summarizing…" : "") + " 1 Browser 2 Source 4 Refs 5 Info",
+            Mode.References => "↑/↓ scroll  1 Browser 2 Source 3 Summary 5 Info",
+            Mode.Info       => "1 Browser 2 Source 3 Summary 4 Refs",
+            _               => string.Empty
+        };
+        return new Paragraph(text).AppendSpan("   o open   ", Theme.Hint).AppendSpan("Ratatui.cs", Theme.Hint);
+    }
 
 	private static IEnumerable<CodeSymbol> SymbolsForFile(AppState app, string? file)
 		=> string.IsNullOrEmpty(file) ? app.allSymbols : app.allSymbols.Where(s => s.FilePath == file);

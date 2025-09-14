@@ -17,7 +17,7 @@ public partial class CLI {
 
 		// Convert to options - endgame uses endgame prompts, otherwise use specified prompt or default
 		string actualPromptName = endgame ? "endgame_function" : promptName;
-		var    options          = new CompressorOptions(path, LangUtil.DetectLanguageInternal(path, language), actualPromptName);
+		CompressorOptions    options          = new CompressorOptions(path, LangUtil.DetectLanguageInternal(path, language), actualPromptName);
 
 		println($"Starting hierarchical optimization of {options.ProjectPath} ({options.Language})...");
 		println();

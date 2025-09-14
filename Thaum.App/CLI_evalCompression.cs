@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Spectre.Console;
+using Thaum.Core.Eval;
 using Thaum.Core.Services;
 using Thaum.Core.Models;
 using Thaum.Utils;
@@ -20,23 +21,23 @@ public partial class CLI {
     public async Task CMD_eval_compression(string path, string language, string? outputCsv, string? outputJson = null, int? sampleN = null, bool useTriads = true, string? triadsFrom = null, int? seed = null) {
         string root = Path.GetFullPath(path);
         string lang = language == "auto" ? LangUtil.DetectLanguageFromDirectory(root) : language;
-        var files = Directory.GetFiles(root, "*.*", SearchOption.AllDirectories)
+        List<string> files = Directory.GetFiles(root, "*.*", SearchOption.AllDirectories)
             .Where(f => LangUtil.IsSourceFileForLanguage(f, lang))
             .ToList();
 
-        var rows = new List<string> { "file,symbol,await,branch,calls,blocks,elses,passed,notes" };
-        var jsonRows = new List<Thaum.Core.Eval.BatchRow>();
+        List<string>   rows     = new List<string> { "file,symbol,await,branch,calls,blocks,elses,passed,notes" };
+        List<BatchRow> jsonRows = new List<Thaum.Core.Eval.BatchRow>();
 
         // Pre-scan to collect all function symbols across files
-        var allSymbols = new List<(string file, Core.Models.CodeSymbol sym)>();
+        List<(string file, CodeSymbol sym)> allSymbols = new List<(string file, Core.Models.CodeSymbol sym)>();
         await AnsiConsole.Progress()
             .Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
             .StartAsync(async ctx => {
-                var task = ctx.AddTask($"Scanning files ({files.Count})", maxValue: files.Count);
-                foreach (var file in files) {
+                ProgressTask task = ctx.AddTask($"Scanning files ({files.Count})", maxValue: files.Count);
+                foreach (string file in files) {
                     try {
-                        var codeMap = await _crawler.CrawlFile(file);
-                        foreach (var sym in codeMap.Where(s => s.Kind is Core.Models.SymbolKind.Method or Core.Models.SymbolKind.Function)) {
+                        CodeMap codeMap = await _crawler.CrawlFile(file);
+                        foreach (CodeSymbol sym in codeMap.Where(s => s.Kind is Core.Models.SymbolKind.Method or Core.Models.SymbolKind.Function)) {
                             allSymbols.Add((file, sym));
                         }
                     } catch (Exception ex) {
@@ -50,28 +51,28 @@ public partial class CLI {
 
         // Random sampling if requested
         if (sampleN is int n && n > 0 && n < allSymbols.Count) {
-            var rng = seed is int s ? new Random(s) : Random.Shared;
+            Random rng = seed is int s ? new Random(s) : Random.Shared;
             allSymbols = allSymbols.OrderBy(_ => rng.Next()).Take(n).ToList();
         }
 
         // Optionally load triads from cache/sessions (default ON)
         // TODO we could filter by model/prompt or timestamp window to avoid stale artifacts
-        var triadsMap = new Dictionary<(string file, string symbol), FunctionTriad>();
-        int triadsLoaded = 0;
+        Dictionary<(string file, string symbol), FunctionTriad> triadsMap    = new Dictionary<(string file, string symbol), FunctionTriad>();
+        int           triadsLoaded = 0;
         if (useTriads) {
             string sessionsDir = string.IsNullOrWhiteSpace(triadsFrom) ? Path.Combine(GLB.CacheDir, "sessions") : Path.GetFullPath(triadsFrom);
             if (Directory.Exists(sessionsDir)) {
-                var triadFiles = Directory.GetFiles(sessionsDir, "*.triad.json", SearchOption.AllDirectories).ToList();
+                List<string> triadFiles = Directory.GetFiles(sessionsDir, "*.triad.json", SearchOption.AllDirectories).ToList();
                 await AnsiConsole.Progress()
                     .Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
                     .StartAsync(async ctx => {
-                        var task = ctx.AddTask($"Loading triads ({triadFiles.Count})", maxValue: triadFiles.Count);
-                        foreach (var triadPath in triadFiles) {
+                        ProgressTask task = ctx.AddTask($"Loading triads ({triadFiles.Count})", maxValue: triadFiles.Count);
+                        foreach (string triadPath in triadFiles) {
                             try {
-                                string jsonText = await File.ReadAllTextAsync(triadPath);
-                                var triad = System.Text.Json.JsonSerializer.Deserialize<FunctionTriad>(jsonText, GLB.JsonOptions);
+                                string         jsonText = await File.ReadAllTextAsync(triadPath);
+                                FunctionTriad? triad    = System.Text.Json.JsonSerializer.Deserialize<FunctionTriad>(jsonText, GLB.JsonOptions);
                                 if (triad is null) { task.Increment(1); continue; }
-                                var triadFile = Path.GetFullPath(triad.FilePath ?? "");
+                                string triadFile = Path.GetFullPath(triad.FilePath ?? "");
                                 if (!string.IsNullOrEmpty(triadFile) && triadFile.StartsWith(root, StringComparison.Ordinal)) {
                                     triadsMap[(triadFile, triad.SymbolName)] = triad;
                                     triadsLoaded++;
@@ -89,13 +90,13 @@ public partial class CLI {
         await AnsiConsole.Progress()
             .Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
             .StartAsync(async ctx => {
-                var task = ctx.AddTask($"Evaluating ({allSymbols.Count})", maxValue: allSymbols.Count);
-                foreach (var (file, sym) in allSymbols) {
+                ProgressTask task = ctx.AddTask($"Evaluating ({allSymbols.Count})", maxValue: allSymbols.Count);
+                foreach ((string file, CodeSymbol sym) in allSymbols) {
                     try {
                         string src = await _crawler.GetCode(sym) ?? string.Empty;
                         FunctionTriad? triad = null;
                         if (useTriads && triadsMap.TryGetValue((Path.GetFullPath(file), sym.Name), out triad)) matchedTriads++;
-                        var report = Thaum.Core.Eval.FidelityEvaluator.EvaluateFunction(sym, src, triad, lang);
+                        FidelityReport report = Thaum.Core.Eval.FidelityEvaluator.EvaluateFunction(sym, src, triad, lang);
                         string rel = Path.GetRelativePath(root,file);
                         string note = string.Join("; ", report.Notes);
                         rows.Add($"{rel},{sym.Name},{report.AwaitCountSrc},{report.BranchCountSrc},{report.CallHeurSrc},{report.BlockCountSrc},{report.ElseCountSrc},{report.PassedMinGate},{note.Replace(',', ' ')}");
@@ -110,7 +111,7 @@ public partial class CLI {
             });
 
         // Build summary report
-        var reportObj = Thaum.Core.Eval.BatchReport.FromRows(jsonRows, lang);
+        BatchReport reportObj = Thaum.Core.Eval.BatchReport.FromRows(jsonRows, lang);
 
         // Default output directory under cache/evals if none provided
         // Intent: keep eval artifacts out of git and consistently organized.
@@ -131,7 +132,7 @@ public partial class CLI {
 
         // Write JSON
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outputJson)) ?? ".");
-        var json = System.Text.Json.JsonSerializer.Serialize(reportObj, GLB.JsonOptions);
+        string json = System.Text.Json.JsonSerializer.Serialize(reportObj, GLB.JsonOptions);
         await File.WriteAllTextAsync(outputJson!, json);
         WriteLine($"Wrote JSON report: {outputJson}");
 
