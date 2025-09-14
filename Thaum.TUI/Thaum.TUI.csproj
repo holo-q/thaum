@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../Ratatui.Reload.Abstractions/Ratatui.Reload.Abstractions.csproj" />
-    <ProjectReference Include="../reference/Ratatui.cs/src/Ratatui/Ratatui.csproj" />
+    <PackageReference Include="Ratatui.cs" Version="0.2.1" />
   </ItemGroup>
 </Project>
-
