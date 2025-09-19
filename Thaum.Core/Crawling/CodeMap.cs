@@ -1,6 +1,6 @@
 using System.Collections;
 
-namespace Thaum.Core.Models;
+namespace Thaum.Core.Crawling;
 
 /// <summary>
 /// Encapsulates the results of code crawling operations where symbols are organized by file
@@ -56,7 +56,7 @@ public class CodeMap : IEnumerable<CodeSymbol> {
 	/// Adds multiple symbols to the map where each symbol is processed through AddSymbol
 	/// </summary>
 	public CodeMap AddSymbols(IEnumerable<CodeSymbol> symbols) {
-		foreach (var symbol in symbols) {
+		foreach (CodeSymbol symbol in symbols) {
 			AddSymbol(symbol);
 		}
 		return this;
@@ -66,7 +66,7 @@ public class CodeMap : IEnumerable<CodeSymbol> {
 	/// Gets all symbols in the specified file where empty collection is returned for unknown files
 	/// </summary>
 	public IReadOnlyList<CodeSymbol> GetSymbolsInFile(string filePath) {
-		return _symbolsByFile.TryGetValue(filePath, out var symbols) 
+		return _symbolsByFile.TryGetValue(filePath, out List<CodeSymbol>? symbols) 
 			? symbols.AsReadOnly() 
 			: Array.Empty<CodeSymbol>();
 	}
@@ -76,7 +76,7 @@ public class CodeMap : IEnumerable<CodeSymbol> {
 	/// where the most recently added symbol wins in case of name conflicts
 	/// </summary>
 	public CodeSymbol? GetSymbolByName(string name) {
-		return _symbolsByName.TryGetValue(name, out var symbol) ? symbol : null;
+		return _symbolsByName.TryGetValue(name, out CodeSymbol? symbol) ? symbol : null;
 	}
 	
 	/// <summary>
@@ -119,7 +119,7 @@ public class CodeMap : IEnumerable<CodeSymbol> {
 	/// Creates a CodeMap pre-populated with the given symbols
 	/// </summary>
 	public static CodeMap FromSymbols(IEnumerable<CodeSymbol> symbols) {
-		var map = new CodeMap();
+		CodeMap map = new CodeMap();
 		map.AddSymbols(symbols);
 		return map;
 	}

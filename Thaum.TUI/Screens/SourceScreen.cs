@@ -1,29 +1,36 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using Ratatui;
+using Thaum.Core.Crawling;
 using Thaum.Core.Models;
 using static Thaum.App.RatatuiTUI.Rat;
 using static Thaum.App.RatatuiTUI.RatLayout;
 
 namespace Thaum.App.RatatuiTUI;
 
-internal sealed class SourceScreen : Screen {
+/// <summary>
+/// Shows the source code for the currently selected symbol with syntax highlighting.
+/// </summary>
+public class SourceScreen : Screen {
 	public SourceScreen(ThaumTUI tui, IEditorOpener opener, string projectPath)
-		: base(tui, opener, projectPath) {
-	}
+		: base(tui, opener, projectPath) { }
 
 	public override void Draw(Terminal term, Rect area, ThaumTUI.State app, string projectPath) {
-		using Paragraph title = Paragraph("", title: "Source", title_border: true);
-		term.Draw(title, R(area.X, area.Y, area.Width, 2));
+        Paragraph title = Paragraph("", title: "Source", title_border: true);
+        (Rect titleRect, Rect listRect) = area.SplitTop(2);
+        term.Draw(title, titleRect);
 
-		List<string> lines = app.sourceLines ?? new List<string>();
-		using List   list  = List();
-		int          start = Math.Max(0, app.sourceOffset);
-		int          end   = Math.Min(lines.Count, start + Math.Max(1, area.Height - 3));
+        List<string> lines = app.sourceLines ?? new List<string>();
+        List   list  = List();
+        int view = Math.Max(1, listRect.Height - 1);
+        if (app.sourceSelected < app.sourceOffset) app.sourceOffset = app.sourceSelected;
+        if (app.sourceSelected >= app.sourceOffset + view) app.sourceOffset = Math.Max(0, app.sourceSelected - (view - 1));
+        int start = Math.Max(0, app.sourceOffset);
+        int end   = Math.Min(lines.Count, start + view);
 
 		int symStartLine = 0, symEndLine = -1, symStartCol = 0, symEndCol = 0;
 		if (app.visibleSymbols.Count > 0) {
-			CodeSymbol s = app.visibleSymbols[app.symSelected];
+			CodeSymbol s = app.visibleSymbols.Selected;
 			symStartLine = Math.Max(1, s.StartCodeLoc.Line);
 			symEndLine   = Math.Max(symStartLine, s.EndCodeLoc.Line);
 			symStartCol  = Math.Max(0, s.StartCodeLoc.Character);
@@ -34,7 +41,7 @@ internal sealed class SourceScreen : Screen {
 			string                 num      = $"{(i + 1).ToString().PadLeft(5)}  ";
 			Memory<byte>           ln       = Encoding.UTF8.GetBytes(num).AsMemory();
 			string                 line     = lines[i];
-			List<Batching.SpanRun> runs     = new List<Batching.SpanRun>(4) { new Batching.SpanRun(ln, TuiTheme.LineNumber) };
+			List<Batching.SpanRun> runs     = new List<Batching.SpanRun>(4) { new Batching.SpanRun(ln, Styles.S_LINENUM) };
 			int                    oneBased = i + 1;
 			if (oneBased >= symStartLine && oneBased <= symEndLine) {
 				int sc = (oneBased == symStartLine) ? symStartCol : 0;
@@ -43,23 +50,20 @@ internal sealed class SourceScreen : Screen {
 				ec = Math.Clamp(ec, sc, line.Length);
 				string pre = line[..sc], mid = line[sc..ec], post = line[ec..];
 				if (pre.Length > 0) runs.Add(new Batching.SpanRun(Encoding.UTF8.GetBytes(pre).AsMemory(), default));
-				if (mid.Length > 0) runs.Add(new Batching.SpanRun(Encoding.UTF8.GetBytes(mid).AsMemory(), TuiTheme.CodeHi));
+				if (mid.Length > 0) runs.Add(new Batching.SpanRun(Encoding.UTF8.GetBytes(mid).AsMemory(), Styles.S_CODEHI));
 				if (post.Length > 0) runs.Add(new Batching.SpanRun(Encoding.UTF8.GetBytes(post).AsMemory(), default));
 			} else {
 				runs.Add(new Batching.SpanRun(Encoding.UTF8.GetBytes(line).AsMemory(), default));
 			}
-			list.AppendItem(CollectionsMarshal.AsSpan(runs));
-		}
-		term.Draw(list, R(area.X, area.Y + 2, area.Width, area.Height - 2));
+            list.AppendItem(CollectionsMarshal.AsSpan(runs));
+        }
+        term.Draw(list, listRect);
 	}
 
-	public override Task OnEnter(ThaumTUI.State app) {
-		if (!_keysReady) {
-			ConfigureKeys();
-			_keysReady = true;
-		}
-		return tui.EnsureSource(app);
-	}
+    public override Task OnEnter(ThaumTUI.State app) {
+        if (!_keysReady) { ConfigureKeys(); _keysReady = true; keys.DumpBindings(nameof(SourceScreen)); }
+        return tui.EnsureSource(app);
+    }
 
 	private bool _keysReady;
 
@@ -68,8 +72,8 @@ internal sealed class SourceScreen : Screen {
 		keys
 			.RegisterKey(KeyCode.Down, "↓", "scroll", KEY_Down)
 			.RegisterKey(KeyCode.Up, "↑", "scroll", KEY_Up)
-			.RegisterKey(KeyCode.PageDown, "PgDn", "scroll", KEY_PageDown)
-			.RegisterKey(KeyCode.PageUp, "PgUp", "scroll", KEY_PageUp)
+			.RegisterKey(KeyCode.PAGE_DOWN, "PgDn", "scroll", KEY_PageDown)
+			.RegisterKey(KeyCode.PAGE_UP, "PgUp", "scroll", KEY_PageUp)
 			.RegisterChar('o', "open in editor", KEY_OpenInEditor);
 	}
 
@@ -111,7 +115,7 @@ internal sealed class SourceScreen : Screen {
 
 	private bool KEY_OpenInEditor(ThaumTUI.State a) {
 		if (a.visibleSymbols.Count > 0) {
-			CodeSymbol s = a.visibleSymbols[a.symSelected];
+			CodeSymbol s = a.visibleSymbols.Selected;
 			opener.Open(projectPath, s.FilePath, Math.Max(1, a.sourceSelected + 1));
 			return true;
 		}

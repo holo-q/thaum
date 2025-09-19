@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
-using Thaum.Core.Models;
 
-namespace Thaum.Core.Services;
+namespace Thaum.Core.Cache;
 
 // Temporary no-op cache service to get the app running
 public class MockCache : ICache {

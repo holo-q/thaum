@@ -1,14 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System.Text.Json;
-using Thaum.Core.Models;
 using Thaum.Core.Utils;
-using Thaum.Utils;
-using System.Diagnostics.CodeAnalysis;
 
-namespace Thaum.Core.Services;
+namespace Thaum.Core.Cache;
 
 /// <summary>
 /// SQLite-backed persistent cache for compression results and prompts where caching prevents
@@ -79,10 +77,20 @@ public class Cache : ICache {
 		using (SqliteDataReader reader = command.ExecuteReader()) {
 			while (reader.Read()) {
 				string columnName                                  = reader.GetString(1); // column name is at index 1
-				if (columnName == "prompt_name") hasPromptName     = true;
-				if (columnName == "prompt_hash") hasPromptHash     = true;
-				if (columnName == "model_name") hasModelName       = true;
-				if (columnName == "provider_name") hasProviderName = true;
+				switch (columnName) {
+					case "prompt_name":
+						hasPromptName     = true;
+						break;
+					case "prompt_hash":
+						hasPromptHash     = true;
+						break;
+					case "model_name":
+						hasModelName       = true;
+						break;
+					case "provider_name":
+						hasProviderName = true;
+						break;
+				}
 			}
 		}
 

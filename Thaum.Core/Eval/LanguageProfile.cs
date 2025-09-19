@@ -10,7 +10,7 @@ public class LanguageProfile {
     }
 
     public static LanguageProfile For(string language) {
-        var id = language.ToLowerInvariant();
+        string id = language.ToLowerInvariant();
         return id switch {
             "c-sharp"    => new LanguageProfile(id) { BranchKeywords = new[] { "if", "switch", "for", "foreach", "while", "do" }, AsyncKeyword = "await" },
             "javascript" => new LanguageProfile(id) { BranchKeywords = new[] { "if", "switch", "for", "while" }, AsyncKeyword = "await" },

@@ -1,7 +1,6 @@
 namespace Thaum.CLI.Interactive;
 
-// TODO make this fields
-// TODO eww dictionary for parameters wtf
+// NOTE legacy config kept for reference; could be converted to strongly-typed fields later.
 
 public class TUIConfig {
 	/// <summary>

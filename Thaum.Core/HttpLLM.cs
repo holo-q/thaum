@@ -1,16 +1,18 @@
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Thaum.Utils;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Thaum.Core.Utils;
+using Thaum.Meta;
 
-namespace Thaum.Core.Services;
+namespace Thaum.Core;
 
 // TODO there seems to be a lot of code duplication here
 
-public class HttpLLM : LLM {
+[LoggingIntrinsics]
+public partial class HttpLLM : LLM {
 	private readonly HttpClient       _client;
 	private readonly IConfiguration   _configuration;
 	private readonly ILogger<HttpLLM> _logger;
@@ -92,8 +94,8 @@ public class HttpLLM : LLM {
 		return await SendOpenAIRequest(request);
 	}
 
-    [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Serialize<TValue>(TValue, JsonSerializerOptions)")]
-    private async Task<string> SendOpenAIRequest(OpenAIRequest request) {
+	[RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Serialize<TValue>(TValue, JsonSerializerOptions)")]
+	private async Task<string> SendOpenAIRequest(OpenAIRequest request) {
 		string        baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenAI provider");
 		string        json    = JsonSerializer.Serialize(request, JsonOptions.Default);
 		StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -114,13 +116,13 @@ public class HttpLLM : LLM {
 
 			return openAIResponse?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
 		} catch (Exception ex) {
-			_logger.LogError(ex, "Failed to complete OpenAI request");
+			err(ex, "Failed to complete OpenAI request");
 			throw;
 		}
 	}
 
-    [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Serialize<TValue>(TValue, JsonSerializerOptions)")]
-    private async Task<string> CompleteAnthropic(string prompt, LLMOptions options) {
+	[RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Serialize<TValue>(TValue, JsonSerializerOptions)")]
+	private async Task<string> CompleteAnthropic(string prompt, LLMOptions options) {
 		AnthropicRequest request = new AnthropicRequest {
 			Model = options.Model.Replace("gpt-4", "claude-3-sonnet-20240229"),
 			Messages = [
@@ -151,7 +153,7 @@ public class HttpLLM : LLM {
 
 			return anthropicResponse?.Content?.FirstOrDefault()?.Text ?? "";
 		} catch (Exception ex) {
-			_logger.LogError(ex, "Failed to complete Anthropic request");
+			err(ex, "Failed to complete Anthropic request");
 			throw;
 		}
 	}
@@ -188,7 +190,7 @@ public class HttpLLM : LLM {
 
 			return anthropicResponse?.Content?.FirstOrDefault()?.Text ?? "";
 		} catch (Exception ex) {
-			_logger.LogError(ex, "Failed to complete Anthropic request");
+			err(ex, "Failed to complete Anthropic request");
 			throw;
 		}
 	}
@@ -217,7 +219,7 @@ public class HttpLLM : LLM {
 
 			return ollamaResponse?.Response ?? "";
 		} catch (Exception ex) {
-			_logger.LogError(ex, "Failed to complete Ollama request");
+			err(ex, "Failed to complete Ollama request");
 			throw;
 		}
 	}
@@ -227,20 +229,20 @@ public class HttpLLM : LLM {
 		return await CompleteOllamaAsync(fullPrompt, options);
 	}
 
-    private async Task<string> CompleteOpenRouterAsync(string prompt, LLMOptions options) {
-        string? model = options.Model;
-        OpenAIRequest request = new OpenAIRequest {
-            Model = model,
-            Messages = [
-                new OpenAIMessage { Role = "user", Content = prompt }
-            ],
-            Temperature = options.Temperature,
-            MaxTokens   = options.MaxTokens,
-            Stop        = options.StopSequences?.ToArray()
-        };
+	private async Task<string> CompleteOpenRouterAsync(string prompt, LLMOptions options) {
+		string? model = options.Model;
+		OpenAIRequest request = new OpenAIRequest {
+			Model = model,
+			Messages = [
+				new OpenAIMessage { Role = "user", Content = prompt }
+			],
+			Temperature = options.Temperature,
+			MaxTokens   = options.MaxTokens,
+			Stop        = options.StopSequences?.ToArray()
+		};
 
-        return await SendOpenRouterRequestAsync(request);
-    }
+		return await SendOpenRouterRequestAsync(request);
+	}
 
 	private async Task<string> CompleteOpenRouterWithSystemAsync(string systemPrompt, string userPrompt, LLMOptions options) {
 		string? model = options.Model;
@@ -258,10 +260,10 @@ public class HttpLLM : LLM {
 		return await SendOpenRouterRequestAsync(request);
 	}
 
-    private async Task<string> SendOpenRouterRequestAsync(OpenAIRequest request) {
-        string        baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenRouter provider");
-        string        json    = JsonSerializer.Serialize(request, JsonOptions.Default);
-        StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
+	private async Task<string> SendOpenRouterRequestAsync(OpenAIRequest request) {
+		string        baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenRouter provider");
+		string        json    = JsonSerializer.Serialize(request, JsonOptions.Default);
+		StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
 		// Add OpenRouter-specific headers
 		string? apiKey  = GLB.API_KEY_OPENROUTER;
@@ -278,41 +280,41 @@ public class HttpLLM : LLM {
 		_client.DefaultRequestHeaders.Add("HTTP-Referer", siteUrl);
 		_client.DefaultRequestHeaders.Add("X-Title", appName);
 
-        try {
-            HttpResponseMessage response = await _client.PostAsync($"{baseUrl}/chat/completions", content);
+		try {
+			HttpResponseMessage response = await _client.PostAsync($"{baseUrl}/chat/completions", content);
 
-            if (!response.IsSuccessStatusCode) {
-                string errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogError("OpenRouter API error {StatusCode}: {ErrorContent}", response.StatusCode, errorContent);
-                throw new HttpRequestException($"OpenRouter API error {response.StatusCode}: {errorContent}");
-            }
+			if (!response.IsSuccessStatusCode) {
+				string errorContent = await response.Content.ReadAsStringAsync();
+				err("OpenRouter API error {StatusCode}: {ErrorContent}", response.StatusCode, errorContent);
+				throw new HttpRequestException($"OpenRouter API error {response.StatusCode}: {errorContent}");
+			}
 
-            string          responseJson   = await response.Content.ReadAsStringAsync();
-            OpenAIResponse? openAIResponse = JsonSerializer.Deserialize<OpenAIResponse>(responseJson, JsonOptions.Default);
+			string          responseJson   = await response.Content.ReadAsStringAsync();
+			OpenAIResponse? openAIResponse = JsonSerializer.Deserialize<OpenAIResponse>(responseJson, JsonOptions.Default);
 
-            // Try to emit token usage and cost estimation if available
-            if (openAIResponse?.Usage is { } u) {
-                var (cost, havePrice) = TryEstimateOpenRouterCost(request.Model, u.PromptTokens, u.CompletionTokens);
-                if (havePrice) {
-                    _logger.LogInformation("OpenRouter usage model={Model} prompt={Prompt} completion={Completion} total={Total} estCost=${Cost:F6}", request.Model, u.PromptTokens, u.CompletionTokens, u.TotalTokens, cost);
-                } else {
-                    _logger.LogInformation("OpenRouter usage model={Model} prompt={Prompt} completion={Completion} total={Total}", request.Model, u.PromptTokens, u.CompletionTokens, u.TotalTokens);
-                }
-            } else {
-                // Fallback to any cost-related headers if OpenRouter provided them
-                foreach (var h in response.Headers) {
-                    if (h.Key.StartsWith("x-openrouter", StringComparison.OrdinalIgnoreCase)) {
-                        _logger.LogInformation("{Header}: {Value}", h.Key, string.Join(",", h.Value));
-                    }
-                }
-            }
+			// Try to emit token usage and cost estimation if available
+			if (openAIResponse?.Usage is { } u) {
+				(double cost, bool havePrice) = TryEstimateOpenRouterCost(request.Model, u.PromptTokens, u.CompletionTokens);
+				if (havePrice) {
+					info("OpenRouter usage model={Model} prompt={Prompt} completion={Completion} total={Total} estCost=${Cost:F6}", request.Model, u.PromptTokens, u.CompletionTokens, u.TotalTokens, cost);
+				} else {
+					info("OpenRouter usage model={Model} prompt={Prompt} completion={Completion} total={Total}", request.Model, u.PromptTokens, u.CompletionTokens, u.TotalTokens);
+				}
+			} else {
+				// Fallback to any cost-related headers if OpenRouter provided them
+				foreach (KeyValuePair<string, IEnumerable<string>> h in response.Headers) {
+					if (h.Key.StartsWith("x-openrouter", StringComparison.OrdinalIgnoreCase)) {
+						info("{Header}: {Value}", h.Key, string.Join(",", h.Value));
+					}
+				}
+			}
 
-            return openAIResponse?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
-        } catch (Exception ex) {
-            _logger.LogError(ex, "Failed to complete OpenRouter request");
-            throw;
-        }
-    }
+			return openAIResponse?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
+		} catch (Exception ex) {
+			err(ex, "Failed to complete OpenRouter request");
+			throw;
+		}
+	}
 
 	private async Task<IAsyncEnumerable<string>> StreamOpenAIAsync(string prompt, LLMOptions options) {
 		OpenAIStreamRequest request = new OpenAIStreamRequest {
@@ -375,17 +377,17 @@ public class HttpLLM : LLM {
 		return StreamOllamaTokens(response);
 	}
 
-    private async Task<IAsyncEnumerable<string>> StreamOpenRouterAsync(string prompt, LLMOptions options) {
-        string? model = options.Model;
-        OpenAIStreamRequest request = new OpenAIStreamRequest {
-            Model = model,
-            Messages = [
-                new OpenAIMessage { Role = "user", Content = prompt }
-            ],
-            Temperature = options.Temperature,
-            MaxTokens   = options.MaxTokens,
-            Stream      = true
-        };
+	private async Task<IAsyncEnumerable<string>> StreamOpenRouterAsync(string prompt, LLMOptions options) {
+		string? model = options.Model;
+		OpenAIStreamRequest request = new OpenAIStreamRequest {
+			Model = model,
+			Messages = [
+				new OpenAIMessage { Role = "user", Content = prompt }
+			],
+			Temperature = options.Temperature,
+			MaxTokens   = options.MaxTokens,
+			Stream      = true
+		};
 
 		string        baseUrl = _configuration["LLM:BaseUrl"] ?? throw new InvalidOperationException("LLM:BaseUrl configuration is required for OpenRouter provider");
 		string        json    = JsonSerializer.Serialize(request, JsonOptions.Default);
@@ -406,59 +408,59 @@ public class HttpLLM : LLM {
 		httpRequest.Headers.Add("HTTP-Referer", siteUrl);
 		httpRequest.Headers.Add("X-Title", appName);
 
-        HttpResponseMessage response = await _client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
+		HttpResponseMessage response = await _client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
 
-        if (!response.IsSuccessStatusCode) {
-            string errorContent = await response.Content.ReadAsStringAsync();
-            _logger.LogError("OpenRouter streaming API error {StatusCode}: {ErrorContent}", response.StatusCode, errorContent);
-            throw new HttpRequestException($"OpenRouter streaming API error {response.StatusCode}: {errorContent}");
-        }
+		if (!response.IsSuccessStatusCode) {
+			string errorContent = await response.Content.ReadAsStringAsync();
+			err("OpenRouter streaming API error {StatusCode}: {ErrorContent}", response.StatusCode, errorContent);
+			throw new HttpRequestException($"OpenRouter streaming API error {response.StatusCode}: {errorContent}");
+		}
 
-        // Headers may contain OpenRouter-specific usage/cost info; log if present
-        foreach (var h in response.Headers) {
-            if (h.Key.StartsWith("x-openrouter", StringComparison.OrdinalIgnoreCase)) {
-                _logger.LogInformation("{Header}: {Value}", h.Key, string.Join(",", h.Value));
-            }
-        }
+		// Headers may contain OpenRouter-specific usage/cost info; log if present
+		foreach (KeyValuePair<string, IEnumerable<string>> h in response.Headers) {
+			if (h.Key.StartsWith("x-openrouter", StringComparison.OrdinalIgnoreCase)) {
+				info("{Header}: {Value}", h.Key, string.Join(",", h.Value));
+			}
+		}
 
-        return StreamResponseTokens(response);
-    }
+		return StreamResponseTokens(response);
+	}
 
-    /// <summary>
-    /// Attempts to estimate OpenRouter request cost in USD using either configured pricing or defaults.
-    /// Pricing source (in order): environment OPENROUTER_PRICING_JSON, appsettings LLM:OpenRouterPrices, otherwise unknown.
-    /// Expected pricing units: USD per 1K tokens for input/output.
-    /// TODO we could cache parsed pricing for the process lifetime.
-    /// </summary>
-    private (double cost, bool havePrice) TryEstimateOpenRouterCost(string model, int promptTokens, int completionTokens) {
-        try {
-            // 1) Env JSON
-            string? env = Environment.GetEnvironmentVariable("OPENROUTER_PRICING_JSON");
-            if (!string.IsNullOrWhiteSpace(env)) {
-                var doc = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, double>>>(env);
-                if (doc != null && doc.TryGetValue(model, out var mm)) {
-                    double inPerK  = mm.TryGetValue("input", out var vi) ? vi : 0;
-                    double outPerK = mm.TryGetValue("output", out var vo) ? vo : 0;
-                    double cost = (promptTokens / 1000.0) * inPerK + (completionTokens / 1000.0) * outPerK;
-                    return (cost, inPerK > 0 || outPerK > 0);
-                }
-            }
+	/// <summary>
+	/// Attempts to estimate OpenRouter request cost in USD using either configured pricing or defaults.
+	/// Pricing source (in order): environment OPENROUTER_PRICING_JSON, appsettings LLM:OpenRouterPrices, otherwise unknown.
+	/// Expected pricing units: USD per 1K tokens for input/output.
+	/// TODO we could cache parsed pricing for the process lifetime.
+	/// </summary>
+	private (double cost, bool havePrice) TryEstimateOpenRouterCost(string model, int promptTokens, int completionTokens) {
+		try {
+			// 1) Env JSON
+			string? env = Environment.GetEnvironmentVariable("OPENROUTER_PRICING_JSON");
+			if (!string.IsNullOrWhiteSpace(env)) {
+				Dictionary<string, Dictionary<string, double>>? doc = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, double>>>(env);
+				if (doc != null && doc.TryGetValue(model, out Dictionary<string, double>? mm)) {
+					double inPerK  = mm.TryGetValue("input", out double vi) ? vi : 0;
+					double outPerK = mm.TryGetValue("output", out double vo) ? vo : 0;
+					double cost    = (promptTokens / 1000.0) * inPerK + (completionTokens / 1000.0) * outPerK;
+					return (cost, inPerK > 0 || outPerK > 0);
+				}
+			}
 
-            // 2) appsettings.json section: LLM:OpenRouterPrices:{model}:{input|output}
-            string inKey  = $"LLM:OpenRouterPrices:{model}:Input";
-            string outKey = $"LLM:OpenRouterPrices:{model}:Output";
-            double inPerKConf = 0, outPerKConf = 0;
-            bool haveIn  = double.TryParse(_configuration[inKey], out inPerKConf);
-            bool haveOut = double.TryParse(_configuration[outKey], out outPerKConf);
-            if (haveIn || haveOut) {
-                double cost = (promptTokens / 1000.0) * inPerKConf + (completionTokens / 1000.0) * outPerKConf;
-                return (cost, inPerKConf > 0 || outPerKConf > 0);
-            }
-        } catch {
-            // ignore and fall through
-        }
-        return (0.0, false);
-    }
+			// 2) appsettings.json section: LLM:OpenRouterPrices:{model}:{input|output}
+			string inKey      = $"LLM:OpenRouterPrices:{model}:Input";
+			string outKey     = $"LLM:OpenRouterPrices:{model}:Output";
+			double inPerKConf = 0, outPerKConf = 0;
+			bool   haveIn     = double.TryParse(_configuration[inKey], out inPerKConf);
+			bool   haveOut    = double.TryParse(_configuration[outKey], out outPerKConf);
+			if (haveIn || haveOut) {
+				double cost = (promptTokens / 1000.0) * inPerKConf + (completionTokens / 1000.0) * outPerKConf;
+				return (cost, inPerKConf > 0 || outPerKConf > 0);
+			}
+		} catch {
+			// ignore and fall through
+		}
+		return (0.0, false);
+	}
 
 	private static async IAsyncEnumerable<string> StreamResponseTokens(HttpResponseMessage response) {
 		using Stream       stream = await response.Content.ReadAsStreamAsync();
@@ -562,28 +564,28 @@ internal record OpenAIMessage {
 }
 
 internal record OpenAIResponse {
-    [JsonPropertyName("choices")]
-    public OpenAIChoice[]? Choices { get; init; }
+	[JsonPropertyName("choices")]
+	public OpenAIChoice[]? Choices { get; init; }
 
-    // OpenRouter/OpenAI-compatible usage block
-    [JsonPropertyName("usage")]
-    public OpenAIUsage? Usage { get; init; }
+	// OpenRouter/OpenAI-compatible usage block
+	[JsonPropertyName("usage")]
+	public OpenAIUsage? Usage { get; init; }
 }
 
 internal record OpenAIChoice {
-    [JsonPropertyName("message")]
-    public OpenAIMessage? Message { get; init; }
+	[JsonPropertyName("message")]
+	public OpenAIMessage? Message { get; init; }
 }
 
 internal record OpenAIUsage {
-    [JsonPropertyName("prompt_tokens")]
-    public int PromptTokens { get; init; }
+	[JsonPropertyName("prompt_tokens")]
+	public int PromptTokens { get; init; }
 
-    [JsonPropertyName("completion_tokens")]
-    public int CompletionTokens { get; init; }
+	[JsonPropertyName("completion_tokens")]
+	public int CompletionTokens { get; init; }
 
-    [JsonPropertyName("total_tokens")]
-    public int TotalTokens { get; init; }
+	[JsonPropertyName("total_tokens")]
+	public int TotalTokens { get; init; }
 }
 
 internal record OpenAIStreamChunk {

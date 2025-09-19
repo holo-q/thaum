@@ -1,10 +1,10 @@
-using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
-using Thaum.Core.Models;
-using Thaum.Utils;
+using System.Text;
+using Microsoft.Extensions.Logging;
+using Thaum.Core.Utils;
 using TreeSitter;
 
-namespace Thaum.Core.Services;
+namespace Thaum.Core.Crawling;
 
 public static class TreeSitterQueries {
 	public static readonly string UniversalQuery = @"
@@ -38,16 +38,37 @@ public class TreeSitterCrawler : Crawler {
 	}
 
 	public override async Task<CodeMap> CrawlDir(string dirpath, CodeMap? codeMap = null) {
-		// Auto-detect language based on files in directory
-		string language = LangUtil.DetectLanguageFromDirectory(dirpath);
-		return await CrawlDir(language, dirpath, codeMap);
+		// Scan all supported source files present (multi-language repos)
+		codeMap ??= CodeMap.Create();
+
+		try {
+			List<string> files = Directory.GetFiles(dirpath, "*.*", SearchOption.AllDirectories)
+				.Where(LangUtil.IsSourceFile)
+				.ToList();
+
+			IEnumerable<IGrouping<string, string>> byLang = files
+				.Select(f => new { file = f, lang = LangUtil.DetectLanguageFromFile(f).ToLowerInvariant() })
+				.GroupBy(t => t.lang, t => t.file);
+
+			foreach (IGrouping<string, string> group in byLang) {
+				string lang = group.Key;
+				if (_languageConfigs.ContainsKey(lang)) {
+					_logger.LogDebug("Scanning {Count} {Language} files...", group.Count(), lang);
+					await CrawlDir(lang, dirpath, codeMap);
+				}
+			}
+		} catch (Exception ex) {
+			_logger.LogError(ex, "Error scanning workspace for symbols at {Dir}", dirpath);
+		}
+
+		return codeMap;
 	}
 
 	public override async Task<CodeMap> CrawlFile(string filepath, CodeMap? codeMap = null) {
 		// Auto-detect language based on file extension
 		string language = LangUtil.DetectLanguageFromFile(filepath);
 		codeMap ??= CodeMap.Create();
-		var symbols = await ExtractSymbolsFromFile(filepath, language);
+		List<CodeSymbol> symbols = await ExtractSymbolsFromFile(filepath, language);
 		codeMap.AddSymbols(symbols);
 		return codeMap;
 	}
@@ -75,7 +96,7 @@ public class TreeSitterCrawler : Crawler {
 			int startCol = Math.Max(0, targetSymbol.StartCodeLoc.Character);
 			int endCol   = Math.Max(0, targetSymbol.EndCodeLoc.Character);
 
-			var sb = new System.Text.StringBuilder();
+			StringBuilder sb = new System.Text.StringBuilder();
 			for (int i = startLine; i <= endLine; i++) {
 				string line = lines[i];
 				if (i == startLine && i == endLine) {
@@ -106,7 +127,7 @@ public class TreeSitterCrawler : Crawler {
 	/// Legacy compatibility - crawls directory and returns symbols as list
 	/// </summary>
 	public async Task<List<CodeSymbol>> CrawlDir(string lang, string dirpath) {
-		var codeMap = await CrawlDir(lang, dirpath, null);
+		CodeMap codeMap = await CrawlDir(lang, dirpath, null);
 		return codeMap.ToList();
 	}
 
@@ -121,20 +142,20 @@ public class TreeSitterCrawler : Crawler {
 
 			_logger.LogDebug("Found {Count} {Language} files to parse", sourceFiles.Count, lang);
 
-			var results = new ConcurrentDictionary<string, List<CodeSymbol>>();
-			var options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism };
+			ConcurrentDictionary<string, List<CodeSymbol>> results = new ConcurrentDictionary<string, List<CodeSymbol>>();
+			ParallelOptions                     options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism };
 
 			await Parallel.ForEachAsync(sourceFiles, options, async (filePath, ct) => {
 				try {
-					var fileSymbols = await ExtractSymbolsFromFile(filePath, lang);
+					List<CodeSymbol> fileSymbols = await ExtractSymbolsFromFile(filePath, lang);
 					results[filePath] = fileSymbols;
 				} catch (Exception ex) {
 					_logger.LogWarning(ex, "Failed to parse file: {FilePath}", filePath);
 				}
 			});
 
-			foreach (var filePath in sourceFiles) {
-				if (results.TryGetValue(filePath, out var fileSymbols)) {
+			foreach (string filePath in sourceFiles) {
+				if (results.TryGetValue(filePath, out List<CodeSymbol>? fileSymbols)) {
 					codeMap.AddSymbols(fileSymbols);
 				}
 			}
@@ -247,23 +268,36 @@ public class TreeSitterCrawler : Crawler {
 	// 	}
 	// }
 
-	private async Task<List<CodeSymbol>> ExtractSymbolsFromFile(string filePath, string language) {
-		List<CodeSymbol> symbols = [];
+    private static readonly HashSet<string> s_missingGrammars = new(StringComparer.OrdinalIgnoreCase);
 
-		try {
-			string content = await File.ReadAllTextAsync(filePath);
+    private async Task<List<CodeSymbol>> ExtractSymbolsFromFile(string filePath, string language) {
+        List<CodeSymbol> symbols = [];
 
-			// Get the TreeSitter language configuration
-			if (_languageConfigs.TryGetValue(language, out var config)) {
-				using var parser = new Parser(config.Language);
-				symbols = parser.Parse(content, filePath);
-				_logger.LogDebug("Extracted {Count} symbols from {FilePath} using TreeSitter", symbols.Count, filePath);
-			} else {
-				_logger.LogWarning("No TreeSitter configuration found for language: {Language}", language);
-			}
-		} catch (Exception ex) {
-			_logger.LogError(ex, "Error parsing file with TreeSitter: {FilePath}", filePath);
-		}
+        try {
+            string content = await File.ReadAllTextAsync(filePath);
+
+            // Get the TreeSitter language configuration
+            if (_languageConfigs.TryGetValue(language, out TreeSitterLanguageConfig? config)) {
+                if (s_missingGrammars.Contains(config.Language)) {
+                    // Grammar previously detected as missing; skip quietly
+                    return symbols;
+                }
+
+                try {
+                    using Parser parser = new Parser(config.Language);
+                    symbols = parser.Parse(content, filePath);
+                    _logger.LogDebug("Extracted {Count} symbols from {FilePath} using TreeSitter", symbols.Count, filePath);
+                } catch (DllNotFoundException dllEx) {
+                    // Native parser library for this language is not available. Remember and downgrade noise.
+                    s_missingGrammars.Add(config.Language);
+                    _logger.LogWarning(dllEx, "Tree-sitter grammar not found for language '{Language}'. Skipping files for this language.", config.Language);
+                }
+            } else {
+                _logger.LogWarning("No TreeSitter configuration found for language: {Language}", language);
+            }
+        } catch (Exception ex) {
+            _logger.LogError(ex, "Error parsing file with TreeSitter: {FilePath}", filePath);
+        }
 
 		return symbols;
 	}
@@ -297,8 +331,8 @@ public class TreeSitterCrawler : Crawler {
 	}
 
 	private static int GetMaxDegreeOfParallelism() {
-		var env = Environment.GetEnvironmentVariable("THAUM_TREESITTER_DOP");
-		if (!string.IsNullOrWhiteSpace(env) && int.TryParse(env, out var dop) && dop > 0) {
+		string? env = Environment.GetEnvironmentVariable("THAUM_TREESITTER_DOP");
+		if (!string.IsNullOrWhiteSpace(env) && int.TryParse(env, out int dop) && dop > 0) {
 			return dop;
 		}
 		return Math.Max(1, Environment.ProcessorCount);
@@ -310,23 +344,25 @@ public class TreeSitterCrawler : Crawler {
 		private readonly ILogger<Parser>   _logger;
 
 		public Parser(string language) {
-			_logger   = Logging.For<Parser>();
-			var (lib, fn) = ResolveLanguageBinding(language);
-			_language = new Language(lib, fn);
-			_parser   = new TreeSitter.Parser(_language);
+			_logger                 = Logging.For<Parser>();
+			(string lib, string fn) = ResolveLanguageBinding(language);
+			_language               = new Language(lib, fn);
+			_parser                 = new TreeSitter.Parser(_language);
+			_languageId             = language.ToLowerInvariant();
 		}
 
 		public List<CodeSymbol> Parse(string sourceCode, string filePath) {
-			var       symbols = new List<CodeSymbol>();
-			using var tree    = _parser.Parse(sourceCode);
-			var       query   = new Query(_language, TreeSitterQueries.UniversalQuery);
-			var       matches = query.Execute(tree.RootNode).Matches.ToList();
+			List<CodeSymbol> symbols = new List<CodeSymbol>();
+			using Tree?      tree    = _parser.Parse(sourceCode);
+			string          qtext   = GetQueryForLanguage(_languageId);
+			using Query     query   = new Query(_language, qtext);
+			List<QueryMatch> matches = query.Execute(tree.RootNode).Matches.ToList();
 
-			foreach (var match in matches) {
+			foreach (QueryMatch match in matches) {
 				Node? nameNode = null;
 				Node? bodyNode = null;
 
-				foreach (var capture in match.Captures) {
+				foreach (QueryCapture capture in match.Captures) {
 					if (capture.Name.EndsWith(".name")) {
 						nameNode = capture.Node;
 					} else if (capture.Name.EndsWith(".body")) {
@@ -335,8 +371,8 @@ public class TreeSitterCrawler : Crawler {
 				}
 
 				if (nameNode != null && bodyNode != null) {
-					var captureName = match.Captures.First(c => c.Name.EndsWith(".name")).Name;
-					var symbolKind  = GetSymbolKind(captureName);
+					string captureName = match.Captures.First(c => c.Name.EndsWith(".name")).Name;
+					SymbolKind symbolKind  = GetSymbolKind(captureName);
 
 					symbols.Add(new CodeSymbol(
 						Name: nameNode.Text,
@@ -352,9 +388,9 @@ public class TreeSitterCrawler : Crawler {
 		}
 
 		private static (string library, string function) ResolveLanguageBinding(string id) {
-			var lid = id.ToLowerInvariant();
-			var lib = $"tree-sitter-{lid}";               // native library name uses hyphens
-			var fn  = $"tree_sitter_{lid.Replace('-', '_')}"; // exported function uses underscores
+			string lid = id.ToLowerInvariant();
+			string lib = $"tree-sitter-{lid}";               // native library name uses hyphens
+			string fn  = $"tree_sitter_{lid.Replace('-', '_')}"; // exported function uses underscores
 			return (lib, fn);
 		}
 
@@ -384,8 +420,46 @@ public class TreeSitterCrawler : Crawler {
 			}
 		}
 
+		private static string GetQueryForLanguage(string id) {
+			switch (id) {
+				case "c-sharp":
+					return TreeSitterQueries.UniversalQuery;
+				case "python":
+					return @"
+(function_definition name: (identifier) @function.name) @function.body
+(class_definition name: (identifier) @class.name) @class.body
+";
+				case "javascript":
+				case "typescript":
+					return @"
+(function_declaration name: (identifier) @function.name) @function.body
+(method_definition name: (property_identifier) @method.name) @method.body
+(class_declaration name: (identifier) @class.name) @class.body
+";
+				case "rust":
+					return @"
+(function_item name: (identifier) @function.name) @function.body
+(struct_item name: (type_identifier) @class.name) @class.body
+(enum_item name: (type_identifier) @enum.name) @enum.body
+";
+				case "go":
+					return @"
+(function_declaration name: (identifier) @function.name) @function.body
+(method_declaration name: (field_identifier) @method.name) @method.body
+(type_declaration (type_spec name: (type_identifier) @class.name)) @class.body
+";
+				default:
+					return @"
+(function_declaration name: (identifier) @function.name) @function.body
+(class_declaration name: (identifier) @class.name) @class.body
+";
+			}
+		}
+
 		public void Dispose() {
 			_parser.Dispose();
 		}
+
+		private readonly string _languageId;
 	}
 }

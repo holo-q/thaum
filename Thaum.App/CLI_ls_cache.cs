@@ -1,5 +1,8 @@
 using System.Text.Json;
 using System.Diagnostics.CodeAnalysis;
+using Thaum.Core;
+using Thaum.Core.Cache;
+using Thaum.Core.Crawling;
 using Thaum.Core.Models;
 using Thaum.Core.Services;
 using static Thaum.Core.Utils.Tracer;
@@ -295,7 +298,7 @@ public partial class CLI {
 	[RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Deserialize<TValue>(String, JsonSerializerOptions)")]
 	private static CachedOptimization? ParseOptimizationEntry(CacheEntryInfo entry) {
 		try {
-			// TODO this is a major problem, all that information should be separated already in entry
+			// FIXME this is a major problem, all that information should be separated already in entry
 			// Parse key format: optimization_{symbolName}_{filePath}_{line}_{level}
 			string[] keyParts = entry.Key.Split('_', 3);
 			if (keyParts.Length < 3) return null;

@@ -6,6 +6,10 @@
 # Reference directory
 reference/
 
+# Runtime logs (TUI/CLI)
+output.log*
+interactive.log*
+
 # Cache directory
 cache/
 

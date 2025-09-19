@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using Thaum.Core.Models;
+using Thaum.Core.Crawling;
 
-namespace Thaum.Core.Services;
+namespace Thaum.Core;
 
 [JsonSerializable(typeof(OpenAIRequest))]
 [JsonSerializable(typeof(OpenAIStreamRequest))]

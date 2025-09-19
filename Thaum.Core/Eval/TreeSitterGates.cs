@@ -10,10 +10,10 @@ public static class TreeSitterGates {
         try {
             // Only C# high-quality for now; fallback returns zeros
             if (language.ToLowerInvariant() == "c-sharp") {
-                using var lang = new Language("c-sharp");
-                using var parser = new Parser(lang);
-                using var tree = parser.Parse(sourceCode)!;
-                var root = tree.RootNode;
+                using Language lang = new Language("c-sharp");
+                using Parser parser = new Parser(lang);
+                using Tree tree = parser.Parse(sourceCode)!;
+                Node root = tree.RootNode;
 
                 int awaits   = Count(root, n => n.Type == "await_expression");
                 int branches = Count(root, n => n.Type is "if_statement" or "switch_statement" or "for_statement" or "while_statement" or "foreach_statement" or "do_statement");
@@ -31,7 +31,7 @@ public static class TreeSitterGates {
 
     private static int Count(Node node, Func<Node, bool> pred) {
         int count = 0;
-        var cursor = node.Walk();
+        TreeCursor cursor = node.Walk();
         try {
             if (pred(node)) count++;
             if (!cursor.GotoFirstChild()) return count;

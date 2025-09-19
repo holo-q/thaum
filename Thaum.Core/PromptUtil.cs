@@ -1,3 +1,4 @@
+using Thaum.Core.Crawling;
 using Thaum.Core.Models;
 using Thaum.Core.Services;
 

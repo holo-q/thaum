@@ -1,33 +1,32 @@
 using Ratatui;
+using Thaum.Core.Crawling;
 using static Thaum.App.RatatuiTUI.Rat;
 using static Thaum.App.RatatuiTUI.RatLayout;
 using Thaum.Core.Models;
 
 namespace Thaum.App.RatatuiTUI;
 
-internal sealed class SummaryScreen : Screen {
+public sealed class SummaryScreen : Screen {
 	private bool _keysReady;
 
 	public SummaryScreen(ThaumTUI tui, IEditorOpener opener, string projectPath)
 		: base(tui, opener, projectPath) { }
 
 	public override void Draw(Terminal term, Rect area, ThaumTUI.State app, string projectPath) {
-		using Paragraph title = Paragraph("", title: "Summary", title_border: true);
-		term.Draw(title, R(area.X, area.Y, area.Width, 2));
-		string          bodyText = app.isLoading ? $"Summarizing… {TuiTheme.Spinner()}" : (app.summary ?? "No summary yet. Press 3 to (re)generate.");
-		using Paragraph para     = Paragraph("");
-		if (bodyText.StartsWith("Error:")) para.AppendSpan(bodyText, TuiTheme.Error);
-		else para.AppendSpan(bodyText);
-		term.Draw(para, R(area.X, area.Y + 2, area.Width, area.Height - 2));
+        Paragraph title = Paragraph("", title: "Summary", title_border: true);
+        (Rect titleRect, Rect bodyRect) = area.SplitTop(2);
+        term.Draw(title, titleRect);
+        string          bodyText = app.isLoading ? $"Summarizing… {Styles.Spinner()}" : (app.summary ?? "No summary yet. Press 3 to (re)generate.");
+        Paragraph para     = Paragraph("");
+        if (bodyText.StartsWith("Error:")) para.AppendSpan(bodyText, Styles.S_ERROR);
+        else para.AppendSpan(bodyText);
+        term.Draw(para, bodyRect);
 	}
 
-	public override Task OnEnter(ThaumTUI.State app) {
-		if (!_keysReady) {
-			ConfigureKeys();
-			_keysReady = true;
-		}
-		return Task.CompletedTask;
-	}
+    public override Task OnEnter(ThaumTUI.State app) {
+        if (!_keysReady) { ConfigureKeys(); _keysReady = true; keys.DumpBindings(nameof(SummaryScreen)); }
+        return Task.CompletedTask;
+    }
 
 	public override string FooterHint(ThaumTUI.State app)
 		=> (app.isLoading ? "Summarizing…" : "");
@@ -46,7 +45,7 @@ internal sealed class SummaryScreen : Screen {
 			StartTask(async _ => {
 				a.isLoading = true;
 				try {
-					a.summary = await tui.LoadSymbolDetail(a.visibleSymbols[a.symSelected]);
+						a.summary = await tui.LoadSymbolDetail(a.visibleSymbols.Selected);
 				} finally { a.isLoading = false; }
 			});
 		}
@@ -55,7 +54,7 @@ internal sealed class SummaryScreen : Screen {
 
 	private bool KEY_OpenInEditor(ThaumTUI.State a) {
 		if (a.visibleSymbols.Count > 0) {
-			CodeSymbol s = a.visibleSymbols[a.symSelected];
+		CodeSymbol s = a.visibleSymbols.Selected;
 			opener.Open(projectPath, s.FilePath, Math.Max(1, s.StartCodeLoc.Line));
 			return true;
 		}

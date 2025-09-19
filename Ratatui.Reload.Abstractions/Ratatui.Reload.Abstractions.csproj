@@ -10,8 +10,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1" />
   </ItemGroup>
 
-  <!-- Use NuGet Ratatui.cs to avoid project conflicts -->
   <ItemGroup>
-    <PackageReference Include="Ratatui.cs" Version="0.2.1" />
+    <ProjectReference Include="../docs/Ratatui.cs/src/Ratatui/Ratatui.csproj" />
   </ItemGroup>
 </Project>

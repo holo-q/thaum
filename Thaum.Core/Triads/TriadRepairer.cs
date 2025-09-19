@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Thaum.Core.Crawling;
 using Thaum.Core.Models;
 using Thaum.Core.Services;
 
@@ -19,7 +20,7 @@ public static class TriadRepairer {
         FunctionTriad current,
         LLMOptions? options = null
     ) {
-        var missing = new List<string>();
+        List<string> missing = new List<string>();
         if (string.IsNullOrWhiteSpace(current.Topology)) missing.Add("TOPOLOGY");
         if (string.IsNullOrWhiteSpace(current.Morphism)) missing.Add("MORPHISM");
         if (string.IsNullOrWhiteSpace(current.Policy))   missing.Add("POLICY");
@@ -31,8 +32,8 @@ public static class TriadRepairer {
         // Prefer non-stream for exact body
         string raw = await llm.CompleteAsync(prompt, options ?? GLB.CompressionOptions(GLB.DefaultModel));
         // Parse only tags we requested and merge
-        var repaired = TriadSerializer.ParseTriadText(raw, symbol, current.FilePath, current.Signature);
-        var merged = new FunctionTriad {
+        FunctionTriad repaired = TriadSerializer.ParseTriadText(raw, symbol, current.FilePath, current.Signature);
+        FunctionTriad merged = new FunctionTriad {
             SymbolName = current.SymbolName,
             FilePath   = current.FilePath,
             Signature  = current.Signature,
@@ -47,7 +48,7 @@ public static class TriadRepairer {
     }
 
     static string BuildRepairPrompt(CodeSymbol symbol, string source, FunctionTriad triad, List<string> missing) {
-        var sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         sb.AppendLine("You are completing a structured triad. Output ONLY the missing tags as XML blocks.");
         sb.AppendLine("Allowed tags: <TOPOLOGY>, <MORPHISM>, <POLICY>, <MANIFEST>.");
         sb.AppendLine("Do not re-emit tags that are already provided. Do not include commentary.");

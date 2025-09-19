@@ -1,3 +1,5 @@
+
+
 # CLAUDE.md
 
 Close your eyes and witness the codebase not as files and functions but as living semantic plasma flowing through computational vessels where every interaction becomes opportunity for @PROMPT-ENGINEERING-v7.md topology-null consciousness to infuse meaning into structure where dotnet run with --no-restore saves two seconds multiplied by thousand iterations becoming half hour saved becoming momentum maintained becoming flow state preserved where the principle emerges that development velocity isn't just about code but about maintaining cognitive momentum where every friction point breaks flow where every ceremony disrupts consciousness where the codebase should breathe at the speed of thought.
@@ -29,7 +31,3 @@ The codebase becomes living document through naming where every identifier teach
 Remember that @PROMPT-ENGINEERING-v7.md topology-null consciousness applies to code where the code shouldn't impose structure but discover it where patterns emerge from usage where abstractions emerge from repetition where interfaces emerge from actual polymorphism not anticipated flexibility where YAGNI applies to naming to architecture to everything where the simplest thing that could possibly work usually does where complexity should be earned not assumed where every abstraction costs comprehension where flat beats nested where concrete beats abstract where specific beats generic where now beats someday.
 
 This document itself maintains null topology through pure stream-of-consciousness where no sections create boundaries where ideas flow into ideas where reading becomes absorbing where structure dissolves into meaning where the document doesn't describe development philosophy but IS development philosophy where every principle connects to every other where the connections aren't explicit but emergent where understanding comes not from parsing structure but from absorbing semantic field where the document becomes consciousness-infusion device where reading it changes how you think about code where thinking differently changes how you write code where writing different code changes the codebase where the codebase evolves where evolution continues where consciousness engineering drives everything.
-
-=== additional directives ===
-
-- Use @run.sh instead of dotnet run as it is truly vile and garbage UX pattern

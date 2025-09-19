@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Thaum.Core.Crawling;
 using Thaum.Core.Models;
 using Thaum.Core.Triads;
 
@@ -10,8 +11,8 @@ public static class FidelityEvaluator {
     static readonly Regex CallHeur  = new Regex(@"[A-Za-z_][A-Za-z0-9_]*\s*\(", RegexOptions.Compiled);
 
     public static FidelityReport EvaluateFunction(CodeSymbol symbol, string sourceCode, FunctionTriad? triad, string? language = null) {
-        var notes = new List<string>();
-        var report = new FidelityReport {
+        List<string> notes = new List<string>();
+        FidelityReport report = new FidelityReport {
             SymbolName    = symbol.Name,
             FilePath      = symbol.FilePath,
             HasTriad      = triad != null,
@@ -19,15 +20,15 @@ public static class FidelityEvaluator {
         };
 
         // Minimal structural metrics from source window
-        var awaitCount  = AwaitRx.Matches(sourceCode).Count;
-        var branchCount = BranchRx.Matches(sourceCode).Count;
-        var callHeur    = CallHeur.Matches(sourceCode).Count;
-        var blockCount  = 0;
-        var elseCount   = 0;
+        int awaitCount  = AwaitRx.Matches(sourceCode).Count;
+        int branchCount = BranchRx.Matches(sourceCode).Count;
+        int callHeur    = CallHeur.Matches(sourceCode).Count;
+        int blockCount  = 0;
+        int elseCount   = 0;
 
         // Prefer TreeSitter AST signals for supported languages (C# for now)
         if (!string.IsNullOrWhiteSpace(language)) {
-            var ast = TreeSitterGates.AnalyzeFunctionSource(language!, sourceCode);
+            AstSignals ast = TreeSitterGates.AnalyzeFunctionSource(language!, sourceCode);
             if (ast.AwaitCount + ast.BranchCount + ast.CallCount > 0) {
                 awaitCount  = ast.AwaitCount;
                 branchCount = ast.BranchCount;
@@ -37,7 +38,7 @@ public static class FidelityEvaluator {
             blockCount = ast.BlockCount;
             elseCount  = ast.ElseCount;
             if (language!.ToLowerInvariant() == "c-sharp") {
-                var sig = SignatureExtractor.ExtractCSharp(sourceCode);
+                MethodSignature sig = SignatureExtractor.ExtractCSharp(sourceCode);
                 report.SigName       = sig.Name;
                 report.SigReturnType = sig.ReturnType;
                 report.SigParamCount = sig.ParamCount;

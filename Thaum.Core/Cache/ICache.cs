@@ -1,6 +1,4 @@
-using Thaum.Core.Models;
-
-namespace Thaum.Core.Services;
+namespace Thaum.Core.Cache;
 
 public interface ICache : IDisposable {
 	Task<T?>                   GetAsync<T>(string            key) where T : class;

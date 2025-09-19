@@ -1,16 +1,18 @@
 using System.Diagnostics;
-using Microsoft.Extensions.Logging;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
-using Thaum.Utils;
+using Microsoft.Extensions.Logging;
+using Thaum.Core.Utils;
+using Thaum.Meta;
 using static Thaum.Core.Utils.Tracer;
 
-namespace Thaum.Core.Services;
+namespace Thaum.Core.Crawling;
 
 /// <summary>
 /// Manages automatic downloading, installation, and versioning of LSP servers
 /// </summary>
-public class LSPDownloader {
+[LoggingIntrinsics]
+public partial class LSPDownloader {
 	private readonly ILogger<LSPDownloader>   _logger;
 	private readonly HttpClient               _http;
 	private readonly string                   _cachedir;
@@ -32,11 +34,11 @@ public class LSPDownloader {
 	/// Get the path to an LSP server executable, downloading if necessary
 	/// </summary>
 	public async Task<string?> GetLspServerPathAsync(string language) {
-		_logger.LogDebug("Getting LSP server path for {Language}", language);
+		trace("Getting LSP server path for {Language}", language);
 
 		LspServerInfo? serverInfo = GetServerInfo(language);
 		if (serverInfo == null) {
-			_logger.LogWarning("No server configuration found for language: {Language}", language);
+			warn("No server configuration found for language: {Language}", language);
 			return null;
 		}
 
@@ -46,23 +48,23 @@ public class LSPDownloader {
 
 		// Check if we already have the server
 		if (File.Exists(executablePath)) {
-			_logger.LogDebug("Using cached LSP server: {Path}", executablePath);
+			trace("Using cached LSP server: {Path}", executablePath);
 			return executablePath;
 		}
 
 		// Download and install the server
-		_logger.LogInformation("Downloading LSP server for {Language}...", language);
+		info("Downloading LSP server for {Language}...", language);
 		_progressReporter?.ReportProgress(serverInfo.Name, 0, "Starting download...");
 
 		bool success = await DownloadAndInstallServerAsync(language, serverInfo);
 
 		if (success && File.Exists(executablePath)) {
-			_logger.LogInformation("Successfully installed LSP server for {Language}", language);
+			info("Successfully installed LSP server for {Language}", language);
 			_progressReporter?.ReportComplete(serverInfo.Name, true);
 			return executablePath;
 		}
 
-		_logger.LogError("Failed to install LSP server for {Language}", language);
+		err("Failed to install LSP server for {Language}", language);
 		_progressReporter?.ReportComplete(serverInfo.Name, false);
 		return null;
 	}
@@ -75,27 +77,27 @@ public class LSPDownloader {
 		string executableName;
 
 		// Debug platform detection
-		println($"DEBUG: Windows: {RuntimeInformation.IsOSPlatform(OSPlatform.Windows)}");
-		println($"DEBUG: Linux: {RuntimeInformation.IsOSPlatform(OSPlatform.Linux)}");
-		println($"DEBUG: OSX: {RuntimeInformation.IsOSPlatform(OSPlatform.OSX)}");
-		println($"DEBUG: OS: {RuntimeInformation.OSDescription}");
+		Thaum.Core.Utils.Tracer.println($"DEBUG: Windows: {RuntimeInformation.IsOSPlatform(OSPlatform.Windows)}");
+		Thaum.Core.Utils.Tracer.println($"DEBUG: Linux: {RuntimeInformation.IsOSPlatform(OSPlatform.Linux)}");
+		Thaum.Core.Utils.Tracer.println($"DEBUG: OSX: {RuntimeInformation.IsOSPlatform(OSPlatform.OSX)}");
+		Thaum.Core.Utils.Tracer.println($"DEBUG: OS: {RuntimeInformation.OSDescription}");
 
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
 			downloadUrl    = "https://github.com/OmniSharp/omnisharp-roslyn/releases/download/v1.39.14/omnisharp-win-x64.zip";
 			executableName = "OmniSharp.exe";
-			println("DEBUG: Selected Windows");
+			Thaum.Core.Utils.Tracer.println("DEBUG: Selected Windows");
 		} else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
 			downloadUrl    = "https://github.com/OmniSharp/omnisharp-roslyn/releases/download/v1.39.14/omnisharp-osx-x64.tar.gz";
 			executableName = "run"; // OSX also uses the run script
-			println("DEBUG: Selected OSX");
+			Thaum.Core.Utils.Tracer.println("DEBUG: Selected OSX");
 		} else // Linux
 		{
 			downloadUrl    = "https://github.com/OmniSharp/omnisharp-roslyn/releases/download/v1.39.14/omnisharp-linux-x64-net6.0.tar.gz";
 			executableName = "OmniSharp"; // .NET 6.0 version has direct executable
-			println("DEBUG: Selected Linux (.NET 6.0)");
+			Thaum.Core.Utils.Tracer.println("DEBUG: Selected Linux (.NET 6.0)");
 		}
 
-		println($"DEBUG: Final URL: {downloadUrl}");
+		Thaum.Core.Utils.Tracer.println($"DEBUG: Final URL: {downloadUrl}");
 
 		return new LspServerInfo {
 			Name           = "OmniSharp",
@@ -130,7 +132,7 @@ public class LSPDownloader {
 			Directory.CreateDirectory(serverDir);
 
 			string downloadUrl = serverInfo.DownloadUrl;
-			_logger.LogDebug("Downloading from: {Url}", downloadUrl);
+			trace("Downloading from: {Url}", downloadUrl);
 
 			// Download with progress reporting
 			using HttpResponseMessage response = await _http.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
@@ -160,10 +162,10 @@ public class LSPDownloader {
 				await fileStream.FlushAsync();
 			}
 
-			_logger.LogDebug("Downloaded {Bytes} bytes to {File}", totalRead, tempFile);
+			trace("Downloaded {Bytes} bytes to {File}", totalRead, tempFile);
 
 			// Extract
-			_logger.LogDebug("Extracting {File} to {Dir}", tempFile, serverDir);
+			trace("Extracting {File} to {Dir}", tempFile, serverDir);
 			if (IsArchive(tempFile)) {
 				await ExtractArchiveAsync(tempFile, serverDir);
 				File.Delete(tempFile);
@@ -176,7 +178,7 @@ public class LSPDownloader {
 			string? executablePath = FindExecutableInDirectory(serverDir, serverInfo.ExecutableName);
 
 			if (executablePath == null) {
-				_logger.LogError("Could not find executable {Name} after extraction", serverInfo.ExecutableName);
+				err("Could not find executable {Name} after extraction", serverInfo.ExecutableName);
 				return false;
 			}
 
@@ -195,7 +197,7 @@ public class LSPDownloader {
 
 			return File.Exists(executablePath);
 		} catch (Exception ex) {
-			_logger.LogError(ex, "Failed to download and install LSP server for {Language}", language);
+			err(ex, "Failed to download and install LSP server for {Language}", language);
 			return false;
 		}
 	}
@@ -215,7 +217,7 @@ public class LSPDownloader {
 		foreach (string name in possibleNames) {
 			string testPath = Path.Combine(directory, name);
 			if (File.Exists(testPath)) {
-				_logger.LogDebug("Found executable at: {Path}", testPath);
+				trace("Found executable at: {Path}", testPath);
 				return testPath;
 			}
 
@@ -224,13 +226,13 @@ public class LSPDownloader {
 			foreach (string subdir in subdirs) {
 				string subdirPath = Path.Combine(subdir, name);
 				if (File.Exists(subdirPath)) {
-					_logger.LogDebug("Found executable in subdirectory: {Path}", subdirPath);
+					trace("Found executable in subdirectory: {Path}", subdirPath);
 					return subdirPath;
 				}
 			}
 		}
 
-		_logger.LogWarning("Could not find executable in {Directory}. Files: {Files}",
+		warn("Could not find executable in {Directory}. Files: {Files}",
 			directory, string.Join(", ", Directory.GetFiles(directory, "*", SearchOption.AllDirectories).Take(10).Select(Path.GetFileName)));
 
 		return null;
@@ -301,13 +303,13 @@ public class LSPDownloader {
 				if (File.Exists(versionFile)) {
 					DateTime versionDate = File.GetLastWriteTime(versionFile);
 					if (DateTime.Now - versionDate > TimeSpan.FromDays(30)) {
-						_logger.LogInformation("Cleaning up old LSP server: {Dir}", dir);
+						info("Cleaning up old LSP server: {Dir}", dir);
 						Directory.Delete(dir, true);
 					}
 				}
 			}
 		} catch (Exception ex) {
-			_logger.LogWarning(ex, "Failed to cleanup old LSP servers");
+			err(ex, "Failed to cleanup old LSP servers");
 		}
 	}
 
@@ -332,9 +334,9 @@ public class LSPDownloader {
 		public void ReportComplete(string name, bool success) {
 			lock (_lock) {
 				if (success) {
-					println($"\r✅ {name}: Download complete!                    ");
+					Thaum.Core.Utils.Tracer.println($"\r✅ {name}: Download complete!                    ");
 				} else {
-					println($"\r❌ {name}: Download failed!                      ");
+					Thaum.Core.Utils.Tracer.println($"\r❌ {name}: Download failed!                      ");
 				}
 				_last = -1;
 			}

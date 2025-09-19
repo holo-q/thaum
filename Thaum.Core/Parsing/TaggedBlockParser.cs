@@ -35,7 +35,7 @@ public static class TaggedBlockParser {
     /// Tag names are matched case-insensitively and normalized to upper case in results.
     /// </summary>
     public static List<TaggedBlock> ExtractAll(string text, IEnumerable<string>? allowedNames = null) {
-        var result = new List<TaggedBlock>();
+        List<TaggedBlock> result = new List<TaggedBlock>();
         if (string.IsNullOrEmpty(text)) return result;
 
         HashSet<string>? allow = null;
@@ -45,7 +45,7 @@ public static class TaggedBlockParser {
 
         int index = 0;
         while (index < text.Length) {
-            var m = StartTagRx.Match(text, index);
+            Match m = StartTagRx.Match(text, index);
             if (!m.Success) break;
 
             string name = m.Groups[1].Value;
@@ -56,7 +56,7 @@ public static class TaggedBlockParser {
             if (text[m.Index..startTagEnd].Contains("/>")) { index = startTagEnd; continue; }
 
             // Find closing tag of same name (first occurrence). Non-greedy search using regex from startTagEnd.
-            var end = EndTagRx.Match(text, startTagEnd);
+            Match end = EndTagRx.Match(text, startTagEnd);
             while (end.Success && !string.Equals(end.Groups[1].Value, name, StringComparison.OrdinalIgnoreCase)) {
                 end = EndTagRx.Match(text, end.Index + end.Length);
             }
@@ -68,7 +68,7 @@ public static class TaggedBlockParser {
 
             // Filter by allowed names if provided
             if (allow is null || allow.Contains(nameUp)) {
-                var attrs = ParseAttributes(m.Groups[2].Value);
+                Dictionary<string, string> attrs = ParseAttributes(m.Groups[2].Value);
                 result.Add(new TaggedBlock(nameUp, attrs, content, m.Index, end.Index + end.Length));
             }
 
@@ -94,7 +94,7 @@ public static class TaggedBlockParser {
     }
 
     private static Dictionary<string, string> ParseAttributes(string raw) {
-        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, string> dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (Match m in AttrRx.Matches(raw)) {
             string key = m.Groups[1].Value;
             string val = m.Groups[3].Success ? m.Groups[3].Value

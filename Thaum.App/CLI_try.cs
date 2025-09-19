@@ -182,7 +182,7 @@ public partial class CLI {
 		Initialize(_logger, isInteractiveMode: true);
 
 		// Completely disable console logging during TUI to prevent interference
-		// TODO move to logging so we can reuse setup for
+		// NOTE move to logging so we can reuse setup for common paths
 		Logging.SetupTUI();
 
 		// Also redirect println to suppress any other console output

@@ -1,9 +1,11 @@
 using Spectre.Console;
+using Thaum.Core;
+using Thaum.Core.Crawling;
 using Thaum.Core.Eval;
 using Thaum.Core.Models;
-using Thaum.Utils;
 using static System.Console;
 using Thaum.Core.Triads;
+using Thaum.Core.Utils;
 
 namespace Thaum.CLI;
 
@@ -12,9 +14,9 @@ public partial class CLI {
     /// Batch evaluation harness.
     /// Default: uses saved triads (compression outputs) from cache/sessions to measure triad completeness and basic gates.
     /// Pass --no-triads to run a source-only structural baseline (useful for context/complexity stats).
-    /// TODO we could add --triads-from <dir> to target a specific session.
-    /// TODO we could add --seed for reproducible sampling and stratified splits.
-    /// TODO we could emit a session index here to aid dataset export.
+    /// IDEA we could add --triads-from <dir> to target a specific session.
+    /// IDEA we could add --seed for reproducible sampling and stratified splits.
+    /// IDEA we could emit a session index here to aid dataset export.
     /// </summary>
     public async Task CMD_eval_compression(string path, string language, string? outputCsv, string? outputJson = null, int? sampleN = null, bool useTriads = true, string? triadsFrom = null, int? seed = null) {
         string root = Path.GetFullPath(path);
@@ -54,7 +56,7 @@ public partial class CLI {
         }
 
         // Optionally load triads from cache/sessions (default ON)
-        // TODO we could filter by model/prompt or timestamp window to avoid stale artifacts
+        // IDEA we could filter by model/prompt or timestamp window to avoid stale artifacts
         Dictionary<(string file, string symbol), FunctionTriad> triadsMap    = new Dictionary<(string file, string symbol), FunctionTriad>();
         int           triadsLoaded = 0;
         if (useTriads) {
@@ -83,7 +85,7 @@ public partial class CLI {
         }
 
         // Evaluate selected symbols
-        // TODO we could parallelize this loop with bounded concurrency; ensure crawler + GetCode are safe.
+        // IDEA we could parallelize this loop with bounded concurrency; ensure crawler + GetCode are safe.
         int matchedTriads = 0;
         await AnsiConsole.Progress()
             .Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())

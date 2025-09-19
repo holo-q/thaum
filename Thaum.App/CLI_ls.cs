@@ -6,6 +6,8 @@ using Thaum.Core.Triads;
 using Thaum.Core.Eval;
 using System.Text.Json;
 using Spectre.Console;
+using Thaum.Core;
+using Thaum.Core.Crawling;
 using CoreTreeNode = Thaum.Core.Utils.TreeNode;
 using static Thaum.Core.Utils.Tracer;
 
@@ -78,8 +80,8 @@ public partial class CLI {
 
 	/// <summary>
 	/// Prints all triads referenced by a batch evaluation JSON report.
-	/// TODO we could add filters (passed-only, symbol regex), and support ordering.
-	/// TODO we could colorize sections for readability when not piping to files.
+	/// IDEA we could add filters (passed-only, symbol regex), and support ordering.
+	/// IDEA we could colorize sections for readability when not piping to files.
 	/// </summary>
 	private async Task CMD_ls_triads_from_batch(string root, string batchJsonPath, bool split = false) {
 		if (!File.Exists(batchJsonPath)) {

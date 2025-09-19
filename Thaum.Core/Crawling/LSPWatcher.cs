@@ -1,9 +1,8 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
-using Thaum.Core.Models;
 using SystemFileSystemWatcher = System.IO.FileSystemWatcher;
 
-namespace Thaum.Core.Services;
+namespace Thaum.Core.Crawling;
 
 /// <summary>
 /// Handles workspace file system changes for LSP integration

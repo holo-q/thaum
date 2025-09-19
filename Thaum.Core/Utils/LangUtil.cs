@@ -1,4 +1,4 @@
-namespace Thaum.Utils;
+namespace Thaum.Core.Utils;
 
 /// <summary>
 /// Language detection utilities where file extensions reveal intent where directory scanning
@@ -49,7 +49,7 @@ public static class LangUtil {
 	/// </summary>
 	public static string DetectLanguageFromDirectory(string dirpath) {
 		// Count files by extension to determine primary language
-		var extensionCounts = Directory.GetFiles(dirpath, "*.*", SearchOption.AllDirectories)
+		Dictionary<string, int> extensionCounts = Directory.GetFiles(dirpath, "*.*", SearchOption.AllDirectories)
 			.Select(f => Path.GetExtension(f).ToLowerInvariant())
 			.Where(ext => !string.IsNullOrEmpty(ext))
 			.GroupBy(ext => ext)

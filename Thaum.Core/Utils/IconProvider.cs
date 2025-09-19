@@ -1,3 +1,4 @@
+using Thaum.Core.Crawling;
 using Thaum.Core.Models;
 
 namespace Thaum.Core.Utils;
@@ -96,7 +97,7 @@ public static class IconProvider {
 			return "";  // Simple folder icon fallback
 		}
 
-		var extension = Path.GetExtension(filename).ToLowerInvariant();
+		string extension = Path.GetExtension(filename).ToLowerInvariant();
 		return extension switch {
 			".cs"     => "",  // nf-mdi-language_csharp
 			".js"     => "",  // nf-dev-javascript  

@@ -1,10 +1,12 @@
-using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
+using Thaum.Meta;
 
-namespace Thaum.Core.Services;
+namespace Thaum.Core;
 
-public abstract class DependencyTracker {
+[LoggingIntrinsics]
+public abstract partial class DependencyTracker {
 	private readonly ILogger<DependencyTracker>                           _logger;
 	private readonly ConcurrentDictionary<string, ProjectDependencyGraph> _projectGraphs = new();
 
@@ -14,7 +16,7 @@ public abstract class DependencyTracker {
 
 	public async Task BuildDependencyGraphAsync(string projectPath, string language) {
 		try {
-			_logger.LogInformation("Building dependency graph for {ProjectPath} ({Language})", projectPath, language);
+			info("Building dependency graph for {ProjectPath} ({Language})", projectPath, language);
 
 			ProjectDependencyGraph graph = new ProjectDependencyGraph();
 			List<string> sourceFiles = Directory.GetFiles(projectPath, "*.*", SearchOption.AllDirectories)
@@ -29,10 +31,10 @@ public abstract class DependencyTracker {
 			}
 
 			_projectGraphs[projectPath] = graph;
-			_logger.LogInformation("Built dependency graph with {FileCount} files and {DependencyCount} dependencies",
+			info("Built dependency graph with {FileCount} files and {DependencyCount} dependencies",
 				sourceFiles.Count, graph.GetTotalDependencyCount());
 		} catch (Exception ex) {
-			_logger.LogError(ex, "Error building dependency graph for {ProjectPath}", projectPath);
+			err(ex, "Error building dependency graph for {ProjectPath}", projectPath);
 			throw;
 		}
 	}
@@ -42,13 +44,13 @@ public abstract class DependencyTracker {
 			string? projectPath = FindProjectPath(filePath);
 			if (projectPath != null && _projectGraphs.TryGetValue(projectPath, out ProjectDependencyGraph? graph)) {
 				graph.SetDependencies(filePath, dependencies);
-				_logger.LogTrace("Updated dependencies for {FilePath}: {DependencyCount} dependencies",
+				trace("Updated dependencies for {FilePath}: {DependencyCount} dependencies",
 					filePath, dependencies.Count);
 			}
 
 			await Task.CompletedTask;
 		} catch (Exception ex) {
-			_logger.LogError(ex, "Error updating dependency for {FilePath}", filePath);
+			err(ex, "Error updating dependency for {FilePath}", filePath);
 			throw;
 		}
 	}
@@ -65,7 +67,7 @@ public abstract class DependencyTracker {
 
 			return dependents;
 		} catch (Exception ex) {
-			_logger.LogError(ex, "Error getting dependents for {FilePath}", filePath);
+			err(ex, "Error getting dependents for {FilePath}", filePath);
 			return [];
 		}
 	}
@@ -82,7 +84,7 @@ public abstract class DependencyTracker {
 
 			return dependencies;
 		} catch (Exception ex) {
-			_logger.LogError(ex, "Error getting dependencies for {FilePath}", filePath);
+			err(ex, "Error getting dependencies for {FilePath}", filePath);
 			return [];
 		}
 	}
@@ -92,19 +94,19 @@ public abstract class DependencyTracker {
 			string? projectPath = FindProjectPath(filePath);
 			if (projectPath != null && _projectGraphs.TryGetValue(projectPath, out ProjectDependencyGraph? graph)) {
 				graph.RemoveFile(filePath);
-				_logger.LogTrace("Removed {FilePath} from dependency graph", filePath);
+				trace("Removed {FilePath} from dependency graph", filePath);
 			}
 
 			await Task.CompletedTask;
 		} catch (Exception ex) {
-			_logger.LogError(ex, "Error removing file from dependency graph: {FilePath}", filePath);
+			err(ex, "Error removing file from dependency graph: {FilePath}", filePath);
 			throw;
 		}
 	}
 
 	public void ClearGraph(string projectPath) {
 		_projectGraphs.TryRemove(projectPath, out _);
-		_logger.LogInformation("Cleared dependency graph for {ProjectPath}", projectPath);
+		info("Cleared dependency graph for {ProjectPath}", projectPath);
 	}
 
 	private string? FindProjectPath(string filePath) {

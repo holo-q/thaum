@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Thaum.Core.Crawling;
 using Thaum.Core.Models;
 using Thaum.Core.Parsing;
 
@@ -12,10 +13,10 @@ public static class TriadSerializer {
     public static FunctionTriad ParseTriadText(string text, CodeSymbol symbol, string filePath, string? signature = null) {
         string? topology = null, morphism = null, policy = null, manifest = null;
         // Prefer tag blocks using the reusable parser
-        var tags = TaggedBlockParser.ExtractAll(text, new[] { "TOPOLOGY", "MORPHISM", "POLICY", "MANIFEST" });
+        List<TaggedBlockParser.TaggedBlock> tags = TaggedBlockParser.ExtractAll(text, new[] { "TOPOLOGY", "MORPHISM", "POLICY", "MANIFEST" });
         if (tags.Count > 0) {
-            foreach (var t in tags) {
-                var block = (t.Content ?? string.Empty).Trim();
+            foreach (TaggedBlockParser.TaggedBlock t in tags) {
+                string block = (t.Content ?? string.Empty).Trim();
                 switch (t.Name) {
                     case "TOPOLOGY": topology = block; break;
                     case "MORPHISM": morphism = block; break;
@@ -26,8 +27,8 @@ public static class TriadSerializer {
         } else {
             // Fallback to label blocks (TOPOLOGY: ...)
             foreach (Match m in BlockRegex.Matches(text)) {
-                var name  = m.Groups[1].Value.ToUpperInvariant();
-                var block = m.Groups[2].Value.Trim();
+                string name  = m.Groups[1].Value.ToUpperInvariant();
+                string block = m.Groups[2].Value.Trim();
                 switch (name) {
                     case "TOPOLOGY": topology = block; break;
                     case "MORPHISM": morphism = block; break;
@@ -41,7 +42,7 @@ public static class TriadSerializer {
 
     public static async Task SaveTriadAsync(FunctionTriad triad, string path) {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        var json = JsonSerializer.Serialize(triad, GLB.JsonOptions);
+        string json = JsonSerializer.Serialize(triad, GLB.JsonOptions);
         await File.WriteAllTextAsync(path, json, Encoding.UTF8);
     }
 }

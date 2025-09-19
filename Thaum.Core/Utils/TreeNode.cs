@@ -1,4 +1,5 @@
 using Spectre.Console;
+using Thaum.Core.Crawling;
 using Thaum.Core.Models;
 using Thaum.Core.Utils;
 using static Thaum.Core.Utils.Tracer;
@@ -105,7 +106,7 @@ public class TreeNode {
         int available  = Math.Max(20, totalWidth - linePrefix.Length);
 
         // Build wrapped lines with Spectre markup tokens and render via Spectre directly
-        var tokens = symbols.Select(s => BuildToken(s.Name, kind, noColors)).ToList();
+        List<string> tokens = symbols.Select(s => BuildToken(s.Name, kind, noColors)).ToList();
         foreach (string line in BuildWrappedMarkupLines(tokens, symbols.Select(s => s.Name.Length).ToList(), available, linePrefix, new string(' ', linePrefix.Length))) {
             // Use Spectre to render markup so colors work regardless of Serilog sink
             AnsiConsole.MarkupLine(line);
@@ -117,9 +118,9 @@ public class TreeNode {
     }
 
     private static IEnumerable<string> BuildWrappedMarkupLines(List<string> markupTokens, List<int> plainTokenLengths, int maxWidth, string firstPrefix, string contPrefix) {
-        var lines = new List<string>();
+        List<string> lines   = new List<string>();
         string current = firstPrefix;
-        int width = 0;
+        int    width   = 0;
         for (int i = 0; i < markupTokens.Count; i++) {
             string token = markupTokens[i];
             int tokenLen = plainTokenLengths[i];

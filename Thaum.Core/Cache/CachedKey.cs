@@ -1,4 +1,4 @@
-namespace Thaum.Core.Models;
+namespace Thaum.Core.Cache;
 
 public record CachedKey {
 	public int            Level        { get; init; }

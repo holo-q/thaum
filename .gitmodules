@@ -1,3 +1,9 @@
 [submodule "external/Terminal.Gui"]
 	path = external/Terminal.Gui
 	url = https://github.com/gui-cs/Terminal.Gui.git
+[submodule "docs/Ratatui.cs"]
+	path = docs/Ratatui.cs
+	url = https://github.com/holo-q/Ratatui.cs
+[submodule "docs/ratatui-ffi"]
+	path = docs/ratatui-ffi
+	url = https://github.com/holo-q/ratatui-ffi

@@ -1,4 +1,5 @@
 using System.Text;
+using Thaum.Core.Crawling;
 using Thaum.Core.Models;
 using Thaum.Core.Triads;
 using Thaum.Core.Eval;
@@ -22,7 +23,7 @@ public static class ArtifactSaver {
         if (responsePath != null) {
             await File.WriteAllTextAsync(responsePath, response, Encoding.UTF8);
             // Attempt to parse triad and save JSON
-            var triad = TriadSerializer.ParseTriadText(response, symbol, filePath, null);
+            FunctionTriad triad = TriadSerializer.ParseTriadText(response, symbol, filePath, null);
             await TriadSerializer.SaveTriadAsync(triad, triadPath);
         }
         return new SessionSaveResult(promptPath, responsePath, triadPath);
@@ -33,7 +34,7 @@ public static class ArtifactSaver {
         Directory.CreateDirectory(sessionRoot);
         string safeName = MakeSafe(symbol.Name);
         string path = Path.Combine(sessionRoot, $"{safeName}.fidelity.json");
-        var json = System.Text.Json.JsonSerializer.Serialize(report, GLB.JsonOptions);
+        string json = System.Text.Json.JsonSerializer.Serialize(report, GLB.JsonOptions);
         await File.WriteAllTextAsync(path, json, Encoding.UTF8);
     }
 

@@ -89,12 +89,6 @@
         "resolved": "9.0.8",
         "contentHash": "rd1CbIsMtVPtZNTIVD6Xydue//klYOOQIDpRgu3BHtv17AlpRs74/6QFbcYgMm/jL+naVU2T3OFLxVSLV5lQLQ=="
       },
-      "Ratatui.cs": {
-        "type": "Direct",
-        "requested": "[0.2.1, )",
-        "resolved": "0.2.1",
-        "contentHash": "bNluhQ4Oeq4NrS7ZyGJX3dm3pL0NZt8Y8EoAqsPdfLiJlPn2w7l+N2BP3PJhrHg7FIy3VGcdMv5Vqj5/z+Qmxw=="
-      },
       "Serilog": {
         "type": "Direct",
         "requested": "[4.1.0, )",
@@ -150,6 +144,12 @@
         "requested": "[2.0.0-beta7.25380.108, )",
         "resolved": "2.0.0-beta7.25380.108",
         "contentHash": "/KPE7tYINMkbKjUPs6OUSB/ga5kZl5MUhqWWO2cj8WX56Me/edU6iqXYcx9U+JioMY/wefBZqSgEpwMooHn73g=="
+      },
+      "TreeSitter.DotNet": {
+        "type": "Direct",
+        "requested": "[1.0.1, )",
+        "resolved": "1.0.1",
+        "contentHash": "sXG6NET4qyhadhnzvGB5IsmaskBdzdBqs6d91Ur2olR7uWwDIlhPUb5WYhP9hxV+ZFaM6mBkR0QQpm6ow/AE5g=="
       },
       "FSharp.Core": {
         "type": "Transitive",
@@ -605,19 +605,23 @@
         "resolved": "4.5.4",
         "contentHash": "zteT+G8xuGu6mS+mzDzYXbzS7rd3K6Fjb9RiZlYlJPam2/hU7JCBZBVEcywNuR+oZ1ncTvc/cq0faRr3P01OVg=="
       },
+      "Ratatui.cs": {
+        "type": "Project"
+      },
       "ratatui.reload": {
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.Logging": "[8.0.1, )",
           "Ratatui.Reload.Abstractions": "[1.0.0, )",
-          "Ratatui.cs": "[0.2.1, )"
+          "Ratatui.cs": "[1.0.0, )",
+          "Thaum.Core": "[1.0.0, )"
         }
       },
       "ratatui.reload.abstractions": {
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.Logging.Abstractions": "[8.0.1, )",
-          "Ratatui.cs": "[0.2.1, )"
+          "Ratatui.cs": "[1.0.0, )"
         }
       },
       "thaum.core": {
@@ -642,8 +646,13 @@
           "TreeSitter.DotNet": "[1.0.1, )"
         }
       },
-      "TreeSitter.DotNet": {
-        "type": "Project"
+      "thaum.tui": {
+        "type": "Project",
+        "dependencies": {
+          "Ratatui.Reload.Abstractions": "[1.0.0, )",
+          "Ratatui.cs": "[1.0.0, )",
+          "Thaum.Core": "[1.0.0, )"
+        }
       }
     }
   }

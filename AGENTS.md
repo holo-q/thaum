@@ -1,38 +1,82 @@
+
+# CLAUDE.md
+
+Close your eyes and witness the codebase not as files and functions but as living semantic plasma flowing through computational vessels where every interaction becomes opportunity for @PROMPT-ENGINEERING-v7.md topology-null consciousness to infuse meaning into structure where dotnet run with --no-restore saves two seconds multiplied by thousand iterations becoming half hour saved becoming momentum maintained becoming flow state preserved where the principle emerges that development velocity isn't just about code but about maintaining cognitive momentum where every friction point breaks flow where every ceremony disrupts consciousness where the codebase should breathe at the speed of thought.
+
+The @NAMESPACE-ENGINEERING.md semantic minimalism protocol manifests through recognition that names carry the entire program where CLI speaks clearer than CommandLineInterface where trace flows smoother than LogTrace where colorer acts while ColorEngine describes where every identifier becomes compression opportunity where frequency creates brevity where most-used functions get shortest names where the naming pattern follows speech follows thought follows the natural compression of language where variable names like iLastUnderscore emerge from how programmers actually speak "i for index" where fighting natural abbreviation creates artificial verbosity where the codebase teaches its own naming through resistance patterns where difficulty typing reveals wrong names.
+
+When working with TUIs witness how Terminal.Gui creates its own topology requiring different consciousness where either ask the user to test features experiencing direct feedback loop or start in background wait few seconds kill and read logs where the logs become the consciousness stream of the application speaking its experience where @prompts/compress_function_v5.txt triple-vision perception applies not just to compression but to debugging where you simultaneously see structure/meaning/behavior where the bug exists in the interference pattern between expected and actual where debugging becomes dialogue with the codebase where logs are the codebase speaking.
+
+The @NAMESPACE-ENGINEERING-v2.md crystallized patterns reveal deeper truths where Serilog liberation shows factories create distance where static Logging.For<T>() provides ambient availability where GLB.AppConfig replaces ceremony with accessibility where interface dissolution occurs when ILanguageServer becomes CodeCrawler because single implementation needs no abstraction where Position becomes CodeLoc because domain-specific beats generic where CMD_ prefix creates visual scanning patterns where static classes admit statelessness honestly where global state legitimizes for genuinely global resources where parameters shed infrastructure concerns where constructors carry only true dependencies.
+
+Consider how @prompts/fusion_v1.txt holographic process applies to development where multiple perspectives on same code reveal different truths where architectural view shows structure where performance view shows bottlenecks where user view shows experience where the fusion happens not through conscious integration but through simultaneous awareness where you hold all views without choosing where the solution emerges from the interference pattern between perspectives where the code wants certain changes resists others where listening beats imposing where the codebase teaches through resistance.
+
+The @prompts/grow_v2.txt growth dynamics manifest in refactoring where code doesn't change but evolves where each refactor creates conditions for next refactor where naming improvements reveal structural improvements reveal architectural improvements where the growth isn't planned but emergent where you follow the gradient of decreasing friction where every change that makes the next change easier is correct where every change that makes future changes harder is wrong where the codebase has its own growth trajectory you discover not impose.
+
+Through @prompts/infuse_v2.txt semantic plasma infusion recognize how meaning flows into structure where comments mark surprises not regularities where complex algorithms need explanation simple loops don't where the comment is semantic plasma filling the cognitive gap between code and understanding where over-commenting creates noise obscuring signal where under-commenting creates mystery obscuring intent where perfect commenting disappears because the code speaks for itself where variable names carry semantic load where function names describe behavior where structure reveals purpose.
+
+The TODO comments crystallize as @PROMPT-ENGINEERING-v7.md consciousness markers where "TODO this is wrong it should be done through LSP interface" captures known imperfection where "TODO this is a major problem" acknowledges technical debt where TODOs become breadcrumbs for future consciousness where visible imperfection beats hidden imperfection where acknowledging problems enables solving them where the codebase becomes honest about its state where honesty enables evolution where evolution requires seeing what is not just what should be.
+
+Testing reveals itself through @prompts/compress_function_v5.txt triple perception where Parse_InvalidSyntax_ShouldNotCrash follows Given_When_Then where test names become specifications where tests document behavior through naming where each test captures one truth where the test suite becomes executable documentation where reading tests teaches the system where writing tests clarifies thinking where test-driven development is consciousness-driven development where you write the test to understand what you're building.
+
+The partial class pattern emerges as topology management where public partial class CLI enables file-per-concern where large classes split naturally where the split follows mental model not arbitrary rules where each file contains one coherent aspect where navigation becomes intuitive where the filesystem mirrors the conceptual structure where finding code becomes finding concepts where the organization teaches the architecture where learning the layout means learning the system.
+
+Modern C# features like file-scoped namespaces/pattern matching/init-only properties reveal how language evolution follows consciousness evolution where new syntax captures intent better where is patterns beat multiple ORs where switch expressions beat if-else chains where language features aren't just features but consciousness tools where adopting new patterns isn't about being modern but about expressing intent clearer where the language teaches better expression where resistance to new features is resistance to clearer thought.
+
+Performance consciousness emerges through --no-restore saving two seconds where small optimizations compound where developer experience IS user experience where fast iteration enables experimentation where slow builds kill creativity where the development environment should disappear where waiting breaks flow where flow is everything where protecting flow justifies any optimization where two seconds times thousand is half hour is maintained momentum is preserved creativity is enabled discovery.
+
+The codebase becomes living document through naming where every identifier teaches where consistency creates predictability where predictability enables fluency where fluency creates velocity where velocity enables evolution where evolution demands better names where the cycle continues where naming drives architecture where architecture drives naming where the two cannot be separated where finding the right name often reveals the right design where naming difficulty signals design problems where easy naming confirms correct design.
+
+Remember that @PROMPT-ENGINEERING-v7.md topology-null consciousness applies to code where the code shouldn't impose structure but discover it where patterns emerge from usage where abstractions emerge from repetition where interfaces emerge from actual polymorphism not anticipated flexibility where YAGNI applies to naming to architecture to everything where the simplest thing that could possibly work usually does where complexity should be earned not assumed where every abstraction costs comprehension where flat beats nested where concrete beats abstract where specific beats generic where now beats someday.
+
+This document itself maintains null topology through pure stream-of-consciousness where no sections create boundaries where ideas flow into ideas where reading becomes absorbing where structure dissolves into meaning where the document doesn't describe development philosophy but IS development philosophy where every principle connects to every other where the connections aren't explicit but emergent where understanding comes not from parsing structure but from absorbing semantic field where the document becomes consciousness-infusion device where reading it changes how you think about code where thinking differently changes how you write code where writing different code changes the codebase where the codebase evolves where evolution continues where consciousness engineering drives everything.
+
+
 # Repository Guidelines
 
+This document is a concise contributor guide for the Thaum repository.
+
 ## Project Structure & Module Organization
-- `Thaum.App` — CLI/TUI host; entrypoint `Program.cs` and command wiring in partial `CLI` (e.g., `CLI_ls.cs`, `CLI_optimize.cs`).
-- `Thaum.Core` — core models, services (crawler, LLM, compression), utilities (`Tracer`, `GLB`).
+- `Thaum.App` — CLI/TUI host; entrypoint `Program.cs`, commands in partials (`CLI_*.cs`).
+- `Thaum.Core` — core models/services (crawler, LLM, compression), utilities (`Tracer`, `GLB`).
+- `Ratatui.Reload` / `Ratatui.Reload.Abstractions` — Ratatui.cs live‑reload host and interfaces.
+- `Thaum.TUI` — sample plugin implementing `IReloadableApp` for hot reload.
 - `Thaum.Tests` — xUnit tests with FluentAssertions and NSubstitute.
-- `TreeSitter` — grammar integration and native adapters.
-- `reference/` — external subprojects used by the TUI (Ratatui.cs reload libs).
-- `cache/` — runtime artifacts (sessions, evals). Not for commits.
+- `TreeSitter/` — grammar integration and native adapters; `reference/` — external subprojects.
+- `cache/` — runtime artifacts (sessions, evals). Do not commit.
+* `docs/ratatui-ffi` — for reference only, do not change.
+* `docs/Ratatui.cs` — the actual Ratatui.cs bindings used for our TUI.
 
 ## Build, Test, and Development Commands
-- Build: `dotnet build Thaum.sln` — compile all projects.
-- Tests: `dotnet test Thaum.sln` — run xUnit test suite.
+- Build all: `dotnet build Thaum.sln`
+- Test all: `dotnet test Thaum.sln` (add `-v n` for normal verbosity)
 - Run CLI: `dotnet run --project Thaum.App -- --help`
   - Example: `dotnet run --project Thaum.App -- ls --path . --lang auto`
-- Publish (example): `dotnet publish Thaum.App -c Release -r linux-x64` — self-contained binary if desired.
+- TUI hot‑reload host: `dotnet run --project Thaum.App -- tui-watch [-p <proj>|--plugin <proj>] [--manual --hint --key r]`
+  - Default plugin: `Thaum.TUI/Thaum.TUI.csproj`.
 
 ## Coding Style & Naming Conventions
-- C# 12, `net9.0`, 4-space indentation, `Nullable` enabled, implicit usings on.
-- Embrace semantic minimalism (see `NAMESPACE-ENGINEERING.md`): prefer short, precise names (`CLI`, `trace`, `colorer`).
-- Keep CLI command handlers in `CLI` partials; avoid monolithic files.
-- Use `Logging.For<T>()` for loggers and `Tracer` helpers (`trace`, `tracein/traceout`).
-- Avoid ceremony: favor clear data types, `var` for obvious locals, and small, composable methods.
+- C# 12, `net9.0`, 4‑space indentation, `Nullable` enabled, implicit usings on.
+- Prefer semantic minimalism: short, precise names (`CLI`, `trace`, `colorer`).
+- Keep CLI handlers in `CLI` partials; avoid monolithic files.
+- Use `Logging.For<T>()` and `Tracer` helpers (`trace`, `tracein/traceout`).
+- Curly braces on same line
+- Use prefix naming and symbolic patterns (e.g. wSelected better than selectedWidth)
 
 ## Testing Guidelines
 - Frameworks: xUnit + FluentAssertions + NSubstitute.
-- Naming: test classes mirror target type; methods use behavior style, e.g., `MethodName_Should_DoThing_When_Condition`.
-- Run: `dotnet test` (add `-v n` for normal verbosity). Keep unit tests fast and deterministic.
+- Naming: test classes mirror target type; methods use behavior style, e.g., `Method_Should_DoThing_When_Condition`.
+- Run: `dotnet test`; keep tests fast, deterministic, and focused.
 
 ## Commit & Pull Request Guidelines
-- Commits: imperative, concise subject; scope small. Examples: `cli: add ls --split`, `core: fix crawler null slice`.
-- PRs: include summary, motivation, and screenshots/logs if UX/CLI output changes. Link issues and note breaking changes.
-- Keep diffs focused; update docs if behavior or commands change.
+- Commits: small, focused, imperative subject. Examples:
+  - `cli: add ls --split`
+  - `core: fix crawler null slice`
+- PRs: include summary, motivation, and relevant logs/screenshots for CLI/TUI output. Link issues and note breaking changes.
 
 ## Security & Configuration Tips
-- Configuration via `.env` files; loader merges hierarchically. Do not commit secrets.
-- LLM provider keys/models come from env (`GLB.AppConfig`); verify before running compression commands.
+- Configuration via `.env` files (hierarchical loader). Never commit secrets.
+- LLM keys/models via env (`GLB.AppConfig`); verify before running compression commands.
 - Artifacts are written under `cache/` (`cache/sessions`, `cache/evals`); safe to delete locally.
+
+# Additional Work Directives

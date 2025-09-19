@@ -1,4 +1,4 @@
-namespace Thaum.Core.Services;
+namespace Thaum.Core;
 
 public record LLMOptions(
 	double        Temperature   = 0.7,

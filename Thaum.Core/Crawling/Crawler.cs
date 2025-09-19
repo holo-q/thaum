@@ -1,6 +1,4 @@
-using Thaum.Core.Models;
-
-namespace Thaum.Core.Services;
+namespace Thaum.Core.Crawling;
 
 /// <summary>
 /// Abstract base for code crawling implementations where crawling means parsing/analyzing/extracting
@@ -25,7 +23,7 @@ public abstract class Crawler {
 	/// Legacy method for backward compatibility - creates new CodeMap and returns symbols as list
 	/// </summary>
 	public async Task<List<CodeSymbol>> CrawlDirLegacy(string directory) {
-		var codeMap = await CrawlDir(directory);
+		CodeMap codeMap = await CrawlDir(directory);
 		return codeMap.ToList();
 	}
 	
@@ -33,7 +31,7 @@ public abstract class Crawler {
 	/// Legacy method for backward compatibility - creates new CodeMap and returns symbols as list
 	/// </summary>
 	public async Task<List<CodeSymbol>> CrawlFileLegacy(string filePath) {
-		var codeMap = await CrawlFile(filePath);
+		CodeMap codeMap = await CrawlFile(filePath);
 		return codeMap.ToList();
 	}
 	

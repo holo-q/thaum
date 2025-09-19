@@ -7,7 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../docs/Ratatui.cs/src/Ratatui/Ratatui.csproj" />
+    <ProjectReference Include="../Thaum.Core/Thaum.Core.csproj" />
     <ProjectReference Include="../Ratatui.Reload.Abstractions/Ratatui.Reload.Abstractions.csproj" />
-    <PackageReference Include="Ratatui.cs" Version="0.2.1" />
+    <ProjectReference Include="../Thaum.Generators/Thaum.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>

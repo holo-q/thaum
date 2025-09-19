@@ -1,1 +1,1 @@
-namespace Thaum.Core.Services;
+namespace Thaum.Core;

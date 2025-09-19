@@ -5,7 +5,7 @@ using Thaum.Core.Models;
 using Thaum.Core.Utils;
 using static Thaum.Core.Utils.Tracer;
 
-namespace Thaum.CLI.Commands;
+namespace Thaum.Core.Crawling;
 
 // TODO this should become a crawler for C# assemblies
 
@@ -138,7 +138,7 @@ internal class AssemblyCommands {
 			if (!matchedAssemblies.Any()) {
 				println($"No loaded assemblies found matching '{assemblyNamePattern}'");
 				println("\nAvailable loaded assemblies:");
-				foreach (var asm in assemblies.OrderBy(a => a.GetName().Name)) {
+				foreach (Assembly asm in assemblies.OrderBy(a => a.GetName().Name)) {
 					if (asm.GetName().Name != null)
 						println($"  - {asm.GetName().Name}");
 				}

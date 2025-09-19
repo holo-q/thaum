@@ -2,6 +2,7 @@ using Xunit;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using FluentAssertions;
+using Thaum.Core.Crawling;
 using Thaum.Core.Services;
 using Thaum.Core.Models;
 
@@ -24,10 +25,10 @@ public class TreeSitterTests {
 		                           }
 		                           """;
 
-		using var parser = new TreeSitterCrawler.Parser("c-sharp");
+		using TreeSitterCrawler.Parser parser = new TreeSitterCrawler.Parser("c-sharp");
 
 		// Act
-		var symbols = parser.Parse(SOURCE_CODE, "test.cs");
+		List<CodeSymbol> symbols = parser.Parse(SOURCE_CODE, "test.cs");
 
 		// Assert
 		symbols.Should().Contain(s => s.Kind == SymbolKind.Enum && s.Name == "SimpleEnum");
@@ -50,10 +51,10 @@ public class TreeSitterTests {
 		                           }
 		                           """;
 
-		using var parser = new TreeSitterCrawler.Parser("c-sharp");
+		using TreeSitterCrawler.Parser parser = new TreeSitterCrawler.Parser("c-sharp");
 
 		// Act
-		var symbols = parser.Parse(SOURCE_CODE, "test.cs");
+		List<CodeSymbol> symbols = parser.Parse(SOURCE_CODE, "test.cs");
 
 		// Assert
 		symbols.Should().Contain(s => s.Kind == SymbolKind.Class && s.Name == "TestClass");
@@ -91,10 +92,10 @@ public class TreeSitterTests {
 		                           }
 		                           """;
 
-		using var parser = new TreeSitterCrawler.Parser("c-sharp");
+		using TreeSitterCrawler.Parser parser = new TreeSitterCrawler.Parser("c-sharp");
 
 		// Act
-		var symbols = parser.Parse(SOURCE_CODE, "CompressionLevel.cs");
+		List<CodeSymbol> symbols = parser.Parse(SOURCE_CODE, "CompressionLevel.cs");
 
 		// Assert
 		symbols.Should().Contain(s => s.Kind == SymbolKind.Enum && s.Name == "CompressionLevel");
@@ -107,10 +108,10 @@ public class TreeSitterTests {
 	[Fact]
 	public void Parse_EmptyCode_ShouldReturnEmptyList() {
 		// Arrange
-		using var parser = new TreeSitterCrawler.Parser("c-sharp");
+		using TreeSitterCrawler.Parser parser = new TreeSitterCrawler.Parser("c-sharp");
 
 		// Act
-		var symbols = parser.Parse("", "empty.cs");
+		List<CodeSymbol> symbols = parser.Parse("", "empty.cs");
 
 		// Assert
 		symbols.Should().BeEmpty();
@@ -130,10 +131,10 @@ public class TreeSitterTests {
 		                           }
 		                           """;
 
-		using var parser = new TreeSitterCrawler.Parser("c-sharp");
+		using TreeSitterCrawler.Parser parser = new TreeSitterCrawler.Parser("c-sharp");
 
 		// Act
-		var symbols = parser.Parse(SOURCE_CODE, "test.cs");
+		List<CodeSymbol> symbols = parser.Parse(SOURCE_CODE, "test.cs");
 
 		// Assert
 		symbols.Should().Contain(s => s.Kind == SymbolKind.Interface && s.Name == "ITestService");
@@ -156,10 +157,10 @@ public class TreeSitterTests {
 		                           }
 		                           """;
 
-		using var parser = new TreeSitterCrawler.Parser("c-sharp");
+		using TreeSitterCrawler.Parser parser = new TreeSitterCrawler.Parser("c-sharp");
 
 		// Act
-		var symbols = parser.Parse(SOURCE_CODE, "test.cs");
+		List<CodeSymbol> symbols = parser.Parse(SOURCE_CODE, "test.cs");
 
 		// Assert
 		symbols.Should().Contain(s => s.Kind == SymbolKind.Namespace && s.Name == "MyProject.Services");
@@ -179,10 +180,10 @@ public class TreeSitterTests {
 		                           }
 		                           """;
 
-		using var parser = new TreeSitterCrawler.Parser("c_sharp");
+		using TreeSitterCrawler.Parser parser = new TreeSitterCrawler.Parser("c_sharp");
 
 		// Act
-		var symbols = parser.Parse(SOURCE_CODE, "test.cs");
+		List<CodeSymbol> symbols = parser.Parse(SOURCE_CODE, "test.cs");
 
 		// Assert
 		symbols.Should().Contain(s => s.Kind == SymbolKind.Class && s.Name == "TestClass");
@@ -194,11 +195,11 @@ public class TreeSitterTests {
 	[Fact]
 	public void Parse_InvalidSyntax_ShouldNotCrash() {
 		// Arrange
-		const string INVALID_CODE = "public class { invalid syntax }";
-		using var    parser       = new TreeSitterCrawler.Parser("c-sharp");
+		const string                   INVALID_CODE = "public class { invalid syntax }";
+		using TreeSitterCrawler.Parser parser       = new TreeSitterCrawler.Parser("c-sharp");
 
 		// Act & Assert - Should not throw
-		var symbols = parser.Parse(INVALID_CODE, "invalid.cs");
+		List<CodeSymbol> symbols = parser.Parse(INVALID_CODE, "invalid.cs");
 		symbols.Should().NotBeNull();
 	}
 }

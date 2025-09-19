@@ -5,7 +5,8 @@ using Thaum.Core.Models;
 using Thaum.Core.Utils;
 using static Thaum.Core.Utils.Tracer;
 using Thaum.Core;
-using Thaum.Utils;
+using Thaum.Core.Cache;
+using Thaum.Core.Crawling;
 
 namespace Thaum.CLI;
 
@@ -20,7 +21,7 @@ public partial class CLI {
 	private readonly LLM               _llm;
 	private readonly Crawler           _crawler;
 	private readonly Prompter          _prompter;
-	private readonly Golfer        _golfer;
+	private readonly Golfer            _golfer;
 	private readonly PerceptualColorer _colorer;
 
 	/// <summary>
@@ -221,16 +222,7 @@ public partial class CLI {
 			});
 		});
 
-		app.Command("tui-watch", cmd => {
-			cmd.Description = "Launch TUI with hot reload (watch plugin project)";
-			cmd.HelpOption(inherited: true);
-			CommandOption optPlugin = cmd.Option("--plugin", "Path to plugin .csproj (default: Thaum.TUI/Thaum.TUI.csproj)", CommandOptionType.SingleValue);
-			cmd.OnExecuteAsync(async _ => {
-				string? plugin = string.IsNullOrWhiteSpace(optPlugin.Value()) ? null : optPlugin.Value();
-				await cli.CMD_tui_watch(plugin);
-				return 0;
-			});
-		});
+        // 'tui-watch' removed: standard 'tui' always launches via live reload host (deactivates in consumer builds)
 
 		app.Command("ls-lsp", cmd => {
 			cmd.Description = "(Temporarily disabled during TUI migration)";

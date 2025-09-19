@@ -1,7 +1,7 @@
 using static System.Console;
 using static Thaum.Core.Utils.Tracer;
 
-namespace Thaum.Core.Services;
+namespace Thaum.Core;
 
 public abstract class LLM {
 	public abstract Task<string>                   CompleteAsync(string           prompt,       LLMOptions? options                         = null);

@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Thaum.Utils;
+namespace Thaum.Core.Utils;
 
 /// <summary>
 /// Handles project exclusions including .gitignore patterns and project-specific ignores
@@ -71,14 +71,14 @@ public static class ProjectExclusions {
 		}
 		
 		// Check project-specific exclusions
-		if (language != null && DefaultExclusions.TryGetValue(language, out var patterns)) {
+		if (language != null && DefaultExclusions.TryGetValue(language, out string[]? patterns)) {
 			if (IsExcludedByPatterns(relativePath, patterns)) {
 				return true;
 			}
 		}
 		
 		// Check .gitignore patterns
-		var gitignorePatterns = LoadGitignorePatterns(projectRoot);
+		List<GitignorePattern> gitignorePatterns = LoadGitignorePatterns(projectRoot);
 		if (IsExcludedByGitignorePatterns(relativePath, gitignorePatterns)) {
 			return true;
 		}
@@ -90,7 +90,7 @@ public static class ProjectExclusions {
 	/// Loads and parses .gitignore patterns from the project root
 	/// </summary>
 	private static List<GitignorePattern> LoadGitignorePatterns(string projectRoot) {
-		var patterns = new List<GitignorePattern>();
+		List<GitignorePattern> patterns      = new List<GitignorePattern>();
 		string gitignorePath = Path.Combine(projectRoot, ".gitignore");
 		
 		if (!File.Exists(gitignorePath)) {
@@ -138,7 +138,7 @@ public static class ProjectExclusions {
 	private static bool IsExcludedByGitignorePatterns(string relativePath, List<GitignorePattern> patterns) {
 		bool isExcluded = false;
 		
-		foreach (var pattern in patterns) {
+		foreach (GitignorePattern pattern in patterns) {
 			if (Regex.IsMatch(relativePath, pattern.Regex)) {
 				if (pattern.IsNegation) {
 					isExcluded = false; // Negation patterns un-exclude

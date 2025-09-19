@@ -1,5 +1,6 @@
 using Serilog;
-using Thaum.Utils;
+using Thaum.Core;
+using Thaum.Core.Utils;
 using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum;

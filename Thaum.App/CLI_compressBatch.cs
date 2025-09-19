@@ -4,18 +4,20 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using Spectre.Console;
+using Thaum.Core;
+using Thaum.Core.Crawling;
 using Thaum.Core.Models;
 using Thaum.Core.Services;
 using Thaum.Core.Triads;
-using Thaum.Utils;
+using Thaum.Core.Utils;
 using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.CLI;
 
 public partial class CLI {
-    // TODO we could emit a session index (CSV/JSON) with prompt/response paths and metrics to support dataset export and reproducibility.
-    // TODO we could add --seed and deterministic ordering for reproducible sampling.
-    // TODO we could add per-provider QPS/backoff if we see throttling.
+    // IDEA we could emit a session index (CSV/JSON) with prompt/response paths and metrics to support dataset export and reproducibility.
+    // IDEA we could add --seed and deterministic ordering for reproducible sampling.
+    // IDEA we could add per-provider QPS/backoff if we see throttling.
     public async Task CMD_compress_batch(
         string path,
         string language,

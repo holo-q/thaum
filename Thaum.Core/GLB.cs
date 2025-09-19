@@ -1,8 +1,9 @@
-using Microsoft.Extensions.Configuration;
-using Thaum.Core.Models;
-using Thaum.Core.Services;
-using Thaum.Core.Utils;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+using Thaum.Core.Crawling;
+using Thaum.Core.Utils;
+
+namespace Thaum.Core;
 
 /// <summary>
 /// Global ambient utilities providing application-wide singleton resources through static access

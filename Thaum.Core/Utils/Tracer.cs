@@ -2,7 +2,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
-using Thaum.Utils;
 
 namespace Thaum.Core.Utils;
 
@@ -167,7 +166,7 @@ public static class Tracer {
 	public static void traceheader(string title) {
 		println();
         try {
-            var rule = new Rule($"{title}");
+            Rule rule = new Rule($"{title}");
             AnsiConsole.Write(rule);
         } catch {
             println(tracehdr(title));

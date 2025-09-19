@@ -1,3 +1,5 @@
+using System.Text;
+using Thaum.Core.Crawling;
 using Thaum.Core.Models;
 using Thaum.Core.Services;
 using static System.Console;
@@ -28,7 +30,7 @@ namespace Thaum.Core;
 		PromptLoader promptLoader = new PromptLoader();
 
 		try {
-			var parameters = new Dictionary<string, object>();
+			Dictionary<string, object> parameters = new Dictionary<string, object>();
 			return await promptLoader.FormatPrompt(promptName, parameters);
 		} catch (Exception ex) {
 			trace($"Error loading prompt: {ex.Message}");
@@ -64,7 +66,7 @@ namespace Thaum.Core;
 		HttpLLM    llmProvider = new HttpLLM(httpClient, GLB.AppConfig);
 
 			// Stream response (also capture for artifact persistence)
-			var sb = new System.Text.StringBuilder();
+			StringBuilder sb = new System.Text.StringBuilder();
 			IAsyncEnumerable<string> streamResponse = await llmProvider.StreamCompleteAsync(prompt, GLB.CompressionOptions(model));
 			await foreach (string token in streamResponse) {
 				Write(token);
@@ -95,7 +97,7 @@ namespace Thaum.Core;
 		string prompt = await PromptUtil.BuildCustomPromptAsync(promptName, targetSymbol, context, code);
 
 		// Call LLM and capture output
-		var output = new System.Text.StringBuilder();
+		StringBuilder output = new System.Text.StringBuilder();
 		await _llm.CallPrompt(prompt, $"ROLLOUT_{iRollout}", output);
 
 		return output.ToString();

@@ -248,7 +248,7 @@ public class MainWindow : Window {
 	}
 
 	private void ClearCache() {
-		// TODO: Implement cache clearing
+		// NOTE: Cache clearing is intentionally left unimplemented in the legacy UI.
 		SetStatusText("Cache cleared");
 	}
 

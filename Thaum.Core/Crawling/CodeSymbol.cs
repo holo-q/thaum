@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Thaum.Core.Models;
+namespace Thaum.Core.Crawling;
 
 public record CodeSymbol(
 	string            Name,

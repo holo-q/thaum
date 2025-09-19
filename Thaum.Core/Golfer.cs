@@ -1,11 +1,13 @@
-using Microsoft.Extensions.Logging;
 using System.Text;
-using Thaum.Core.Models;
+using Microsoft.Extensions.Logging;
 using Spectre.Console;
-using Thaum.Utils;
+using Thaum.Core.Cache;
+using Thaum.Core.Crawling;
+using Thaum.Core.Utils;
+using Thaum.Meta;
 using static Thaum.Core.Utils.Tracer;
 
-namespace Thaum.Core.Services;
+namespace Thaum.Core;
 
 public record CompressorOptions(string ProjectPath, string Language, string? DefaultPromptName = null);
 
@@ -38,7 +40,8 @@ public record OptimizationContext(
 /// where final pass uses K1+K2 achieving maximum semantic density where caching prevents
 /// redundant LLM calls where streaming enables real-time progress visualization
 /// </summary>
-public class Golfer {
+[LoggingIntrinsics]
+public partial class Golfer {
 	private readonly LLM             _llm;
 	private readonly Crawler         _crawler;
 	private readonly ICache          _cache;
@@ -129,10 +132,10 @@ public class Golfer {
 	/// where parallel processing maximizes throughput where streaming enables progress tracking
 	/// </summary>
 	public async Task<SymbolHierarchy> ProcessCodebaseAsync(string projectPath, string language, string? defaultPromptName = null) {
-		_logger.LogInformation("Start: codebase processing for {ProjectPath}", projectPath);
+		info("Start: codebase processing for {ProjectPath}", projectPath);
 
 		// Discovery spinner (compact, no boxes)
-		var codeMap = await AnsiConsole.Status()
+		CodeMap codeMap = await AnsiConsole.Status()
 			.Spinner(Spinner.Known.Dots)
 			.SpinnerStyle(Style.Parse("green"))
 			.StartAsync("Scanning workspace for symbols", async _ => await _crawler.CrawlDir(projectPath));
@@ -140,15 +143,15 @@ public class Golfer {
 		HierarchyBuilder hierarchyBuilder = new HierarchyBuilder();
 
 		// Phase 1: Optimize functions (deepest scope)
-		using var        p1        = Logging.Scope("PHASE 1: Function Analysis");
+		using IDisposable        p1        = Logging.Scope("PHASE 1: Function Analysis");
 		List<CodeSymbol> functions = allSymbols.Where(s => s.Kind is SymbolKind.Function or SymbolKind.Method).ToList();
 
 		List<string> functionOptimizations = new List<string>(functions.Count);
 		await AnsiConsole.Progress()
 			.Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
 			.StartAsync(async ctx => {
-				var task = ctx.AddTask($"Functions ({functions.Count})", maxValue: functions.Count);
-				var results = await Task.WhenAll(functions.Select(async function => {
+				ProgressTask task = ctx.AddTask($"Functions ({functions.Count})", maxValue: functions.Count);
+				string[] results = await Task.WhenAll(functions.Select(async function => {
 					string              sourceCode = await GetSymbolSourceCode(function);
 					OptimizationContext context    = new OptimizationContext(Level: 1, AvailableKeys: [], PromptName: defaultPromptName);
 					string              summary    = await OptimizeSymbolWithStreamAsync(function, context, sourceCode);
@@ -159,20 +162,20 @@ public class Golfer {
 			});
 
 		// Phase 2: Extract K1 from function summaries
-		using var p2 = Logging.Scope("PHASE 2: K1 Extraction");
+		using IDisposable p2 = Logging.Scope("PHASE 2: K1 Extraction");
 		string k1 = await AnsiConsole.Status()
 			.Spinner(Spinner.Known.Dots)
 			.SpinnerStyle(Style.Parse("yellow"))
 			.StartAsync("Extracting K1 from function summaries", async _ => await ExtractCommonKeyWithStreamAsync(functionOptimizations, 1));
 		Dictionary<string, string> extractedKeys = new Dictionary<string, string> { ["K1"] = k1 };
-		_logger.LogInformation("K1: {Sample}", k1.Length > 50 ? $"{k1[..47]}..." : k1);
+			info("K1: {Sample}", k1.Length > 50 ? $"{k1[..47]}..." : k1);
 
 		// Phase 3: Re-summarize functions with K1
-		using var p3 = Logging.Scope("PHASE 3: Function Re-analysis with K1");
+		using IDisposable p3 = Logging.Scope("PHASE 3: Function Re-analysis with K1");
 		await AnsiConsole.Progress()
 			.Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
 			.StartAsync(async ctx => {
-				var task = ctx.AddTask($"Functions ({functions.Count})", maxValue: functions.Count);
+				ProgressTask task = ctx.AddTask($"Functions ({functions.Count})", maxValue: functions.Count);
 				await Task.WhenAll(functions.Select(async function => {
 					string              sourceCode = await GetSymbolSourceCode(function);
 					OptimizationContext context    = new OptimizationContext(Level: 1, AvailableKeys: [k1], PromptName: defaultPromptName);
@@ -182,15 +185,15 @@ public class Golfer {
 			});
 
 		// Phase 4: Optimize classes with K1
-		using var        p4      = Logging.Scope("PHASE 4: Class Analysis with K1");
+		using IDisposable        p4      = Logging.Scope("PHASE 4: Class Analysis with K1");
 		List<CodeSymbol> classes = allSymbols.Where(s => s.Kind == SymbolKind.Class).ToList();
 
 		List<string> classOptimizations = new List<string>(classes.Count);
 		await AnsiConsole.Progress()
 			.Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
 			.StartAsync(async ctx => {
-				var task = ctx.AddTask($"Classes ({classes.Count})", maxValue: classes.Count);
-				var results = await Task.WhenAll(classes.Select(async cls => {
+				ProgressTask task = ctx.AddTask($"Classes ({classes.Count})", maxValue: classes.Count);
+				string[] results = await Task.WhenAll(classes.Select(async cls => {
 					string              sourceCode = await GetSymbolSourceCode(cls);
 					OptimizationContext context    = new OptimizationContext(Level: 2, AvailableKeys: [k1], PromptName: defaultPromptName);
 					string              summary    = await OptimizeSymbolWithStreamAsync(cls, context, sourceCode);
@@ -201,21 +204,21 @@ public class Golfer {
 			});
 
 		// Phase 5: Extract K2 from class summaries
-		using var p5 = Logging.Scope("PHASE 5: K2 Extraction");
+		using IDisposable p5 = Logging.Scope("PHASE 5: K2 Extraction");
 		string k2 = await AnsiConsole.Status()
 			.Spinner(Spinner.Known.Dots)
 			.SpinnerStyle(Style.Parse("yellow"))
 			.StartAsync("Extracting K2 from class summaries", async _ => await ExtractCommonKeyWithStreamAsync(classOptimizations, 2));
 		extractedKeys["K2"] = k2;
-		_logger.LogInformation("K2: {Sample}", k2.Length > 50 ? $"{k2[..47]}..." : k2);
+			info("K2: {Sample}", k2.Length > 50 ? $"{k2[..47]}..." : k2);
 
 		// Phase 6: Re-summarize everything with K1+K2
-		using var p6  = Logging.Scope("PHASE 6: Final Re-analysis with K1+K2");
-		var       all = functions.Concat(classes).ToList();
+		using IDisposable p6  = Logging.Scope("PHASE 6: Final Re-analysis with K1+K2");
+		List<CodeSymbol>  all = functions.Concat(classes).ToList();
 		await AnsiConsole.Progress()
 			.Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
 			.StartAsync(async ctx => {
-				var task = ctx.AddTask($"Symbols ({all.Count})", maxValue: all.Count);
+				ProgressTask task = ctx.AddTask($"Symbols ({all.Count})", maxValue: all.Count);
 				await Task.WhenAll(all.Select(async symbol => {
 					string sourceCode = await GetSymbolSourceCode(symbol);
 					OptimizationContext context = new OptimizationContext(
@@ -227,10 +230,10 @@ public class Golfer {
 				}));
 			});
 
-		using var        p7          = Logging.Scope("Hierarchy Construction");
+		using IDisposable        p7          = Logging.Scope("Hierarchy Construction");
 		List<CodeSymbol> rootSymbols = hierarchyBuilder.BuildHierarchy(allSymbols);
 
-		_logger.LogInformation("Done: {Count} symbols processed", allSymbols.Count);
+		info("Done: {Count} symbols processed", allSymbols.Count);
 		return new SymbolHierarchy(projectPath, rootSymbols, extractedKeys, DateTime.UtcNow);
 	}
 
@@ -300,7 +303,7 @@ public class Golfer {
 
 			return string.Join("\n", lines[startLine..(endLine + 1)]);
 		} catch (Exception ex) {
-			_logger.LogError(ex, "Failed to read source code for symbol {SymbolName}", symbol.Name);
+			err(ex, "Failed to read source code for symbol {SymbolName}", symbol.Name);
 			return "";
 		}
 	}
@@ -314,7 +317,7 @@ public class Golfer {
 		string cacheKey = $"optimization_{symbol.Name}_{symbol.FilePath}_{symbol.StartCodeLoc.Line}_{context.Level}";
 
 		if (await _cache.TryGetAsync<string>(cacheKey) is { } cached) {
-			_logger.LogDebug("Cache hit: {Symbol}", symbol.Name);
+			trace("Cache hit: {Symbol}", symbol.Name);
 			return cached;
 		}
 
@@ -336,7 +339,7 @@ public class Golfer {
 
 		string result = summary.ToString().Trim();
 		await _cache.SetAsync(cacheKey, result, TimeSpan.FromHours(24));
-		_logger.LogDebug("Optimized {Symbol} ({Len} chars)", symbol.Name, result.Length);
+		trace("Optimized {Symbol} ({Len} chars)", symbol.Name, result.Length);
 
 		return result;
 	}
@@ -345,7 +348,7 @@ public class Golfer {
 		string cacheKey = $"key_L{level}_{GetOptimizationsHash(summaries)}";
 
 		if (await _cache.TryGetAsync<string>(cacheKey) is { } cached) {
-			_logger.LogDebug("Cache hit: K{Level}", level);
+			trace("Cache hit: K{Level}", level);
 			return cached;
 		}
 
@@ -372,10 +375,10 @@ public class Golfer {
 	}
 
 	private async Task ResummarizeWithKeysAsync(List<CodeSymbol> symbols, List<string> keys, string? defaultPromptName = null) {
-		_logger.LogDebug("Final analysis for {Count} symbols", symbols.Count);
+		trace("Final analysis for {Count} symbols", symbols.Count);
 
 		IEnumerable<Task<string>> reanalysisTasks = symbols.Select(async symbol => {
-			_logger.LogDebug("Final analysis: {Symbol}", symbol.Name);
+			trace("Final analysis: {Symbol}", symbol.Name);
 			string sourceCode = await GetSymbolSourceCode(symbol);
 			OptimizationContext context = new OptimizationContext(
 				Level: symbol.Kind is SymbolKind.Function or SymbolKind.Method ? 1 : 2,

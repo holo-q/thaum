@@ -1,11 +1,13 @@
 using System.Collections.Concurrent;
-using Microsoft.Extensions.Logging;
 using System.Text;
-using Thaum.Utils;
+using Microsoft.Extensions.Logging;
+using Thaum.Core.Utils;
+using Thaum.Meta;
 
-namespace Thaum.Core.Services;
+namespace Thaum.Core;
 
-public class PromptLoader {
+[LoggingIntrinsics]
+public partial class PromptLoader {
 	private readonly ILogger<PromptLoader>      _logger;
 	private readonly string                     _promptsDirectory;
 	private readonly Dictionary<string, string> _promptCache;
@@ -37,11 +39,11 @@ public class PromptLoader {
             _promptCache[promptName] = content;
             // Only log if we won the race to add to shared cache
             if (_sharedCache.TryAdd(promptName, content)) {
-                _logger.LogDebug("Loaded prompt: {PromptName} from {Path}", promptName, path);
+				trace("Loaded prompt: {PromptName} from {Path}", promptName, path);
             }
             return _sharedCache[promptName];
 		} catch (Exception ex) {
-			_logger.LogError(ex, "Failed to load prompt: {PromptName}", promptName);
+			err(ex, "Failed to load prompt: {PromptName}", promptName);
 			throw;
 		}
 	}

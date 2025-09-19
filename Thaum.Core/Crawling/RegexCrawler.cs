@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
-using Thaum.Core.Models;
 
-namespace Thaum.Core.Services;
+namespace Thaum.Core.Crawling;
 
 // Simplified LSP client manager for initial implementation
 public class RegexCrawler : Crawler {
@@ -35,7 +34,7 @@ public class RegexCrawler : Crawler {
 	public override async Task<CodeMap> CrawlFile(string filepath, CodeMap? codeMap = null) {
 		codeMap ??= CodeMap.Create();
 		if (!File.Exists(filepath)) return codeMap;
-		var symbols = await ExtractSymbol(filepath);
+		List<CodeSymbol> symbols = await ExtractSymbol(filepath);
 		codeMap.AddSymbols(symbols);
 		return codeMap;
 	}

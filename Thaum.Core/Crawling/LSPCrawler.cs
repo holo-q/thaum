@@ -3,11 +3,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using Serilog.Extensions.Logging;
-using Thaum.Core.Models;
-using Thaum.Utils;
+using Thaum.Core.Utils;
 
-namespace Thaum.Core.Services;
+namespace Thaum.Core.Crawling;
 
 /// <summary>
 /// TODO finish the LSP crawler
@@ -26,14 +24,14 @@ public class LSPCrawler : Crawler {
 
 	public override async Task<CodeMap> CrawlDir(string dirpath, CodeMap? codeMap = null) {
 		codeMap ??= CodeMap.Create();
-		var symbols = await _lsp.GetWorkspaceSymbolsAsync();
+		List<CodeSymbol> symbols = await _lsp.GetWorkspaceSymbolsAsync();
 		codeMap.AddSymbols(symbols);
 		return codeMap;
 	}
 
 	public override async Task<CodeMap> CrawlFile(string filepath, CodeMap? codeMap = null) {
 		codeMap ??= CodeMap.Create();
-		var symbols = await _lsp.GetDocumentSymbolsAsync(filepath);
+		List<CodeSymbol> symbols = await _lsp.GetDocumentSymbolsAsync(filepath);
 		codeMap.AddSymbols(symbols);
 		return codeMap;
 	}

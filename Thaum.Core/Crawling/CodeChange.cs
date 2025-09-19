@@ -1,4 +1,4 @@
-namespace Thaum.Core.Models;
+namespace Thaum.Core.Crawling;
 
 public record CodeChange(
 	string      FilePath,

@@ -33,7 +33,7 @@
         <TrimmerDefaultAction>link</TrimmerDefaultAction>
     </PropertyGroup>
 
-    <ItemGroup>
+  <ItemGroup>
         <PackageReference Include="OmniSharp.Extensions.LanguageProtocol" Version="0.19.9" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
@@ -50,8 +50,12 @@
         <PackageReference Include="System.Text.Json" Version="8.0.5" />
         <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
-        <ProjectReference Include="../TreeSitter/src/TreeSitter.csproj" />
-    </ItemGroup>
+        <PackageReference Include="TreeSitter.DotNet" Version="1.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+      <ProjectReference Include="..\Thaum.Generators\Thaum.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+  </ItemGroup>
 
     <ItemGroup>
         <TrimmerRootAssembly Include="OmniSharp.Extensions.LanguageProtocol" />

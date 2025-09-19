@@ -13,6 +13,12 @@ Usage
 - Edit code under `Thaum.TUI` and save to trigger rebuild and live reload.
 - Pass a custom plugin project: `tui-watch --plugin path/to/YourPlugin.csproj`.
 
+Manual Reload Mode
+- Show a bottom-left hint and manually trigger reloads:
+  - `dotnet run --project Thaum.App -- tui-watch --manual --hint`
+  - Press `r` to reload when the hint shows “Changes detected”.
+  - Customize the key: `--key x`
+
 Integration Steps for Existing Apps
 1) Move your TUI rendering loop into a class implementing `IReloadableApp`.
 2) Let the host own `Terminal`. Implement `HandleEvent`, `Update`, and `Draw`.
@@ -22,4 +28,3 @@ Integration Steps for Existing Apps
 Notes
 - This is IDE-agnostic and works in plain terminals.
 - If unload blockers exist (native libs, static singletons), refactor them into the host or fall back to out-of-process reload.
-

@@ -55,38 +55,40 @@ public abstract class Screen {
 	public virtual bool HandleKey(Event ev, ThaumTUI.State app) => keys.Handle(ev, app);
 
 	// Base default key registrations (call in OnEnter once if needed)
-	protected void ConfigureDefaultGlobalKeys() {
-		keys.RegisterKey(KeyCode.Esc, "Esc", "quit", _ => {
-			Environment.Exit(0);
-			return true;
-		});
-		keys.RegisterChar('q', "quit", _ => {
-			Environment.Exit(0);
-			return true;
-		});
-		keys.RegisterChar('1', "mode", a => {
-			tui.NavigateTo(tui.ScreenBrowser, a);
-			return true;
-		});
+    protected void ConfigureDefaultGlobalKeys() {
+        keys.RegisterKey(KeyCode.ESC, "Esc", "quit", _ => {
+            Environment.Exit(0);
+            return true;
+        });
+        keys.RegisterChar('q', "quit", _ => {
+            Environment.Exit(0);
+            return true;
+        });
+        keys.Register("Ctrl-C", "quit", ev => ev is { Kind: EventKind.Key, Key.CodeEnum: KeyCode.Char } && ((char)ev.Key.Char == 'c' || (char)ev.Key.Char == 'C') && ev.Key.Ctrl,
+            (ev, _) => { Environment.Exit(0); return true; });
+        keys.RegisterChar('1', "mode", a => {
+            tui.NavigateTo(tui.scrBrowser, a);
+            return true;
+        });
 		keys.RegisterChar('2', "mode", a => {
-			tui.NavigateTo(tui.ScreenSource, a);
+			tui.NavigateTo(tui.scrSource, a);
 			return true;
 		});
 		keys.RegisterChar('3', "mode", a => {
-			tui.NavigateTo(tui.ScreenSummary, a);
+			tui.NavigateTo(tui.scrSummary, a);
 			return true;
 		});
 		keys.RegisterChar('4', "mode", a => {
-			tui.NavigateTo(tui.ScreenReferences, a);
+			tui.NavigateTo(tui.scrReferences, a);
 			return true;
 		});
 		keys.RegisterChar('5', "mode", a => {
-			tui.NavigateTo(tui.ScreenInfo, a);
+			tui.NavigateTo(tui.scrMode, a);
 			return true;
 		});
 	}
 
-	public IEnumerable<KeyBinding> GetHelp(int max) => keys.GetHelp(max);
+	public IReadOnlyList<KeyBinding> GetHelp(int max) => keys.GetHelp(max);
 }
 
 public readonly record struct KeyBinding(string Key, string Description);

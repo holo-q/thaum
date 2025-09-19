@@ -1,22 +1,20 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using Serilog.Extensions.Logging;
 using Serilog.Formatting.Compact;
-using Serilog.Sinks.SystemConsole.Themes;
 using Serilog.Sinks.SpectreConsole;
-using ILogger = Serilog.ILogger;
+using Serilog.Sinks.SystemConsole.Themes;
+using Spectre.Console;
 
 // Optional rich console integration; if the package is present, we use it.
 // If not restored, the fallback console sink path still works.
 // ReSharper disable once RedundantUsingDirective
-using Spectre.Console;
 
-namespace Thaum.Utils;
+namespace Thaum.Core.Utils;
 
 /// <summary>
 /// Opinionated, uniform logging: Serilog core + Spectre console for humans, structured files for machines.
@@ -27,14 +25,17 @@ public static class Logging {
 
 	// Async-local indent depth and label stack for per-async-flow formatting
 	private static readonly AsyncLocal<Stack<string>> IndentStack = new();
-	private static string IndentUnit => "·· ";
+	private static          string                    IndentUnit => "·· ";
 
 	public enum Mode { Cli, Tui, Quiet }
 
 	/// <summary>
 	/// Creates typed logger preserving class context.
-/// </summary>
-	public static ILogger<T> For<T>() => Factory.CreateLogger<T>();
+	/// </summary>
+	public static ILogger<T> For<T>() {
+		// TODO it should be cached
+		return Factory.CreateLogger<T>();
+	}
 
 	/// <summary>
 	/// Setup Serilog for CLI use: Spectre console (or ANSI console) + rolling file + optional Seq.
@@ -56,10 +57,10 @@ public static class Logging {
 		if (mode == Mode.Cli) {
 			// Human console: prefer Spectre sink when available; fallback to ANSI console sink.
 			cfg = UseSpectreConsole(cfg)
-				?? cfg.WriteTo.Console(
-						outputTemplate: "{Timestamp:HH:mm:ss} {Level:u3} {Indent}{Message:lj}{NewLine}{Exception}",
-						theme: AnsiConsoleTheme.Code,
-						standardErrorFromLevel: LogEventLevel.Warning);
+			      ?? cfg.WriteTo.Console(
+				      outputTemplate: "{Timestamp:HH:mm:ss} {Level:u3} {Indent}{Message:lj}{NewLine}{Exception}",
+				      theme: AnsiConsoleTheme.Code,
+				      standardErrorFromLevel: LogEventLevel.Warning);
 		}
 
 		// File: structured (compact JSON) and readable text side-by-side
@@ -96,12 +97,14 @@ public static class Logging {
 	}
 
 	// -------- Indentation API --------
-	public static IDisposable Push(string? label = null, LogLevel level = LogLevel.Information,
-		[CallerMemberName] string member = "", [CallerFilePath] string file = "") {
+	public static IDisposable Push(string?                   label  = null,
+	                               LogLevel                  level  = LogLevel.Information,
+	                               [CallerMemberName] string member = "",
+	                               [CallerFilePath]   string file   = "") {
 		EnsureStack();
 		if (!string.IsNullOrWhiteSpace(label)) {
 			// Emit label before increasing indent so children align beneath
-			var human = $"({Path.GetFileNameWithoutExtension(file)}.{member}) {label}";
+			string human = $"({Path.GetFileNameWithoutExtension(file)}.{member}) {label}";
 			Serilog.Log.Logger.ForContext("Indent", CurrentIndent())
 				.Write(Convert(level), "{Message}", human);
 		}
@@ -109,8 +112,10 @@ public static class Logging {
 		return new PopScope();
 	}
 
-	public static IDisposable Scope(string label, LogLevel level = LogLevel.Information,
-		[CallerMemberName] string member = "", [CallerFilePath] string file = "") => Push(label, level, member, file);
+	public static IDisposable Scope(string                    label,
+	                                LogLevel                  level  = LogLevel.Information,
+	                                [CallerMemberName] string member = "",
+	                                [CallerFilePath]   string file   = "") => Push(label, level, member, file);
 
 	public static void Pop() {
 		EnsureStack();
@@ -125,6 +130,7 @@ public static class Logging {
 
 	private sealed class PopScope : IDisposable {
 		private bool _disposed;
+
 		public void Dispose() {
 			if (_disposed) return;
 			_disposed = true;
@@ -133,23 +139,23 @@ public static class Logging {
 	}
 
 	// -------- Timed scope (tracer) --------
-	public static IDisposable Time(string name,
-		double thresholdMs = 0,
-		[CallerMemberName] string member = "",
-		[CallerFilePath] string file = "") => new TimerScope(name, thresholdMs, member, file);
+	public static IDisposable Time(string                    name,
+	                               double                    thresholdMs = 0,
+	                               [CallerMemberName] string member      = "",
+	                               [CallerFilePath]   string file        = "") => new TimerScope(name, thresholdMs, member, file);
 
 	private sealed class TimerScope : IDisposable {
-		private readonly string _name;
-		private readonly double _thresholdMs;
-		private readonly string _member;
-		private readonly string _file;
+		private readonly string    _name;
+		private readonly double    _thresholdMs;
+		private readonly string    _member;
+		private readonly string    _file;
 		private readonly Stopwatch _sw = Stopwatch.StartNew();
 
 		public TimerScope(string name, double thresholdMs, string member, string file) {
-			_name       = name;
+			_name        = name;
 			_thresholdMs = thresholdMs;
-			_member     = member;
-			_file       = file;
+			_member      = member;
+			_file        = file;
 		}
 
 		public void Dispose() {
@@ -158,13 +164,13 @@ public static class Logging {
 			if (ms < _thresholdMs) return;
 
 			(string color, string pretty) style = ms switch {
-				<= 200  => ("green",  $"({_sw.Elapsed.TotalSeconds:F3}s) {_name}"),
+				<= 200  => ("green", $"({_sw.Elapsed.TotalSeconds:F3}s) {_name}"),
 				<= 1000 => ("yellow", $"({_sw.Elapsed.TotalSeconds:F3}s) {_name}"),
-				_       => ("red",    $"({_sw.Elapsed.TotalSeconds:F3}s) {_name}")
+				_       => ("red", $"({_sw.Elapsed.TotalSeconds:F3}s) {_name}")
 			};
 
-			string msg = $"[{style.color}]{style.pretty}[/]"; // Spectre markup; harmless if not parsed
-			var human = $"({Path.GetFileNameWithoutExtension(_file)}.{_member}) {msg}";
+			string msg   = $"[{style.color}]{style.pretty}[/]"; // Spectre markup; harmless if not parsed
+			string human = $"({Path.GetFileNameWithoutExtension(_file)}.{_member}) {msg}";
 			Serilog.Log.Logger.ForContext("Indent", CurrentIndent())
 				.Information("{Message}", human);
 		}

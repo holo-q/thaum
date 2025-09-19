@@ -1,8 +1,8 @@
-using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
-using Thaum.Core.Models;
+using Microsoft.Extensions.Logging;
+using Thaum.Core.Crawling;
 
-namespace Thaum.Core.Services;
+namespace Thaum.Core;
 
 public record FileChangeEvent(
 	string            FilePath,
@@ -163,7 +163,7 @@ internal class ProjectWatcher : IDisposable {
 				return new List<CodeSymbol>();
 			}
 
-			var codeMap = await _crawler.CrawlFile(filePath);
+			CodeMap codeMap = await _crawler.CrawlFile(filePath);
 			return codeMap.ToList();
 		} catch (Exception ex) {
 			_logger.LogError(ex, "Error getting affected symbols for {FilePath}", filePath);

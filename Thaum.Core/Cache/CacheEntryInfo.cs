@@ -1,4 +1,4 @@
-namespace Thaum.Core.Models;
+namespace Thaum.Core.Cache;
 
 public class CacheEntryInfo {
 	public required string          Key               { get; init; }

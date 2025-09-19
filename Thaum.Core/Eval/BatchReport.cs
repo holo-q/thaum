@@ -31,8 +31,8 @@ public class BatchReport {
     public BatchSummary Summary { get; set; } = new();
 
     public static BatchReport FromRows(IEnumerable<BatchRow> rows, string language) {
-        var list = rows.ToList();
-        var summary = new BatchSummary {
+        List<BatchRow> list = rows.ToList();
+        BatchSummary summary = new BatchSummary {
             Files     = list.Select(r => r.File).Distinct().Count(),
             Functions = list.Count,
             Passed    = list.Count(r => r.Passed),
