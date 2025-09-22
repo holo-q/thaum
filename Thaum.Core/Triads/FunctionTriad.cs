@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
 using Thaum.Core.Crawling;
-using Thaum.Core.Models;
 
 namespace Thaum.Core.Triads;
 

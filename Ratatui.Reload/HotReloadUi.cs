@@ -1,8 +1,3 @@
-using System;
-using System.Linq;
-using Ratatui;
-using Ratatui.Layout;
-
 namespace Ratatui.Reload;
 
 public readonly record struct HotReloadState(
@@ -34,11 +29,9 @@ internal sealed class DevHostUi : IHotReloadUi {
 	}
 
 	public bool HandleEvent(Event ev) {
-		if (ev.Kind == EventKind.Key) {
-			if (ev.Key.CodeEnum == KeyCode.F12) {
-				_consoleVisible = !_consoleVisible;
-				return true;
-			}
+		if (ev is { Kind: EventKind.Key, Key.CodeEnum: KeyCode.F12 }) {
+			_consoleVisible = !_consoleVisible;
+			return true;
 		}
 		return false;
 	}
@@ -62,15 +55,15 @@ internal sealed class DevHostUi : IHotReloadUi {
 		// Header: build state + time since last success
 		using (Paragraph header = new Paragraph("")) {
 			string state = st.Building ? "building…" : st.BuildFailed  ? "failed" : "ok";
-			Color    color = st.Building ? Color.Yellow : st.BuildFailed ? Color.LightRed : Color.LightGreen;
-			header.AppendSpan("DevHost • ", new Style(fg: Color.Gray));
-			header.AppendSpan(state, new Style(fg: color, bold: true));
+			Colors    colors = st.Building ? Colors.Yellow : st.BuildFailed ? Colors.LightRed : Colors.LightGreen;
+			header.AppendSpan("DevHost • ", new Style(fg: Colors.Gray));
+			header.AppendSpan(state, new Style(fg: colors, bold: true));
 			if (st.LastSuccessUtc.HasValue) {
 				TimeSpan ago = (DateTime.UtcNow - st.LastSuccessUtc.Value);
-				header.AppendSpan($"  last: {FormatAgo(ago)}", new Style(fg: Color.Gray));
+				header.AppendSpan($"  last: {FormatAgo(ago)}", new Style(fg: Colors.Gray));
 			}
 			if (st.ChangesPending) {
-				header.AppendSpan($"  ⟳ changes pending — press {(char)st.ReloadKey}", new Style(fg: Color.LightYellow));
+				header.AppendSpan($"  ⟳ changes pending — press {(char)st.ReloadKey}", new Style(fg: Colors.LightYellow));
 			}
 			term.Draw(header, rHeader);
 		}
@@ -90,12 +83,12 @@ internal sealed class DevHostUi : IHotReloadUi {
 		// Footer: hints
 		using (Paragraph footer = new Paragraph("")) {
 			if (st.Building) {
-				footer.AppendSpan(" ⟳ building… ", new Style(fg: Color.Yellow));
+				footer.AppendSpan(" ⟳ building… ", new Style(fg: Colors.Yellow));
 			} else if (st.BuildFailed) {
-				footer.AppendSpan(" build failed — check console (F12) ", new Style(fg: Color.LightRed));
+				footer.AppendSpan(" build failed — check console (F12) ", new Style(fg: Colors.LightRed));
 			} else {
-				footer.AppendSpan(" F12 dev console  ", new Style(fg: Color.Gray));
-				footer.AppendSpan($" reload {(char)st.ReloadKey} ", new Style(fg: Color.Gray));
+				footer.AppendSpan(" F12 dev console  ", new Style(fg: Colors.Gray));
+				footer.AppendSpan($" reload {(char)st.ReloadKey} ", new Style(fg: Colors.Gray));
 			}
 			term.Draw(footer, rFooter);
 		}

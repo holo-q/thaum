@@ -189,7 +189,7 @@ public static class LangUtil {
 	public static string DetectLanguageInternal(string projectPath, string language) {
 		return language != "auto"
 			? language
-			: LangUtil.DetectLanguage(projectPath);
+			: DetectLanguage(projectPath);
 	}
 
 	public static string? DetectPrimaryLanguage(string projectPath) {

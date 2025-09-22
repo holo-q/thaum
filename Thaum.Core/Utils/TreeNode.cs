@@ -1,7 +1,5 @@
 using Spectre.Console;
 using Thaum.Core.Crawling;
-using Thaum.Core.Models;
-using Thaum.Core.Utils;
 using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.Core.Utils;

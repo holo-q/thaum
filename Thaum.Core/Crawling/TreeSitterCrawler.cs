@@ -32,7 +32,7 @@ public class TreeSitterCrawler : Crawler {
 	private readonly int                                          _maxDegreeOfParallelism;
 
 	public TreeSitterCrawler() {
-		_logger          = Logging.For<TreeSitterCrawler>();
+		_logger          = Logging.Get<TreeSitterCrawler>();
 		_languageConfigs = InitializeLanguageConfigs();
 		_maxDegreeOfParallelism = GetMaxDegreeOfParallelism();
 	}
@@ -96,7 +96,7 @@ public class TreeSitterCrawler : Crawler {
 			int startCol = Math.Max(0, targetSymbol.StartCodeLoc.Character);
 			int endCol   = Math.Max(0, targetSymbol.EndCodeLoc.Character);
 
-			StringBuilder sb = new System.Text.StringBuilder();
+			StringBuilder sb = new StringBuilder();
 			for (int i = startLine; i <= endLine; i++) {
 				string line = lines[i];
 				if (i == startLine && i == endLine) {
@@ -344,7 +344,7 @@ public class TreeSitterCrawler : Crawler {
 		private readonly ILogger<Parser>   _logger;
 
 		public Parser(string language) {
-			_logger                 = Logging.For<Parser>();
+			_logger                 = Logging.Get<Parser>();
 			(string lib, string fn) = ResolveLanguageBinding(language);
 			_language               = new Language(lib, fn);
 			_parser                 = new TreeSitter.Parser(_language);

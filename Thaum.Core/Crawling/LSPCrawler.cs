@@ -16,7 +16,7 @@ public class LSPCrawler : Crawler {
 	private readonly LSPInstance         _lsp;
 
 	public LSPCrawler() {
-		_logger     = Logging.For<LSPCrawler>();
+		_logger     = Logging.Get<LSPCrawler>();
 		_downloader = new LSPDownloader(null, new LSPDownloader.ConsoleDownloadProgress());
 		// _lsp        = new LSPInstance()
 		throw new NotImplementedException(); // TODO
@@ -322,7 +322,7 @@ public class LSPInstance : IDisposable {
 			_reader?.Dispose();
 			_reader = null;
 
-			if (_serverProcess != null && !_serverProcess.HasExited) {
+			if (_serverProcess is { HasExited: false }) {
 				_serverProcess.Kill();
 				await _serverProcess.WaitForExitAsync();
 			}

@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using Thaum.Core.Crawling;
-using Thaum.Core.Models;
 using Thaum.Core.Triads;
 
 namespace Thaum.Core.Eval;
@@ -60,7 +59,7 @@ public static class FidelityEvaluator {
         }
 
         // Minimal gate: triad present + complete + non-trivial function (has any structure)
-        report.PassedMinGate = report.HasTriad && report.TriadComplete && (awaitCount + branchCount + callHeur > 0);
+        report.PassedMinGate = report is { HasTriad: true, TriadComplete: true } && (awaitCount + branchCount + callHeur > 0);
         
         report.Notes = notes.ToArray();
         return report;

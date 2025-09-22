@@ -1,6 +1,5 @@
 using System.Text;
 using Thaum.Core.Crawling;
-using Thaum.Core.Models;
 using Thaum.Core.Services;
 using static System.Console;
 using static Thaum.Core.Utils.Tracer;
@@ -66,7 +65,7 @@ namespace Thaum.Core;
 		HttpLLM    llmProvider = new HttpLLM(httpClient, GLB.AppConfig);
 
 			// Stream response (also capture for artifact persistence)
-			StringBuilder sb = new System.Text.StringBuilder();
+			StringBuilder sb = new StringBuilder();
 			IAsyncEnumerable<string> streamResponse = await llmProvider.StreamCompleteAsync(prompt, GLB.CompressionOptions(model));
 			await foreach (string token in streamResponse) {
 				Write(token);
@@ -97,7 +96,7 @@ namespace Thaum.Core;
 		string prompt = await PromptUtil.BuildCustomPromptAsync(promptName, targetSymbol, context, code);
 
 		// Call LLM and capture output
-		StringBuilder output = new System.Text.StringBuilder();
+		StringBuilder output = new StringBuilder();
 		await _llm.CallPrompt(prompt, $"ROLLOUT_{iRollout}", output);
 
 		return output.ToString();

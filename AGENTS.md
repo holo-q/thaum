@@ -80,3 +80,7 @@ This document is a concise contributor guide for the Thaum repository.
 - Artifacts are written under `cache/` (`cache/sessions`, `cache/evals`); safe to delete locally.
 
 # Additional Work Directives
+
+IMPORTANT:
+
+- Curly braces on same line

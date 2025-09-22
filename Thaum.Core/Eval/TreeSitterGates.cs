@@ -1,4 +1,3 @@
-using Thaum.Core.Utils;
 using TreeSitter;
 
 namespace Thaum.Core.Eval;

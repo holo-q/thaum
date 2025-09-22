@@ -3,8 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 using Thaum.Core;
 using Thaum.Core.Cache;
 using Thaum.Core.Crawling;
-using Thaum.Core.Models;
-using Thaum.Core.Services;
 using static Thaum.Core.Utils.Tracer;
 using Thaum.Core.Utils;
 using static System.Console;

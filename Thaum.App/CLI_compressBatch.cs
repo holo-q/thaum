@@ -6,7 +6,6 @@ using System.Text.Json;
 using Spectre.Console;
 using Thaum.Core;
 using Thaum.Core.Crawling;
-using Thaum.Core.Models;
 using Thaum.Core.Services;
 using Thaum.Core.Triads;
 using Thaum.Core.Utils;
@@ -80,7 +79,7 @@ public partial class CLI {
                     PromptName: null
                 );
 
-                string builtPrompt = await Core.PromptUtil.BuildCustomPromptAsync(prompt, sym, context, src);
+                string builtPrompt = await PromptUtil.BuildCustomPromptAsync(prompt, sym, context, src);
 
                 // Stream and capture output
                 StringBuilder            sb     = new StringBuilder();

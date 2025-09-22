@@ -2,7 +2,6 @@ using Spectre.Console;
 using Thaum.Core;
 using Thaum.Core.Crawling;
 using Thaum.Core.Eval;
-using Thaum.Core.Models;
 using static System.Console;
 using Thaum.Core.Triads;
 using Thaum.Core.Utils;

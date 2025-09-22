@@ -25,7 +25,7 @@ public class Cache : ICache {
 	/// dependencies where JSON serialization preserves type fidelity across cache boundaries
 	/// </summary>
 	public Cache(IConfiguration configuration) {
-		_logger = Logging.For<Cache>();
+		_logger = Logging.Get<Cache>();
 
 		// Simple cache directory - works on all platforms
 		string cacheDir = GLB.CacheDir;

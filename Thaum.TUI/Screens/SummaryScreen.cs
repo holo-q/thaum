@@ -1,61 +1,83 @@
 using Ratatui;
+using Ratatui.Sugar;
 using Thaum.Core.Crawling;
 using static Thaum.App.RatatuiTUI.Rat;
-using static Thaum.App.RatatuiTUI.RatLayout;
-using Thaum.Core.Models;
 
 namespace Thaum.App.RatatuiTUI;
 
-public sealed class SummaryScreen : Screen {
+public sealed class SummaryScreen : ThaumScreen {
 	private bool _keysReady;
 
-	public SummaryScreen(ThaumTUI tui, IEditorOpener opener, string projectPath)
-		: base(tui, opener, projectPath) { }
+	public SummaryScreen(ThaumTUI tui)
+		: base(tui) { }
 
-	public override void Draw(Terminal term, Rect area, ThaumTUI.State app, string projectPath) {
-        Paragraph title = Paragraph("", title: "Summary", title_border: true);
-        (Rect titleRect, Rect bodyRect) = area.SplitTop(2);
-        term.Draw(title, titleRect);
-        string          bodyText = app.isLoading ? $"Summarizing… {Styles.Spinner()}" : (app.summary ?? "No summary yet. Press 3 to (re)generate.");
-        Paragraph para     = Paragraph("");
-        if (bodyText.StartsWith("Error:")) para.AppendSpan(bodyText, Styles.S_ERROR);
-        else para.AppendSpan(bodyText);
-        term.Draw(para, bodyRect);
+	public override void Draw(Terminal term, Rect area) {
+		Paragraph title = Paragraph(title: "Summary", title_border: true);
+		(Rect titleRect, Rect bodyRect) = area.SplitTop(2);
+
+		term.Draw(title, titleRect);
+
+		bool isCurrentSymbolLoading = model.visibleSymbols.Count > 0 && model.IsSymbolLoading(model.visibleSymbols.Selected);
+		string bodyText = isCurrentSymbolLoading
+			? $"Summarizing… {Styles.Spinner()}"
+			: (model.summary ?? "No summary yet. Press 3 to (re)generate.");
+
+		Paragraph p = Paragraph();
+		if (bodyText.StartsWith("Error:"))
+			p.AppendSpan(bodyText, Styles.S_ERROR);
+		else
+			p.AppendSpan(bodyText);
+		term.Draw(p, bodyRect);
 	}
 
-    public override Task OnEnter(ThaumTUI.State app) {
-        if (!_keysReady) { ConfigureKeys(); _keysReady = true; keys.DumpBindings(nameof(SummaryScreen)); }
-        return Task.CompletedTask;
-    }
+	public override Task OnEnter() {
+		if (!_keysReady) {
+			ConfigureKeys();
+			_keysReady = true;
+			keys.DumpBindings(nameof(SummaryScreen));
+		}
+		return Task.CompletedTask;
+	}
 
-	public override string FooterHint(ThaumTUI.State app)
-		=> (app.isLoading ? "Summarizing…" : "");
+	public override string FooterMsg => (model.visibleSymbols.Count > 0 && model.IsSymbolLoading(model.visibleSymbols.Selected)) ? "Summarizing…" : "";
 
-	public override string Title(ThaumTUI.State app) => "Summary";
+	public override string TitleMsg => "Summary";
 
 	private void ConfigureKeys() {
-		ConfigureDefaultGlobalKeys();
 		keys
 			.RegisterChar('3', "summarize", KEY_Summarize)
 			.RegisterChar('o', "open in editor", KEY_OpenInEditor);
 	}
 
-	private bool KEY_Summarize(ThaumTUI.State a) {
-		if (a is { isLoading: false, visibleSymbols.Count: > 0 } && string.IsNullOrEmpty(a.summary)) {
-			StartTask(async _ => {
-				a.isLoading = true;
-				try {
-						a.summary = await tui.LoadSymbolDetail(a.visibleSymbols.Selected);
-				} finally { a.isLoading = false; }
-			});
+	private bool KEY_Summarize(ThaumTUI tui) {
+		if (model.visibleSymbols.Count > 0) {
+			CodeSymbol currentSymbol = model.visibleSymbols.Selected;
+
+			// Don't start if already loading this symbol
+			if (model.IsSymbolLoading(currentSymbol)) {
+				return true;
+			}
+
+			// Only start if no summary exists or we want to regenerate
+			if (string.IsNullOrEmpty(model.summary)) {
+				var task = tui.tasks.Start("Summarize", async _ => {
+					try {
+						model.summary = await tui.LoadSymbolDetail(currentSymbol);
+					} finally {
+						model.CompleteSymbolTask(currentSymbol);
+					}
+				}, currentSymbol);
+
+				model.StartSymbolTask(currentSymbol, task);
+			}
 		}
 		return true;
 	}
 
-	private bool KEY_OpenInEditor(ThaumTUI.State a) {
-		if (a.visibleSymbols.Count > 0) {
-		CodeSymbol s = a.visibleSymbols.Selected;
-			opener.Open(projectPath, s.FilePath, Math.Max(1, s.StartCodeLoc.Line));
+	private bool KEY_OpenInEditor(ThaumTUI tui) {
+		if (model.visibleSymbols.Count > 0) {
+			CodeSymbol s = model.visibleSymbols.Selected;
+			SysUtil.OpenInEditor(tui.projectPath, s.FilePath, Math.Max(1, s.StartCodeLoc.Line));
 			return true;
 		}
 		return false;

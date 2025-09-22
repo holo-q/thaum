@@ -1,29 +1,29 @@
 using System.Text;
 using Ratatui;
+using Ratatui.Sugar;
 using static Thaum.App.RatatuiTUI.Rat;
-using static Thaum.App.RatatuiTUI.RatLayout;
 
 namespace Thaum.App.RatatuiTUI;
 
-public sealed class ReferencesScreen : Screen {
+public sealed class ReferencesScreen : ThaumScreen {
 	private bool _keysReady;
 
-	public ReferencesScreen(ThaumTUI tui, IEditorOpener opener, string projectPath)
-		: base(tui, opener, projectPath) { }
+	public ReferencesScreen(ThaumTUI tui)
+		: base(tui) { }
 
-	public override void Draw(Terminal term, Rect area, ThaumTUI.State app, string projectPath) {
-        Paragraph title = Paragraph("", title: "References", title_border: true);
-        (Rect titleRect, Rect listRect) = area.SplitTop(2);
-        term.Draw(title, titleRect);
-        List          list  = List();
-        int view = Math.Max(1, listRect.Height);
-        if (app.refs is { Count: > 0 }) {
-            if (app.refsSelected < app.refsOffset) app.refsOffset = app.refsSelected;
-            if (app.refsSelected >= app.refsOffset + view) app.refsOffset = Math.Max(0, app.refsSelected - (view - 1));
-        }
-        List<CodeRef>       refs  = app.refs ?? new List<CodeRef>();
-        int                 start = Math.Max(0, app.refsOffset);
-        int                 end   = Math.Min(refs.Count, start + view);
+	public override void Draw(Terminal term, Rect area) {
+		Paragraph title = Paragraph("", title: "References", title_border: true);
+		(Rect titleRect, Rect listRect) = area.SplitTop(2);
+		term.Draw(title, titleRect);
+		List list = List();
+		int  view = Math.Max(1, listRect.Height);
+		if (model.refs is { Count: > 0 }) {
+			if (model.refsSelected < model.refsOffset) model.refsOffset         = model.refsSelected;
+			if (model.refsSelected >= model.refsOffset + view) model.refsOffset = Math.Max(0, model.refsSelected - (view - 1));
+		}
+		List<CodeRef> refs  = model.refs ?? new List<CodeRef>();
+		int           start = Math.Max(0, model.refsOffset);
+		int           end   = Math.Min(refs.Count, start + view);
 		for (int i = start; i < end; i++) {
 			(string f, int ln, string nm) = refs[i];
 			Memory<byte> lhs = Encoding.UTF8.GetBytes($"{Path.GetFileName(f)}:{ln}  ").AsMemory();
@@ -34,22 +34,29 @@ public sealed class ReferencesScreen : Screen {
 			};
 			list.AppendItem(runs.Span);
 		}
-        term.Draw(list, listRect);
+		term.Draw(list, listRect);
 	}
 
-    public override Task OnEnter(ThaumTUI.State app) {
-        if (!_keysReady) { ConfigureKeys(); _keysReady = true; keys.DumpBindings(nameof(ReferencesScreen)); }
-        // Load refs asynchronously so any crawler exceptions are surfaced as screen ErrorMessage
-        StartTask(async _ => { await tui.EnsureRefs(app); });
-        return Task.CompletedTask;
-    }
+	public override Task OnEnter() {
+		if (!_keysReady) {
+			ConfigureKeys();
+			_keysReady = true;
+			keys.DumpBindings(nameof(ReferencesScreen));
+		}
 
-	public override string FooterHint(ThaumTUI.State app) => "↑/↓ scroll  o open";
+		// Load refs asynchronously so any crawler exceptions are surfaced as screen ErrorMessage
+		tui.tasks.Start("Load Refs", async _ => {
+			await model.EnsureRefs();
+		});
 
-	public override string Title(ThaumTUI.State app) => "References";
+		return Task.CompletedTask;
+	}
+
+	public override string FooterMsg => "↑/↓ scroll  o open";
+
+	public override string TitleMsg => "References";
 
 	private void ConfigureKeys() {
-		ConfigureDefaultGlobalKeys();
 		keys
 			.RegisterKey(KeyCode.Down, "↓", "move", KEY_Down)
 			.RegisterKey(KeyCode.Up, "↑", "move", KEY_Up)
@@ -58,46 +65,46 @@ public sealed class ReferencesScreen : Screen {
 			.RegisterChar('o', "open in editor", KEY_OpenInEditor);
 	}
 
-	private bool KEY_OpenInEditor(ThaumTUI.State a) {
-		if (a.refs is { Count: > 0 }) {
-			(string f, int ln, string _) = a.refs[Math.Min(a.refsSelected, a.refs.Count - 1)];
-			opener.Open(projectPath, f, Math.Max(1, ln));
+	private bool KEY_OpenInEditor(ThaumTUI tui) {
+		if (model.refs is { Count: > 0 }) {
+			(string f, int ln, string _) = model.refs[Math.Min(model.refsSelected, model.refs.Count - 1)];
+			SysUtil.OpenInEditor(tui.projectPath, f, Math.Max(1, ln));
 			return true;
 		}
 		return false;
 	}
 
-	private bool Key_PageUp(ThaumTUI.State a) {
-		if (a.refs is { Count: > 0 }) {
-			a.refsSelected = Math.Max(a.refsSelected - 10, 0);
-			tui.EnsureVisible(ref a.refsOffset, a.refsSelected);
+	private bool Key_PageUp(ThaumTUI tui) {
+		if (model.refs is { Count: > 0 }) {
+			model.refsSelected = Math.Max(model.refsSelected - 10, 0);
+			tui.EnsureVisible(ref model.refsOffset, model.refsSelected);
 			return true;
 		}
 		return false;
 	}
 
-	private bool KEY_PageDown(ThaumTUI.State a) {
-		if (a.refs is { Count: > 0 }) {
-			a.refsSelected = Math.Min(a.refsSelected + 10, a.refs.Count - 1);
-			tui.EnsureVisible(ref a.refsOffset, a.refsSelected);
+	private bool KEY_PageDown(ThaumTUI tui) {
+		if (model.refs is { Count: > 0 }) {
+			model.refsSelected = Math.Min(model.refsSelected + 10, model.refs.Count - 1);
+			tui.EnsureVisible(ref model.refsOffset, model.refsSelected);
 			return true;
 		}
 		return false;
 	}
 
-	private bool KEY_Up(ThaumTUI.State a) {
-		if (a.refs is { Count: > 0 }) {
-			a.refsSelected = Math.Max(a.refsSelected - 1, 0);
-			tui.EnsureVisible(ref a.refsOffset, a.refsSelected);
+	private bool KEY_Up(ThaumTUI tui) {
+		if (model.refs is { Count: > 0 }) {
+			model.refsSelected = Math.Max(model.refsSelected - 1, 0);
+			tui.EnsureVisible(ref model.refsOffset, model.refsSelected);
 			return true;
 		}
 		return false;
 	}
 
-	private bool KEY_Down(ThaumTUI.State a) {
-		if (a.refs is { Count: > 0 }) {
-			a.refsSelected = Math.Min(a.refsSelected + 1, a.refs.Count - 1);
-			tui.EnsureVisible(ref a.refsOffset, a.refsSelected);
+	private bool KEY_Down(ThaumTUI tui) {
+		if (model.refs is { Count: > 0 }) {
+			model.refsSelected = Math.Min(model.refsSelected + 1, model.refs.Count - 1);
+			tui.EnsureVisible(ref model.refsOffset, model.refsSelected);
 			return true;
 		}
 		return false;

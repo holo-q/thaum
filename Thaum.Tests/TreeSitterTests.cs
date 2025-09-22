@@ -3,8 +3,6 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 using FluentAssertions;
 using Thaum.Core.Crawling;
-using Thaum.Core.Services;
-using Thaum.Core.Models;
 
 namespace Thaum.Tests;
 

@@ -35,7 +35,7 @@ public static class SignatureExtractor {
 								paramCount = CountParams(n);
 								break;
 							default: {
-								if (n.Type == "predefined_type" || n.Type == "qualified_name" || n.Type == "identifier") {
+								if (n.Type is "predefined_type" or "qualified_name" or "identifier") {
 									// heuristically capture return type: first type before identifier (name)
 									// we'll refine: check sibling ordering
 								}

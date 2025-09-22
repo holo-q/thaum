@@ -1,9 +1,6 @@
 using Microsoft.Extensions.Logging;
 using static Thaum.Core.Utils.Tracer;
 using System.Diagnostics.CodeAnalysis;
-using Thaum.App.RatatuiTUI;
-using Thaum.Core.Models;
-using Microsoft.Extensions.DependencyInjection;
 using Ratatui.Reload;
 using Thaum.Core.Utils;
 

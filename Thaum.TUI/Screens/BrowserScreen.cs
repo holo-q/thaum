@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Ratatui;
 using Ratatui.Layout;
+using Ratatui.Sugar;
 using Thaum.Core.Crawling;
 using static Thaum.App.RatatuiTUI.RatLayout;
 using static Thaum.App.RatatuiTUI.Rat;
@@ -11,23 +12,61 @@ namespace Thaum.App.RatatuiTUI;
 /// <summary>
 /// Presents the browser view with file and symbol lists alongside symbol metadata.
 /// </summary>
-public sealed class BrowserScreen : Screen {
+public sealed class BrowserScreen : ThaumScreen {
 	private bool _keysReady;
 
-	public BrowserScreen(ThaumTUI tui, IEditorOpener opener, string projectPath)
-		: base(tui, opener, projectPath) { }
+	public BrowserScreen(ThaumTUI tui) : base(tui) { }
 
-	public override string FooterHint(ThaumTUI.State app)
+	private void ConfigureKeys() {
+		static bool IsFilterChar(char ch) => char.IsLetterOrDigit(ch) || ch == ' ' || ch == '-' || ch == '_' || ch == '.' || ch == '/';
+
+		// ConfigureDefaultGlobalKeys();
+		tui.keys.RegisterKey(KeyCode.Down, "↓", "move", KEY_Down);
+		tui.keys.RegisterKey(KeyCode.Up, "↑", "move", KEY_Up);
+		tui.keys.RegisterKey(KeyCode.PAGE_DOWN, "PgDn", "jump", KEY_JumpDown);
+		tui.keys.RegisterKey(KeyCode.PAGE_UP, "PgUp", "jump", KEY_JumpUp);
+		tui.keys.RegisterKey(KeyCode.Left, "←", "switch focus", KEY_Tab);
+		tui.keys.RegisterChar('j', "↓", KEY_Down);
+		tui.keys.RegisterChar('k', "↑", KEY_Up);
+		tui.keys.RegisterKey(KeyCode.TAB, "Tab", "switch focus", KEY_Tab);
+		tui.keys.RegisterKey(KeyCode.ENTER, "Enter", "open/summarize", KEY_Enter);
+		tui.keys.RegisterChar('o', "open in editor", KEY_OpenInEditor);
+		tui.keys.RegisterChar('/', "filter", KEY_Filter);
+		tui.keys.Register(
+			"char",
+			"type filter",
+			ev => ev is { Kind: EventKind.Key, Key.CodeEnum: KeyCode.Char } && IsFilterChar((char)ev.Key.Char),
+			(ev, tui) => {
+				if (model.focus == ThaumTUI.Panel.Files) {
+					model.fileFilter += (char)ev.Key.Char;
+					model.ApplyFileFilter();
+				} else {
+					model.symFilter += (char)ev.Key.Char;
+					model.ApplySymbolFilter();
+				}
+				return true;
+			});
+		tui.keys.RegisterKey(KeyCode.Delete, "Backspace", "erase", KEY_Erase);
+		return;
+	}
+
+	// public override void Draw(Terminal term, Rect area, ThaumTUI tui, string projectPath) {
+	// 	throw new NotImplementedException();
+	// }
+
+	public override string TitleMsg
+		=> $"Browser — Focus: {(tui.model.focus == ThaumTUI.Panel.Files ? "Files" : "Symbols")}";
+
+	public override string FooterMsg
 		=> "↑/↓ move  Tab switch  / filter  Enter open/summarize  o open";
 
-	public override string Title(ThaumTUI.State app)
-		=> $"Browser — Focus: {(app.focus == ThaumTUI.Panel.Files ? "Files" : "Symbols")}";
-
 	[SuppressMessage("ReSharper", "InconsistentNaming")]
-	public override void Draw(Terminal term, Rect area, ThaumTUI.State app, string projectPath) {
-		bool hasSym     = app.visibleSymbols.Count > 0;
-		bool filesFocus = app.focus == ThaumTUI.Panel.Files;
-		bool symsFocus  = app.focus == ThaumTUI.Panel.Symbols;
+	public override void Draw(Terminal term, Rect area) {
+		var state = tui.model;
+
+		bool hasSym     = state.visibleSymbols.Count > 0;
+		bool filesFocus = state.focus == ThaumTUI.Panel.Files;
+		bool symsFocus  = state.focus == ThaumTUI.Panel.Symbols;
 
 		IReadOnlyList<Rect> cols = SplitV(area, [
 			Constraint.Percentage(30),
@@ -35,8 +74,8 @@ public sealed class BrowserScreen : Screen {
 			Constraint.Percentage(40)
 		], gap: 1, margin: 0);
 
-		string t1 = app.fileFilter.Length == 0 ? "(/ to filter)" : $"/{app.fileFilter}";
-		string t2 = app.symFilter.Length == 0 ? "(type to filter)" : $"/{app.symFilter}";
+		string t1 = state.fileFilter.Length == 0 ? "(/ to filter)" : $"/{state.fileFilter}";
+		string t2 = state.symFilter.Length == 0 ? "(type to filter)" : $"/{state.symFilter}";
 
 		Rect      r1        = cols[0];
 		Paragraph r1title   = Paragraph(t1, title: "Files", title_border: true);
@@ -64,7 +103,15 @@ public sealed class BrowserScreen : Screen {
 		//            (filesFocus ? " Files " : " files ");
 		// term.Draw(lbFiles, r1inner.WithMinSize(1, 1));
 
-		app.visibleFiles.Draw(term, r1content, 0, FileLine, _ => S_PATH);
+		string FileLine(string path) {
+			try {
+				return Path.GetRelativePath(tui.projectPath, path);
+			} catch {
+				return Path.GetFileName(path);
+			}
+		}
+
+		state.visibleFiles.Draw(term, r1content, 0, FileLine, _ => S_PATH);
 
 		// SYMBOLS
 		// full-height border with title; draw content inside inner rect
@@ -76,18 +123,19 @@ public sealed class BrowserScreen : Screen {
 		            (symsFocus ? S_TITLE_ACTIVE : S_TITLE_DIM);
 		// term.Draw(pSymbols, r2header.WithMinSize(minWidth: 1, minHeight: 1));
 
-		app.visibleSymbols.Draw(term, r2content, 0, SymbolLine, s => ThaumStyles.StyleForKind(s.Kind));
+		state.visibleSymbols.Draw(term, r2content, 0, SymbolLine, s => ThaumStyles.StyleForKind(s.Kind));
 
 		term.Draw(Paragraph("", "Details", true)
-				.AppendLine(!hasSym ? "" : $"Name: {app.visibleSymbols.Selected.Name}")
-				.AppendLine(!hasSym ? "" : $"Kind: {app.visibleSymbols.Selected.Kind}")
-				.AppendLine(!hasSym ? "" : $"File: {app.visibleSymbols.Selected.FilePath}")
-				.AppendLine(!hasSym ? "" : $"Span: L{app.visibleSymbols.Selected.StartCodeLoc.Line}:C{app.visibleSymbols.Selected.StartCodeLoc.Character}"),
+				.AppendLine(!hasSym ? "" : $"Name: {state.visibleSymbols.Selected.Name}")
+				.AppendLine(!hasSym ? "" : $"Kind: {state.visibleSymbols.Selected.Kind}")
+				.AppendLine(!hasSym ? "" : $"File: {state.visibleSymbols.Selected.FilePath}")
+				.AppendLine(!hasSym ? "" : $"Span: L{state.visibleSymbols.Selected.StartCodeLoc.Line}:C{state.visibleSymbols.Selected.StartCodeLoc.Character}"),
 			rDetails);
 
-		string body = app.isLoading
+		bool isCurrentSymbolLoading = state.visibleSymbols.Count > 0 && state.IsSymbolLoading(state.visibleSymbols.Selected);
+		string body = isCurrentSymbolLoading
 			? $"Summarizing… {Spinner()}"
-			: app.summary ?? "";
+			: state.summary ?? "";
 
 		Paragraph detail = Paragraph("", title: "Summary", title_border: true);
 		if (body.StartsWith("Error:"))
@@ -100,7 +148,7 @@ public sealed class BrowserScreen : Screen {
 
 
 	// Key help comes from KeybindManager registrations
-	public override Task OnEnter(ThaumTUI.State app) {
+	public override Task OnEnter() {
 		if (!_keysReady) {
 			ConfigureKeys();
 			_keysReady = true;
@@ -109,105 +157,85 @@ public sealed class BrowserScreen : Screen {
 		return Task.CompletedTask;
 	}
 
-	private void ConfigureKeys() {
-		static bool IsFilterChar(char ch) => char.IsLetterOrDigit(ch) || ch == ' ' || ch == '-' || ch == '_' || ch == '.' || ch == '/';
 
-		ConfigureDefaultGlobalKeys();
-		keys.RegisterKey(KeyCode.Down, "↓", "move", KEY_Down);
-		keys.RegisterKey(KeyCode.Up, "↑", "move", KEY_Up);
-		keys.RegisterKey(KeyCode.PAGE_DOWN, "PgDn", "jump", KEY_JumpDown);
-		keys.RegisterKey(KeyCode.PAGE_UP, "PgUp", "jump", KEY_JumpUp);
-		keys.RegisterKey(KeyCode.Left, "←", "switch focus", KEY_Tab);
-		keys.RegisterChar('j', "↓", KEY_Down);
-		keys.RegisterChar('k', "↑", KEY_Up);
-		keys.RegisterKey(KeyCode.TAB, "Tab", "switch focus", KEY_Tab);
-		keys.RegisterKey(KeyCode.ENTER, "Enter", "open/summarize", KEY_Enter);
-		keys.RegisterChar('o', "open in editor", KEY_OpenInEditor);
-		keys.RegisterChar('/', "filter", KEY_Filter);
-		keys.Register(
-			"char",
-			"type filter",
-			ev => ev is { Kind: EventKind.Key, Key.CodeEnum: KeyCode.Char } && IsFilterChar((char)ev.Key.Char),
-			(ev, a) => {
-				if (a.focus == ThaumTUI.Panel.Files) {
-					a.fileFilter += (char)ev.Key.Char;
-					ApplyFileFilter(a);
-				} else {
-					a.symFilter += (char)ev.Key.Char;
-					ApplySymbolFilter(a);
-				}
-				return true;
-			});
-		keys.RegisterKey(KeyCode.Delete, "Backspace", "erase", KEY_Erase);
-		return;
-	}
-
-	private bool KEY_Tab(ThaumTUI.State a) {
+	private bool KEY_Tab(ThaumTUI tui) {
+		var a = tui.model;
 		a.focus = a.focus == ThaumTUI.Panel.Files ? ThaumTUI.Panel.Symbols : ThaumTUI.Panel.Files;
 		return true;
 	}
 
-	private bool KEY_Erase(ThaumTUI.State a) {
-		switch (a.focus) {
-			case ThaumTUI.Panel.Files when a.fileFilter.Length > 0:
-				a.fileFilter = a.fileFilter[..^1];
-				ApplyFileFilter(a);
+	private bool KEY_Erase(ThaumTUI tui) {
+		switch (model.focus) {
+			case ThaumTUI.Panel.Files when model.fileFilter.Length > 0:
+				model.fileFilter = model.fileFilter[..^1];
+				model.ApplyFileFilter();
 				return true;
-			case ThaumTUI.Panel.Symbols when a.symFilter.Length > 0:
-				a.symFilter = a.symFilter[..^1];
-				ApplySymbolFilter(a);
+			case ThaumTUI.Panel.Symbols when model.symFilter.Length > 0:
+				model.symFilter = model.symFilter[..^1];
+				model.ApplySymbolFilter();
 				return true;
 			default:
 				return false;
 		}
 	}
 
-	private bool KEY_Filter(ThaumTUI.State a) {
-		if (a.focus == ThaumTUI.Panel.Files) {
-			a.fileFilter = string.Empty;
-			ApplyFileFilter(a);
+	private bool KEY_Filter(ThaumTUI tui) {
+		if (model.focus == ThaumTUI.Panel.Files) {
+			model.fileFilter = string.Empty;
+			model.ApplyFileFilter();
 		} else {
-			a.symFilter = string.Empty;
-			ApplySymbolFilter(a);
+			model.symFilter = string.Empty;
+			model.ApplySymbolFilter();
 		}
 		return true;
 	}
 
-	private bool KEY_OpenInEditor(ThaumTUI.State a) {
+	private bool KEY_OpenInEditor(ThaumTUI tui) {
+		var a = tui.model;
 		if (a.visibleSymbols.Count > 0) {
 			CodeSymbol s = a.visibleSymbols.Selected;
-			opener.Open(projectPath, s.FilePath, Math.Max(1, s.StartCodeLoc.Line));
+			SysUtil.OpenInEditor(tui.projectPath, s.FilePath, Math.Max(1, s.StartCodeLoc.Line));
 			return true;
 		}
 		return false;
 	}
 
-	private bool KEY_Enter(ThaumTUI.State a) {
-		switch (a.focus) {
-			case ThaumTUI.Panel.Files when a.visibleFiles.Count > 0: {
-				string file = a.visibleFiles.Selected;
-				a.visibleSymbols.Reset(a.allSymbols.Where(s => s.FilePath == file), 0);
-				a.symOffset = 0;
-				a.summary   = null;
+	private bool KEY_Enter(ThaumTUI tui) {
+		switch (model.focus) {
+			case ThaumTUI.Panel.Files when model.visibleFiles.Count > 0: {
+				string file = model.visibleFiles.Selected;
+				model.visibleSymbols.Reset(model.allSymbols.Where(s => s.FilePath == file), 0);
+				model.symOffset = 0;
+				model.summary   = null;
 				return true;
 			}
-			case ThaumTUI.Panel.Symbols when a.visibleSymbols.Count > 0 && !a.isLoading:
-				StartTask(async _ => {
-					a.isLoading = true;
+			case ThaumTUI.Panel.Symbols when model.visibleSymbols.Count > 0: {
+				CodeSymbol currentSymbol = model.visibleSymbols.Selected;
+
+				// Don't start if already loading this symbol
+				if (model.IsSymbolLoading(currentSymbol)) {
+					return true;
+				}
+
+				var task = tui.tasks.Start("Summarize", async _ => {
 					try {
-						a.summary = await tui.LoadSymbolDetail(a.visibleSymbols.Selected);
+						model.summary = await tui.LoadSymbolDetail(currentSymbol);
 					} finally {
-						a.isLoading = false;
+						model.CompleteSymbolTask(currentSymbol);
 					}
-				});
+				}, currentSymbol);
+
+				model.StartSymbolTask(currentSymbol, task);
 				return true;
+			}
 			default:
 				return false;
 		}
 	}
 
 
-	private bool KEY_JumpUp(ThaumTUI.State a) {
+	private bool KEY_JumpUp(ThaumTUI tui) {
+		var a = tui.model;
 		switch (a.focus) {
 			case ThaumTUI.Panel.Files when a.visibleFiles.Count > 0:
 				a.SelectedFile = Math.Max(a.SelectedFile - 10, 0);
@@ -223,7 +251,8 @@ public sealed class BrowserScreen : Screen {
 		}
 	}
 
-	private bool KEY_JumpDown(ThaumTUI.State a) {
+	private bool KEY_JumpDown(ThaumTUI tui) {
+		var a = tui.model;
 		switch (a.focus) {
 			case ThaumTUI.Panel.Files when a.visibleFiles.Count > 0:
 				a.SelectedFile = Math.Min(a.SelectedFile + 10, a.visibleFiles.Count - 1);
@@ -239,7 +268,8 @@ public sealed class BrowserScreen : Screen {
 		}
 	}
 
-	private bool KEY_Up(ThaumTUI.State a) {
+	private bool KEY_Up(ThaumTUI tui) {
+		var a = tui.model;
 		if (a.visibleFiles.Count > 0 && a.focus == ThaumTUI.Panel.Files) {
 			a.SelectedFile = Math.Max(a.SelectedFile - 1, 0);
 			tui.EnsureVisible(ref a.fileOffset, a.SelectedFile);
@@ -254,7 +284,8 @@ public sealed class BrowserScreen : Screen {
 		return false;
 	}
 
-	private bool KEY_Down(ThaumTUI.State a) {
+	private bool KEY_Down(ThaumTUI tui) {
+		var a = tui.model;
 		if (a.visibleFiles.Count > 0 && a.focus == ThaumTUI.Panel.Files) {
 			a.SelectedFile = Math.Min(a.SelectedFile + 1, a.visibleFiles.Count - 1);
 			tui.EnsureVisible(ref a.fileOffset, a.SelectedFile);
@@ -269,39 +300,8 @@ public sealed class BrowserScreen : Screen {
 		return false;
 	}
 
-	private string FileLine(string path) {
-		try {
-			return Path.GetRelativePath(projectPath, path);
-		} catch {
-			return Path.GetFileName(path);
-		}
-	}
 
 	private static string SymbolLine(CodeSymbol s)
 		=> $"{s.Kind switch { SymbolKind.Class => "[C]", SymbolKind.Method => "[M]", SymbolKind.Function => "[F]", SymbolKind.Interface => "[I]", SymbolKind.Enum => "[E]", _ => "[·]" }} {s.Name.Replace('\n', ' ')}";
 
-	private static void ApplyFileFilter(ThaumTUI.State app) {
-		app.visibleFiles.Reset(string.IsNullOrWhiteSpace(app.fileFilter)
-			? app.allFiles
-			: app.allFiles.Where(p => p.ToLowerInvariant().Contains(app.fileFilter.ToLowerInvariant())), 0);
-
-		app.fileOffset = 0;
-		app.summary    = null;
-		string? file = app.visibleFiles.SafeSelected;
-		if (file is null) app.visibleSymbols.Clear();
-		else app.visibleSymbols.Reset(app.allSymbols.Where(s => s.FilePath == file), 0);
-		app.symOffset = 0;
-	}
-
-	private static void ApplySymbolFilter(ThaumTUI.State app) {
-		string?                 file    = app.visibleFiles.SafeSelected;
-		IEnumerable<CodeSymbol> baseSet = string.IsNullOrEmpty(file) ? app.allSymbols : app.allSymbols.Where(s => s.FilePath == file);
-		app.visibleSymbols.Reset(string.IsNullOrWhiteSpace(app.symFilter)
-			? baseSet
-			: baseSet.Where(s => s.Name.ToLowerInvariant().Contains(app.symFilter.ToLowerInvariant())), 0);
-		app.symOffset = 0;
-		app.summary   = null;
-	}
-
-	// Paragraph-based fallback retained for reference; not used after frame-mode support.
 }

@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using McMaster.Extensions.CommandLineUtils;
-using Thaum.Core.Services;
 using Thaum.Core.Models;
 using Thaum.Core.Utils;
 using static Thaum.Core.Utils.Tracer;
@@ -33,7 +32,7 @@ public partial class CLI {
 		HttpClient httpClient = new HttpClient();
 
 		_crawler = new TreeSitterCrawler();
-		_logger  = Logging.For<CLI>();
+		_logger  = Logging.Get<CLI>();
 		_colorer = new PerceptualColorer();
 
 		// Initialize trace logger first

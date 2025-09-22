@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 namespace Thaum.Core.Eval;
 
 public class FidelityReport {

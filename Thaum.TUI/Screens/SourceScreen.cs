@@ -1,36 +1,34 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using Ratatui;
+using Ratatui.Sugar;
 using Thaum.Core.Crawling;
-using Thaum.Core.Models;
 using static Thaum.App.RatatuiTUI.Rat;
-using static Thaum.App.RatatuiTUI.RatLayout;
 
 namespace Thaum.App.RatatuiTUI;
 
 /// <summary>
 /// Shows the source code for the currently selected symbol with syntax highlighting.
 /// </summary>
-public class SourceScreen : Screen {
-	public SourceScreen(ThaumTUI tui, IEditorOpener opener, string projectPath)
-		: base(tui, opener, projectPath) { }
+public class SourceScreen : ThaumScreen {
+	public SourceScreen(ThaumTUI tui) : base(tui) { }
 
-	public override void Draw(Terminal term, Rect area, ThaumTUI.State app, string projectPath) {
+	public override void Draw(Terminal term, Rect area) {
         Paragraph title = Paragraph("", title: "Source", title_border: true);
         (Rect titleRect, Rect listRect) = area.SplitTop(2);
         term.Draw(title, titleRect);
 
-        List<string> lines = app.sourceLines ?? new List<string>();
+        List<string> lines = model.sourceLines ?? new List<string>();
         List   list  = List();
         int view = Math.Max(1, listRect.Height - 1);
-        if (app.sourceSelected < app.sourceOffset) app.sourceOffset = app.sourceSelected;
-        if (app.sourceSelected >= app.sourceOffset + view) app.sourceOffset = Math.Max(0, app.sourceSelected - (view - 1));
-        int start = Math.Max(0, app.sourceOffset);
+        if (model.sourceSelected < model.sourceOffset) model.sourceOffset = model.sourceSelected;
+        if (model.sourceSelected >= model.sourceOffset + view) model.sourceOffset = Math.Max(0, model.sourceSelected - (view - 1));
+        int start = Math.Max(0, model.sourceOffset);
         int end   = Math.Min(lines.Count, start + view);
 
 		int symStartLine = 0, symEndLine = -1, symStartCol = 0, symEndCol = 0;
-		if (app.visibleSymbols.Count > 0) {
-			CodeSymbol s = app.visibleSymbols.Selected;
+		if (model.visibleSymbols.Count > 0) {
+			CodeSymbol s = model.visibleSymbols.Selected;
 			symStartLine = Math.Max(1, s.StartCodeLoc.Line);
 			symEndLine   = Math.Max(symStartLine, s.EndCodeLoc.Line);
 			symStartCol  = Math.Max(0, s.StartCodeLoc.Character);
@@ -60,15 +58,14 @@ public class SourceScreen : Screen {
         term.Draw(list, listRect);
 	}
 
-    public override Task OnEnter(ThaumTUI.State app) {
+    public override Task OnEnter() {
         if (!_keysReady) { ConfigureKeys(); _keysReady = true; keys.DumpBindings(nameof(SourceScreen)); }
-        return tui.EnsureSource(app);
+        return model.EnsureSource();
     }
 
 	private bool _keysReady;
 
 	private void ConfigureKeys() {
-		ConfigureDefaultGlobalKeys();
 		keys
 			.RegisterKey(KeyCode.Down, "↓", "scroll", KEY_Down)
 			.RegisterKey(KeyCode.Up, "↑", "scroll", KEY_Up)
@@ -77,54 +74,54 @@ public class SourceScreen : Screen {
 			.RegisterChar('o', "open in editor", KEY_OpenInEditor);
 	}
 
-	private bool KEY_Down(ThaumTUI.State a) {
-		if (a.sourceLines is { Count: > 0 }) {
-			a.sourceSelected = Math.Min(a.sourceSelected + 1, a.sourceLines!.Count - 1);
-			tui.EnsureVisible(ref a.sourceOffset, a.sourceSelected);
+	private bool KEY_Down(ThaumTUI tui) {
+		if (model.sourceLines is { Count: > 0 }) {
+			model.sourceSelected = Math.Min(model.sourceSelected + 1, model.sourceLines!.Count - 1);
+			tui.EnsureVisible(ref model.sourceOffset, model.sourceSelected);
 			return true;
 		}
 		return false;
 	}
 
-	private bool KEY_Up(ThaumTUI.State a) {
-		if (a.sourceLines is { Count: > 0 }) {
-			a.sourceSelected = Math.Max(a.sourceSelected - 1, 0);
-			tui.EnsureVisible(ref a.sourceOffset, a.sourceSelected);
+	private bool KEY_Up(ThaumTUI tui) {
+		if (model.sourceLines is { Count: > 0 }) {
+			model.sourceSelected = Math.Max(model.sourceSelected - 1, 0);
+			tui.EnsureVisible(ref model.sourceOffset, model.sourceSelected);
 			return true;
 		}
 		return false;
 	}
 
-	private bool KEY_PageDown(ThaumTUI.State a) {
-		if (a.sourceLines is { Count: > 0 }) {
-			a.sourceSelected = Math.Min(a.sourceSelected + 10, a.sourceLines!.Count - 1);
-			tui.EnsureVisible(ref a.sourceOffset, a.sourceSelected);
+	private bool KEY_PageDown(ThaumTUI tui) {
+		if (model.sourceLines is { Count: > 0 }) {
+			model.sourceSelected = Math.Min(model.sourceSelected + 10, model.sourceLines!.Count - 1);
+			tui.EnsureVisible(ref model.sourceOffset, model.sourceSelected);
 			return true;
 		}
 		return false;
 	}
 
-	private bool KEY_PageUp(ThaumTUI.State a) {
-		if (a.sourceLines is { Count: > 0 }) {
-			a.sourceSelected = Math.Max(a.sourceSelected - 10, 0);
-			tui.EnsureVisible(ref a.sourceOffset, a.sourceSelected);
+	private bool KEY_PageUp(ThaumTUI tui) {
+		if (model.sourceLines is { Count: > 0 }) {
+			model.sourceSelected = Math.Max(model.sourceSelected - 10, 0);
+			tui.EnsureVisible(ref model.sourceOffset, model.sourceSelected);
 			return true;
 		}
 		return false;
 	}
 
-	private bool KEY_OpenInEditor(ThaumTUI.State a) {
-		if (a.visibleSymbols.Count > 0) {
-			CodeSymbol s = a.visibleSymbols.Selected;
-			opener.Open(projectPath, s.FilePath, Math.Max(1, a.sourceSelected + 1));
+	private bool KEY_OpenInEditor(ThaumTUI tui) {
+		if (model.visibleSymbols.Count > 0) {
+			CodeSymbol s = model.visibleSymbols.Selected;
+			SysUtil.OpenInEditor(tui.projectPath, s.FilePath, Math.Max(1, model.sourceSelected + 1));
 			return true;
 		}
 		return false;
 	}
 
-	public override string FooterHint(ThaumTUI.State app) => "↑/↓ scroll  o open";
+	public override string FooterMsg => "↑/↓ scroll  o open";
 
-	public override string Title(ThaumTUI.State app) => "Source";
+	public override string TitleMsg => "Source";
 
 	// Key help comes from KeybindManager registrations
 }

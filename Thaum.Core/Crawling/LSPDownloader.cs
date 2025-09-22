@@ -4,7 +4,6 @@ using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Thaum.Core.Utils;
 using Thaum.Meta;
-using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.Core.Crawling;
 
@@ -19,7 +18,7 @@ public partial class LSPDownloader {
 	private readonly ConsoleDownloadProgress? _progressReporter;
 
 	public LSPDownloader(HttpClient? httpClient = null, ConsoleDownloadProgress? progressReporter = null) {
-		_logger           = Logging.For<LSPDownloader>();
+		_logger           = Logging.Get<LSPDownloader>();
 		_http             = httpClient ?? new HttpClient();
 		_progressReporter = progressReporter;
 		_cachedir = Path.Combine(
@@ -77,27 +76,27 @@ public partial class LSPDownloader {
 		string executableName;
 
 		// Debug platform detection
-		Thaum.Core.Utils.Tracer.println($"DEBUG: Windows: {RuntimeInformation.IsOSPlatform(OSPlatform.Windows)}");
-		Thaum.Core.Utils.Tracer.println($"DEBUG: Linux: {RuntimeInformation.IsOSPlatform(OSPlatform.Linux)}");
-		Thaum.Core.Utils.Tracer.println($"DEBUG: OSX: {RuntimeInformation.IsOSPlatform(OSPlatform.OSX)}");
-		Thaum.Core.Utils.Tracer.println($"DEBUG: OS: {RuntimeInformation.OSDescription}");
+		Tracer.println($"DEBUG: Windows: {RuntimeInformation.IsOSPlatform(OSPlatform.Windows)}");
+		Tracer.println($"DEBUG: Linux: {RuntimeInformation.IsOSPlatform(OSPlatform.Linux)}");
+		Tracer.println($"DEBUG: OSX: {RuntimeInformation.IsOSPlatform(OSPlatform.OSX)}");
+		Tracer.println($"DEBUG: OS: {RuntimeInformation.OSDescription}");
 
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
 			downloadUrl    = "https://github.com/OmniSharp/omnisharp-roslyn/releases/download/v1.39.14/omnisharp-win-x64.zip";
 			executableName = "OmniSharp.exe";
-			Thaum.Core.Utils.Tracer.println("DEBUG: Selected Windows");
+			Tracer.println("DEBUG: Selected Windows");
 		} else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
 			downloadUrl    = "https://github.com/OmniSharp/omnisharp-roslyn/releases/download/v1.39.14/omnisharp-osx-x64.tar.gz";
 			executableName = "run"; // OSX also uses the run script
-			Thaum.Core.Utils.Tracer.println("DEBUG: Selected OSX");
+			Tracer.println("DEBUG: Selected OSX");
 		} else // Linux
 		{
 			downloadUrl    = "https://github.com/OmniSharp/omnisharp-roslyn/releases/download/v1.39.14/omnisharp-linux-x64-net6.0.tar.gz";
 			executableName = "OmniSharp"; // .NET 6.0 version has direct executable
-			Thaum.Core.Utils.Tracer.println("DEBUG: Selected Linux (.NET 6.0)");
+			Tracer.println("DEBUG: Selected Linux (.NET 6.0)");
 		}
 
-		Thaum.Core.Utils.Tracer.println($"DEBUG: Final URL: {downloadUrl}");
+		Tracer.println($"DEBUG: Final URL: {downloadUrl}");
 
 		return new LspServerInfo {
 			Name           = "OmniSharp",
@@ -153,7 +152,7 @@ public partial class LSPDownloader {
 					await fileStream.WriteAsync(buffer, 0, bytesRead);
 					totalRead += bytesRead;
 
-					if (totalBytes.HasValue && totalBytes > 0) {
+					if (totalBytes is > 0) {
 						int percent = (int)((totalRead * 100) / totalBytes.Value);
 						_progressReporter?.ReportProgress(serverInfo.Name, percent, $"Downloading... ({totalRead / 1024} KB)");
 					}
@@ -334,9 +333,9 @@ public partial class LSPDownloader {
 		public void ReportComplete(string name, bool success) {
 			lock (_lock) {
 				if (success) {
-					Thaum.Core.Utils.Tracer.println($"\r✅ {name}: Download complete!                    ");
+					Tracer.println($"\r✅ {name}: Download complete!                    ");
 				} else {
-					Thaum.Core.Utils.Tracer.println($"\r❌ {name}: Download failed!                      ");
+					Tracer.println($"\r❌ {name}: Download failed!                      ");
 				}
 				_last = -1;
 			}

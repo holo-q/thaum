@@ -5,7 +5,6 @@ using Thaum.Core.Cache;
 using Thaum.Core.Crawling;
 using Thaum.Core.Utils;
 using Thaum.Meta;
-using static Thaum.Core.Utils.Tracer;
 
 namespace Thaum.Core;
 
@@ -53,7 +52,7 @@ public partial class Golfer {
 		_crawler      = crawler;
 		_cache        = cache;
 		_promptLoader = promptLoader;
-		_logger       = Logging.For<Golfer>();
+		_logger       = Logging.Get<Golfer>();
 	}
 
 	/// <summary>

@@ -1,8 +1,5 @@
 using System.Text;
-using System.Text.Json;
 using Thaum.Core.Crawling;
-using Thaum.Core.Models;
-using Thaum.Core.Services;
 
 namespace Thaum.Core.Triads;
 
