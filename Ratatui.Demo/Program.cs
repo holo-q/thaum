@@ -119,8 +119,8 @@ public static partial class Program {
 					IDemo? chosen = homeScreen.ChosenDemo;
 					try {
 						IDemo? instance = TryCreateFreshInstance(chosen) ?? chosen;
-						info("Running {InstanceName}...", instance.Name);
 						instance.Run();
+						info("Running {InstanceName}...", instance.Name);
 					} catch (Exception ex) {
 						err($"Demo '{chosen.Name}' crashed: {ex}");
 						err("Press any key to return to the demo browser...");
@@ -171,9 +171,9 @@ public static partial class Program {
 	public partial class HomeScreen : Screen<Program.DemoTUI> {
 		public IDemo? ChosenDemo { get; set; }
 
-        private readonly RatList<IDemo> _list = new();
+		private readonly RatList<IDemo> _list = new();
 
-        // Row offset handled internally by RatList.DrawChunked3
+		// Row offset handled internally by RatList.DrawChunked3
 
 		public HomeScreen(Program.DemoTUI tui) : base(tui) { }
 
@@ -182,81 +182,81 @@ public static partial class Program {
 			int h = area.Height;
 
 			int    headerHeight = Math.Min(5, Math.Max(3, h / 4));
-        string searchLabel  = string.IsNullOrEmpty(_list.Query) ? "(type to search)" : _list.Query + "_";
+			string searchLabel  = string.IsNullOrEmpty(_list.Query) ? "(type to search)" : _list.Query + "_";
 
 			var header = term.NewParagraph("")
 				.AppendLine("Ratatui.cs Demo Suite", new Style(fg: LCYAN, bold: true))
-            .AppendLine($"Demos: {_list.Count}/{tui.demos.Count}    Search: {searchLabel}", new Style(fg: LYELLOW))
+				.AppendLine($"Demos: {_list.Count}/{tui.demos.Count}    Search: {searchLabel}", new Style(fg: LYELLOW))
 				.AppendLine("Type to filter • ↑/↓ select • Enter run • Backspace delete • Esc exit", new Style(fg: GRAY));
 			term.Draw(header, new Rect(area.X, area.Y, w, Math.Min(headerHeight, h)));
 
 			int listTop    = Math.Min(headerHeight, h);
 			int listHeight = Math.Max(0, h - listTop - 1);
 
-				var listRect = new Rect(area.X, area.Y + listTop, w, listHeight);
+			var listRect = new Rect(area.X, area.Y + listTop, w, listHeight);
 
-        if (_list.Count == 0) {
-            var empty = term.NewParagraph("").AppendLine("No demos match your search.", new Style(fg: RED, bold: true));
-            term.Draw(empty, listRect);
-        } else {
-	            _list.DrawChunked3(
-	                term,
-	                listRect,
-	                t => t.Name,
-                t => t.Description,
-                t => t.Tags.Length > 0 ? string.Join("  ", t.Tags.Select(tag => $"#{tag}")) : string.Empty,
-                highlightStyle: new Style(BLACK, GREEN, bold: true),
-                highlightSymbol: "▶ ",
-                titleNormal: new Style(WHITE, bold: true),
-                descNormal: new Style(GRAY),
-                tagsNormal: new Style(CYAN, italic: true),
-                descWhenSelected: new Style(WHITE, GREEN),
-                tagsWhenSelected: new Style(WHITE, GREEN, italic: true));
-        }
+			if (_list.Count == 0) {
+				var empty = term.NewParagraph("").AppendLine("No demos match your search.", new Style(fg: RED, bold: true));
+				term.Draw(empty, listRect);
+			} else {
+				_list.DrawChunked3(
+					term,
+					listRect,
+					t => t.Name,
+					t => t.Description,
+					t => t.Tags.Length > 0 ? string.Join("  ", t.Tags.Select(tag => $"#{tag}")) : string.Empty,
+					highlightStyle: new Style(BLACK, GREEN, bold: true),
+					highlightSymbol: "▶ ",
+					titleNormal: new Style(WHITE, bold: true),
+					descNormal: new Style(GRAY),
+					tagsNormal: new Style(CYAN, italic: true),
+					descWhenSelected: new Style(WHITE, GREEN),
+					tagsWhenSelected: new Style(WHITE, GREEN, italic: true));
+			}
 
 			var footer = term.NewParagraph("").AppendLine("Press Esc to exit, Enter to launch a demo", new Style(fg: GRAY));
 			term.Draw(footer, new Rect(area.X, area.Y + Math.Max(0, h - 1), w, 1));
 		}
 
-        public override Task OnEnter() {
-            // Initialize source + search keys; preserve selection by demo name across queries
-            _list.SetSource(tui.demos, d => d.Name);
-            _list.ConfigureSearch(
-                d => d.Name,
-                d => d.Description,
-                d => string.Join(" ", d.Tags ?? Array.Empty<string>()))
-                ;
-            _list.SetQuery(_list.Query);
-            ConfigureKeys();
-            return Task.CompletedTask;
-        }
-
-		private void ConfigureKeys() {
-            keys.RegisterKey(KeyCode.Up, "nav", _ => { if (_list.Count > 0) _list.Navigate(-1); return true; });
-
-            keys.RegisterKey(KeyCode.Down, "nav", _ => { if (_list.Count > 0) _list.Navigate(+1); return true; });
-
-            keys.RegisterKey(KeyCode.PAGE_UP, "nav", _ => { if (_list.Count > 0) _list.Navigate(-5); return true; });
-
-            keys.RegisterKey(KeyCode.PAGE_DOWN, "nav", _ => { if (_list.Count > 0) _list.Navigate(+5); return true; });
-
-            keys.RegisterKey(KeyCode.Home, "nav", _ => { if (_list.Count > 0) _list.NavigateToFirst(); return true; });
-
-            keys.RegisterKey(KeyCode.End, "nav", _ => { if (_list.Count > 0) _list.NavigateToLast(); return true; });
-
-            keys.RegisterKey(KeyCode.Backspace, "search", _ => { if (_list.Query.Length > 0) { _list.SetQuery(_list.Query[..^1]); } return true; });
-
-            keys.RegisterKey(KeyCode.Delete, "search", _ => { if (_list.Query.Length > 0) { _list.SetQuery(string.Empty); } return true; });
-
-            keys.RegisterKey(KeyCode.ESC, "search/exit", _ => { if (_list.Query.Length > 0) { _list.SetQuery(string.Empty); } else { End(); } return true; });
-
-            keys.RegisterKey(KeyCode.ENTER, "select", _ => { if (_list.SafeSelected is IDemo d) { ChosenDemo = d; End(); } return true; });
-
-            keys.Register("char", "search",
-                ev => ev is { Kind: EventKind.Key, Key.Code: (ushort)KeyCode.Char } && ev.Key.Char != 0,
-                (ev, _) => { char ch = (char)ev.Key.Char; if ((ch is 'q' or 'Q') && string.IsNullOrEmpty(_list.Query)) { End(); } else if (!char.IsControl(ch)) { _list.SetQuery(_list.Query + ch); } return true; });
+		public override Task OnEnter() {
+			// Initialize source + search keys; preserve selection by demo name across queries
+			_list.SetSource(tui.demos, d => d.Name);
+			_list.ConfigureSearch(
+					d => d.Name,
+					d => d.Description,
+					d => string.Join(" ", d.Tags ?? Array.Empty<string>()))
+				;
+			_list.SetQuery(_list.Query);
+			ConfigureKeys();
+			return Task.CompletedTask;
 		}
 
-        // Search and selection handled by RatList
+		private void ConfigureKeys() {
+			keys.RegisterKey(KeyCode.Up, "nav", _ => { if (_list.Count > 0) _list.Navigate(-1); return true; });
+
+			keys.RegisterKey(KeyCode.Down, "nav", _ => { if (_list.Count > 0) _list.Navigate(+1); return true; });
+
+			keys.RegisterKey(KeyCode.PAGE_UP, "nav", _ => { if (_list.Count > 0) _list.Navigate(-5); return true; });
+
+			keys.RegisterKey(KeyCode.PAGE_DOWN, "nav", _ => { if (_list.Count > 0) _list.Navigate(+5); return true; });
+
+			keys.RegisterKey(KeyCode.Home, "nav", _ => { if (_list.Count > 0) _list.NavigateToFirst(); return true; });
+
+			keys.RegisterKey(KeyCode.End, "nav", _ => { if (_list.Count > 0) _list.NavigateToLast(); return true; });
+
+			keys.RegisterKey(KeyCode.Backspace, "search", _ => { if (_list.Query.Length > 0) { _list.SetQuery(_list.Query[..^1]); } return true; });
+
+			keys.RegisterKey(KeyCode.Delete, "search", _ => { if (_list.Query.Length > 0) { _list.SetQuery(string.Empty); } return true; });
+
+			keys.RegisterKey(KeyCode.ESC, "search/exit", _ => { if (_list.Query.Length > 0) { _list.SetQuery(string.Empty); } else { End(); } return true; });
+
+			keys.RegisterKey(KeyCode.ENTER, "select", _ => { if (_list.SafeSelected is IDemo d) { ChosenDemo = d; End(); } return true; });
+
+			keys.Register("char", "search",
+				ev => ev is { Kind: EventKind.Key, Key.Code: (ushort)KeyCode.Char } && ev.Key.Char != 0,
+				(ev, _) => { char ch = (char)ev.Key.Char; if ((ch is 'q' or 'Q') && string.IsNullOrEmpty(_list.Query)) { End(); } else if (!char.IsControl(ch)) { _list.SetQuery(_list.Query + ch); } return true; });
+		}
+
+		// Search and selection handled by RatList
 	}
 }
