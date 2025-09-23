@@ -4,7 +4,7 @@ using Thaum.App.RatatuiTUI;
 
 namespace Ratatui.Demo.Demos;
 
-public class FloatingScreensDemo : BaseDemo
+public class FloatingScreensDemo : BaseDemo, IEmbeddedDemo
 {
     public override string Name => "Floating Screens Demo";
     public override string Description => "Form with overlay (center anchored, percent size)";
@@ -53,5 +53,34 @@ public class FloatingScreensDemo : BaseDemo
             return true;
         }, fps: 30);
     }
-}
 
+public Thaum.App.RatatuiTUI.Screen Create(Program.DemoTUI app)
+    {
+        return new FloatDemoScreen(app);
+    }
+
+private sealed class FloatDemoScreen : Thaum.App.RatatuiTUI.Screen<Program.DemoTUI>
+    {
+        public FloatDemoScreen(Program.DemoTUI tui) : base(tui) { }
+        public override void Draw(Terminal term, Rect area)
+        {
+            var rows = Ui.Rows(area, new[] { Ui.U.Px(1), Ui.U.Flex(1), Ui.U.Px(1) });
+            term.Draw(term.NewParagraph("").AppendLine("Floating Screens Demo", new Style(fg: Colors.LCYAN, bold: true)), rows[0]);
+            var form = term.NewParagraph("").Title("Main Form", true).WithBlock(BlockAdv.Default)
+                .AppendLine("")
+                .AppendLine("Name: _____________")
+                .AppendLine("Age:  __")
+                .AppendLine("Country: __________")
+                .AppendLine("")
+                .AppendLine("Press F2 to toggle Help; Esc closes overlays.", new Style(fg: Colors.GRAY));
+            term.Draw(form, Ui.Pad(rows[1],2,1,2,1));
+            var overlayRect = new RectSpec(AnchorSpec.Center, SizeSpec.Pct(0.6,0.5), Padding.All(1)).Compute(area);
+            var overlay = term.NewParagraph("").Title("Help", true).WithBlock(BlockAdv.Default)
+                .AppendLine("This is a floating overlay.")
+                .AppendLine("Anchored at center (0.5,0.5), sized in %.")
+                .AppendLine("Use percent anchors/sizes for responsive UIs.", new Style(fg: Colors.GRAY));
+            term.Draw(overlay, overlayRect);
+            Chrome.StatusHelp(term, rows[2], new [] { new KeyBinding("F2","Toggle Help"), new KeyBinding("Esc","Close") });
+        }
+    }
+}

@@ -6,3 +6,7 @@ public interface IDemo {
 	string[] Tags        { get; }
 	int      Run();
 }
+
+public interface IEmbeddedDemo {
+    Thaum.App.RatatuiTUI.Screen Create(Program.DemoTUI app);
+}

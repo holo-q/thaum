@@ -18,7 +18,7 @@ public class TextInputDemo : BaseDemo
             int w = frame.Width, h = frame.Height;
             var area = new Rect(0, 0, w, h);
 
-            var rows = Thaum.App.RatatuiTUI.Ui.Rows(area, new[] { Thaum.App.RatatuiTUI.Ui.U.Px(2), Thaum.App.RatatuiTUI.Ui.U.Px(3), Thaum.App.RatatuiTUI.Ui.U.Flex(1) });
+            var rows = Ui.Rows(area, new[] { Ui.U.Px(2), Ui.U.Px(3), Ui.U.Flex(1) });
             var title = new Paragraph("").AppendLine("TextInput Demo", new Style(fg: Colors.LCYAN, bold: true));
             frame.Draw(title, rows[0]);
 
@@ -27,7 +27,7 @@ public class TextInputDemo : BaseDemo
             string caret = "█";
             var field = new Paragraph("")
                 .AppendLine(placeholder + caret, new Style(fg: Colors.WHITE))
-                .WithBlock(new Ratatui.BlockAdv(Ratatui.Borders.All, Ratatui.BorderType.Plain, new Ratatui.Padding(1,0,1,0), Ratatui.Alignment.Left));
+                .WithBlock(new BlockAdv(Borders.All, BorderType.Plain, new Padding(1,0,1,0), Alignment.Left));
             frame.Draw(field, new Rect(2, rows[1].Y, Math.Max(20, w - 4), rows[1].Height));
 
             var help = new Paragraph("")

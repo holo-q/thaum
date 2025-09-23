@@ -43,10 +43,8 @@ public class AnimationDemo : BaseDemo {
 
 			// Bouncing text
 			if (bounceX >= 0 && bounceX < w - 20 && bounceY >= 0 && bounceY < h - 1) {
-				using (var bouncing = new Paragraph("")
-					       .AppendLine("● BOUNCING! ●", new Style(fg: Colors.LYELLOW, bold: true))) {
-					frame.Draw(bouncing, new Rect(bounceX, bounceY, 20, 1), BlendMode.Over);
-				}
+				using var bouncing = new Paragraph("").AppendLine("● BOUNCING! ●", new Style(fg: Colors.LYELLOW, bold: true));
+				frame.Draw(bouncing, new Rect(bounceX, bounceY, 20, 1), BlendMode.Over);
 			}
 
 			frame.Present();

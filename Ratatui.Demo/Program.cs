@@ -1,10 +1,12 @@
 using System.Reflection;
 using Ratatui.Demo;
 using Ratatui;
+using Spectre.Console.Rendering;
 using Thaum.App.RatatuiTUI;
 using Thaum.Core.Utils;
 using Thaum.Meta;
 using static Ratatui.Colors;
+using static Thaum.App.RatatuiTUI.Rat;
 
 [LoggingIntrinsics]
 public static partial class Program {
@@ -73,7 +75,7 @@ public static partial class Program {
 			}
 
 			DemoTUI tui    = new(demos);
-			int     result = Rat.Run(tui, fps: 30, output: output);
+			int     result = Run(tui, fps: 30, output: output);
 
 			return result;
 		} catch (Exception ex) {
@@ -88,8 +90,10 @@ public static partial class Program {
 
 	[LoggingIntrinsics]
 	public partial class DemoTUI : RatTUI<DemoTUI> {
-		public readonly List<IDemo> demos;
-		public readonly HomeScreen  homeScreen;
+		public readonly  List<IDemo> demos;
+		public readonly  HomeScreen  homeScreen;
+		private readonly FloatMgr    floats = new();
+		private          bool        helpOverlay;
 
 		public DemoTUI(List<IDemo> demos) {
 			this.demos    = demos;
@@ -100,6 +104,42 @@ public static partial class Program {
 		public override void OnInit() {
 			// Ensure we start on the home screen and run its enter lifecycle
 			Navigate(homeScreen, forceReactivate: true);
+			// Global overlay keys
+			keys.RegisterKey(KeyCode.F2, "overlay/help", _ => {
+				ToggleHelp();
+				return true;
+			});
+			keys.RegisterKey(KeyCode.ESC, "overlay/close", _ => {
+				if (helpOverlay) {
+					ToggleHelp(false);
+					return true;
+				}
+				return false;
+			});
+		}
+
+		private void ToggleHelp(bool? state = null) {
+			helpOverlay = state ?? !helpOverlay;
+			if (helpOverlay) {
+				var spec = new RectSpec(AnchorSpec.Center, SizeSpec.Pct(0.6, 0.5), Padding.All(1));
+				floats.Show(new FloatSpec(
+					Id: "Help",
+					Bounds: spec,
+					Modal: true,
+					Z: 100,
+					Chrome: new Style(fg: WHITE),
+					Draw: (term, rect) => {
+						var p = term.NewParagraph("")
+							.AppendLine("Ratatui.cs Demo Browser", new Style(fg: LCYAN, bold: true))
+							.AppendLine("")
+							.AppendLine("Navigate demos with ↑/↓ and Enter.")
+							.AppendLine("Type to filter; Backspace to delete; Esc clears.")
+							.AppendLine("F2 toggles this help; Esc closes overlays.", new Style(fg: GRAY));
+						term.Draw(p, rect);
+					}));
+			} else {
+				floats.Hide("Help");
+			}
 		}
 
 		public static IDemo? TryCreateFreshInstance(IDemo demo) {
@@ -119,16 +159,23 @@ public static partial class Program {
 					IDemo? chosen = homeScreen.ChosenDemo;
 					try {
 						IDemo? instance = TryCreateFreshInstance(chosen) ?? chosen;
-						instance.Run();
-						info("Running {InstanceName}...", instance.Name);
+						if (instance is IEmbeddedDemo emb) {
+							var screen = emb.Create(this);
+							Navigate(screen, forceReactivate: true);
+						} else {
+							instance.Run();
+							info("Running {InstanceName}...", instance.Name);
+						}
 					} catch (Exception ex) {
 						err($"Demo '{chosen.Name}' crashed: {ex}");
 						err("Press any key to return to the demo browser...");
 						Console.ReadKey(intercept: true);
 					}
-					// Reset the screen for next selection
-					Navigate(homeScreen);
-					CurrentScreen.OnEnter();
+					// If we ran a blocking demo, reset back to home
+					if (!(chosen is IEmbeddedDemo)) {
+						Navigate(homeScreen);
+						CurrentScreen.OnEnter();
+					}
 				}
 			} else {
 				// DEMO -> HOME
@@ -147,14 +194,26 @@ public static partial class Program {
 		public override void OnDraw(Terminal term) {
 			var rect = new Rect(0, 0, Size.X, Size.Y);
 			CurrentScreen.Draw(term, rect);
+			floats.Draw(term, rect);
 		}
 
-		public override bool OnEvent(Event ev) {
-			// First try routed keybinds
-			if (ev.Kind == EventKind.Key && keys.Handle(ev)) return true;
-			// Then let the current screen handle miscellaneous keys
-			return CurrentScreen.OnKey(ev);
-		}
+            public override bool OnEvent(Event ev) {
+                // If overlay is visible, trap input except overlay keys
+                if (helpOverlay && ev.Kind == EventKind.Key) {
+                    var code = (KeyCode)ev.Key.Code;
+                    if (code == KeyCode.ESC || code == KeyCode.ENTER || code == KeyCode.F2) {
+                        ToggleHelp(false);
+                        return true;
+                    }
+                    return true; // consume all other keys while overlay is displayed
+                }
+                // First try routed keybinds
+                if (ev.Kind == EventKind.Key && keys.Handle(ev)) return true;
+                // Focused widget gets next shot
+                if (ev.Kind == EventKind.Key && Focus.Dispatch(ev)) return true;
+                // Then let the current screen handle miscellaneous keys
+                return CurrentScreen.OnKey(ev);
+            }
 
 		public override bool OnKey(Event ev) {
 			// TODO bubble up to Screen.HandleKey which invokes this.OnKey and does this if that returned false
@@ -168,15 +227,34 @@ public static partial class Program {
 	}
 
 	[LoggingIntrinsics]
-		public partial class HomeScreen : Screen<Program.DemoTUI> {
-			public IDemo? ChosenDemo { get; set; }
+	public partial class HomeScreen : Screen<DemoTUI> {
+		public IDemo? ChosenDemo { get; set; }
 
-		private readonly RatList<IDemo> _list = new();
-		private readonly TextInputState _search = new();
+		private readonly RatList<IDemo> _list;
 
-		// Row offset handled internally by RatList.DrawChunked3
+		public HomeScreen(DemoTUI tui) : base(tui) {
+			_list = new RatList<IDemo>();
+			_list.SetSource(tui.demos, d => d.Name);
+			_list.ConfigureSearch(
+				d => d.Name,
+				d => d.Description,
+				d => string.Join(" ", d.Tags));
+			_list.FocusSearchEnabled = true;
+			_list.FocusOnActivate = d => {
+				ChosenDemo = d;
+				End();
+				return true;
+			};
+			_list.FocusPageStep = 5;
+		}
 
-		public HomeScreen(Program.DemoTUI tui) : base(tui) { }
+		public override Task OnEnter() {
+			keys.RegisterKey(KeyCode.TAB, "focus/next", _ => {
+				Focus.Next();
+				return true;
+			});
+			return Task.CompletedTask;
+		}
 
 		public override void Draw(Terminal term, Rect area) {
 			int w = area.Width;
@@ -186,28 +264,26 @@ public static partial class Program {
 			var headerArea   = new Rect(area.X, area.Y, w, Math.Min(headerHeight, h));
 			var rows         = Ui.Rows(headerArea, new[] { Ui.U.Px(1), Ui.U.Px(1), Ui.U.Flex(1) });
 
-			var title = term.NewParagraph("")
-				.AppendLine("Ratatui.cs Demo Suite", new Style(fg: LCYAN, bold: true));
-			term.Draw(title, rows[0]);
+			string searchLabel = string.IsNullOrEmpty(_list.Query) ? "(type to search)" : _list.Query + "_";
 
-			TextInput.Draw(term, rows[1], id: "home.search", _search, new TextInputOpts(placeholder: "Type to search…"));
-
-			var help = term.NewParagraph("")
-				.AppendLine("↑/↓ select • Enter run • Backspace delete • Esc exit • Tab focus", new Style(fg: GRAY));
-			term.Draw(help, rows[2]);
+			term.Draw(Paragraph("Ratatui.cs Demo Suite", LCYAN, BLACK), rows[0]);
+			term.Draw(Paragraph("Ratatui.cs Demo Suite", LCYAN), rows[0]);
+			term.Draw(Paragraph($"Search: {searchLabel}", LYELLOW), rows[1]);
+			term.Draw(Paragraph("Type to filter • ↑/↓ select • Enter run • Backspace delete • Esc clear • Tab focus", GRAY), rows[2]);
 
 			int listTop    = Math.Min(headerHeight, h);
 			int listHeight = Math.Max(0, h - listTop - 1);
 
-			var listRect = new Rect(area.X, area.Y + listTop, w, listHeight);
+			Rect rList = new Rect(area.X, area.Y + listTop, w, listHeight);
 
 			if (_list.Count == 0) {
 				var empty = term.NewParagraph("").AppendLine("No demos match your search.", new Style(fg: RED, bold: true));
-				term.Draw(empty, listRect);
+				term.Draw(empty, rList);
 			} else {
 				_list.DrawChunked3(
 					term,
-					listRect,
+					rList,
+					id: "home.list",
 					t => t.Name,
 					t => t.Description,
 					t => t.Tags.Length > 0 ? string.Join("  ", t.Tags.Select(tag => $"#{tag}")) : string.Empty,
@@ -220,54 +296,10 @@ public static partial class Program {
 					tagsWhenSelected: new Style(WHITE, GREEN, italic: true));
 			}
 
-			var footer = term.NewParagraph("").AppendLine("Press Esc to exit, Enter to launch a demo", new Style(fg: GRAY));
-			term.Draw(footer, new Rect(area.X, area.Y + Math.Max(0, h - 1), w, 1));
+			// Footer: auto-help from registered keys (show first 6)
+			Chrome.StatusHelp(term, new Rect(area.X, area.Y + Math.Max(0, h - 1), w, 1), keys.GetHelp(6));
 		}
 
-		public override Task OnEnter() {
-			// Initialize source + search keys; preserve selection by demo name across queries
-				_list.SetSource(tui.demos, d => d.Name);
-				_list.ConfigureSearch(
-						d => d.Name,
-						d => d.Description,
-						d => string.Join(" ", d.Tags ?? Array.Empty<string>()))
-					;
-				_list.SetQuery(_search.Text);
-				// Default focus to the search field on enter
-				if (!string.IsNullOrEmpty(_search.Text)) { /* keep */ } // no-op: registering will auto-activate first id
-				ConfigureKeys();
-				return Task.CompletedTask;
-			}
-
-		private void ConfigureKeys() {
-			keys.RegisterKey(KeyCode.Up, "nav", _ => { if (_list.Count > 0) _list.Navigate(-1); return true; });
-
-			keys.RegisterKey(KeyCode.Down, "nav", _ => { if (_list.Count > 0) _list.Navigate(+1); return true; });
-
-			keys.RegisterKey(KeyCode.PAGE_UP, "nav", _ => { if (_list.Count > 0) _list.Navigate(-5); return true; });
-
-			keys.RegisterKey(KeyCode.PAGE_DOWN, "nav", _ => { if (_list.Count > 0) _list.Navigate(+5); return true; });
-
-			keys.RegisterKey(KeyCode.Home, "nav", _ => { if (_list.Count > 0) _list.NavigateToFirst(); return true; });
-
-			keys.RegisterKey(KeyCode.End, "nav", _ => { if (_list.Count > 0) _list.NavigateToLast(); return true; });
-
-			keys.RegisterKey(KeyCode.Backspace, "search", _ => { if (_search.Text.Length > 0) { _search.Text = _search.Text[..^1]; _list.SetQuery(_search.Text); } return true; });
-
-			keys.RegisterKey(KeyCode.Delete, "search", _ => { if (_search.Text.Length > 0) { _search.Text = string.Empty; _list.SetQuery(_search.Text); } return true; });
-
-			keys.RegisterKey(KeyCode.ESC, "search/exit", _ => { if (_search.Text.Length > 0) { _search.Text = string.Empty; _list.SetQuery(_search.Text); } else { End(); } return true; });
-
-			keys.RegisterKey(KeyCode.ENTER, "select", _ => { if (_list.SafeSelected is IDemo d) { ChosenDemo = d; End(); } return true; });
-
-			// Focus traversal
-			keys.RegisterKey(KeyCode.TAB, "focus/next", _ => { Focus.Next(); return true; });
-			// Note: Shift+Tab mapping depends on modifier reporting; add when available.
-
-			keys.Register("char", "search",
-																 ev => ev is { Kind: EventKind.Key, Key.Code: (ushort)KeyCode.Char } && ev.Key.Char != 0,
-																 (ev, _) => { char ch = (char)ev.Key.Char; if ((ch is 'q' or 'Q') && string.IsNullOrEmpty(_search.Text)) { End(); } else if (!char.IsControl(ch)) { _search.Text += ch; _list.SetQuery(_search.Text); } return true; });
-		}
 
 		// Search and selection handled by RatList
 	}

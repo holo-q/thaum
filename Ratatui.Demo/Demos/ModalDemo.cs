@@ -26,7 +26,7 @@ public class ModalDemo : BaseDemo
             int mw = Math.Max(30, w/2);
             int mh = Math.Max(8,  h/3);
             var modalRect = new Rect(area.X + (w - mw)/2, area.Y + (h - mh)/2, mw, mh);
-            var modal = new Paragraph("").Title("Confirm", true).WithBlock(Ratatui.BlockAdv.Default)
+            var modal = new Paragraph("").Title("Confirm", true).WithBlock(BlockAdv.Default)
                 .AppendLine("Are you sure you want to continue?", new Style(fg: Colors.WHITE))
                 .AppendLine("")
                 .AppendLine("[ OK ]   [ Cancel ]", new Style(fg: Colors.GRAY));
