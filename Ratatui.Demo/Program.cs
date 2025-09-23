@@ -168,10 +168,11 @@ public static partial class Program {
 	}
 
 	[LoggingIntrinsics]
-	public partial class HomeScreen : Screen<Program.DemoTUI> {
-		public IDemo? ChosenDemo { get; set; }
+		public partial class HomeScreen : Screen<Program.DemoTUI> {
+			public IDemo? ChosenDemo { get; set; }
 
 		private readonly RatList<IDemo> _list = new();
+		private readonly TextInputState _search = new();
 
 		// Row offset handled internally by RatList.DrawChunked3
 
@@ -181,14 +182,19 @@ public static partial class Program {
 			int w = area.Width;
 			int h = area.Height;
 
-			int    headerHeight = Math.Min(5, Math.Max(3, h / 4));
-			string searchLabel  = string.IsNullOrEmpty(_list.Query) ? "(type to search)" : _list.Query + "_";
+			int headerHeight = Math.Min(5, Math.Max(3, h / 4));
+			var headerArea   = new Rect(area.X, area.Y, w, Math.Min(headerHeight, h));
+			var rows         = Ui.Rows(headerArea, new[] { Ui.U.Px(1), Ui.U.Px(1), Ui.U.Flex(1) });
 
-			var header = term.NewParagraph("")
-				.AppendLine("Ratatui.cs Demo Suite", new Style(fg: LCYAN, bold: true))
-				.AppendLine($"Demos: {_list.Count}/{tui.demos.Count}    Search: {searchLabel}", new Style(fg: LYELLOW))
-				.AppendLine("Type to filter • ↑/↓ select • Enter run • Backspace delete • Esc exit", new Style(fg: GRAY));
-			term.Draw(header, new Rect(area.X, area.Y, w, Math.Min(headerHeight, h)));
+			var title = term.NewParagraph("")
+				.AppendLine("Ratatui.cs Demo Suite", new Style(fg: LCYAN, bold: true));
+			term.Draw(title, rows[0]);
+
+			TextInput.Draw(term, rows[1], id: "home.search", _search, new TextInputOpts(placeholder: "Type to search…"));
+
+			var help = term.NewParagraph("")
+				.AppendLine("↑/↓ select • Enter run • Backspace delete • Esc exit • Tab focus", new Style(fg: GRAY));
+			term.Draw(help, rows[2]);
 
 			int listTop    = Math.Min(headerHeight, h);
 			int listHeight = Math.Max(0, h - listTop - 1);
@@ -220,16 +226,18 @@ public static partial class Program {
 
 		public override Task OnEnter() {
 			// Initialize source + search keys; preserve selection by demo name across queries
-			_list.SetSource(tui.demos, d => d.Name);
-			_list.ConfigureSearch(
-					d => d.Name,
-					d => d.Description,
-					d => string.Join(" ", d.Tags ?? Array.Empty<string>()))
-				;
-			_list.SetQuery(_list.Query);
-			ConfigureKeys();
-			return Task.CompletedTask;
-		}
+				_list.SetSource(tui.demos, d => d.Name);
+				_list.ConfigureSearch(
+						d => d.Name,
+						d => d.Description,
+						d => string.Join(" ", d.Tags ?? Array.Empty<string>()))
+					;
+				_list.SetQuery(_search.Text);
+				// Default focus to the search field on enter
+				if (!string.IsNullOrEmpty(_search.Text)) { /* keep */ } // no-op: registering will auto-activate first id
+				ConfigureKeys();
+				return Task.CompletedTask;
+			}
 
 		private void ConfigureKeys() {
 			keys.RegisterKey(KeyCode.Up, "nav", _ => { if (_list.Count > 0) _list.Navigate(-1); return true; });
@@ -244,17 +252,21 @@ public static partial class Program {
 
 			keys.RegisterKey(KeyCode.End, "nav", _ => { if (_list.Count > 0) _list.NavigateToLast(); return true; });
 
-			keys.RegisterKey(KeyCode.Backspace, "search", _ => { if (_list.Query.Length > 0) { _list.SetQuery(_list.Query[..^1]); } return true; });
+			keys.RegisterKey(KeyCode.Backspace, "search", _ => { if (_search.Text.Length > 0) { _search.Text = _search.Text[..^1]; _list.SetQuery(_search.Text); } return true; });
 
-			keys.RegisterKey(KeyCode.Delete, "search", _ => { if (_list.Query.Length > 0) { _list.SetQuery(string.Empty); } return true; });
+			keys.RegisterKey(KeyCode.Delete, "search", _ => { if (_search.Text.Length > 0) { _search.Text = string.Empty; _list.SetQuery(_search.Text); } return true; });
 
-			keys.RegisterKey(KeyCode.ESC, "search/exit", _ => { if (_list.Query.Length > 0) { _list.SetQuery(string.Empty); } else { End(); } return true; });
+			keys.RegisterKey(KeyCode.ESC, "search/exit", _ => { if (_search.Text.Length > 0) { _search.Text = string.Empty; _list.SetQuery(_search.Text); } else { End(); } return true; });
 
 			keys.RegisterKey(KeyCode.ENTER, "select", _ => { if (_list.SafeSelected is IDemo d) { ChosenDemo = d; End(); } return true; });
 
+			// Focus traversal
+			keys.RegisterKey(KeyCode.TAB, "focus/next", _ => { Focus.Next(); return true; });
+			// Note: Shift+Tab mapping depends on modifier reporting; add when available.
+
 			keys.Register("char", "search",
-				ev => ev is { Kind: EventKind.Key, Key.Code: (ushort)KeyCode.Char } && ev.Key.Char != 0,
-				(ev, _) => { char ch = (char)ev.Key.Char; if ((ch is 'q' or 'Q') && string.IsNullOrEmpty(_list.Query)) { End(); } else if (!char.IsControl(ch)) { _list.SetQuery(_list.Query + ch); } return true; });
+																 ev => ev is { Kind: EventKind.Key, Key.Code: (ushort)KeyCode.Char } && ev.Key.Char != 0,
+																 (ev, _) => { char ch = (char)ev.Key.Char; if ((ch is 'q' or 'Q') && string.IsNullOrEmpty(_search.Text)) { End(); } else if (!char.IsControl(ch)) { _search.Text += ch; _list.SetQuery(_search.Text); } return true; });
 		}
 
 		// Search and selection handled by RatList
