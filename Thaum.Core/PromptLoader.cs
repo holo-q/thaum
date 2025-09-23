@@ -8,10 +8,10 @@ namespace Thaum.Core;
 
 [LoggingIntrinsics]
 public partial class PromptLoader {
-	private readonly ILogger<PromptLoader>      _logger;
-	private readonly string                     _promptsDirectory;
-	private readonly Dictionary<string, string> _promptCache;
-    private static readonly ConcurrentDictionary<string, string> _sharedCache = new();
+	private readonly        ILogger<PromptLoader>                _logger;
+	private readonly        string                               _promptsDirectory;
+	private readonly        Dictionary<string, string>           _promptCache;
+	private static readonly ConcurrentDictionary<string, string> _sharedCache = new();
 
 	public PromptLoader(string? directory = null) {
 		_logger           = Logging.Get<PromptLoader>();
@@ -34,14 +34,14 @@ public partial class PromptLoader {
 			throw new FileNotFoundException($"Prompt file not found: {path}");
 		}
 
-        try {
-            string content = await File.ReadAllTextAsync(path, Encoding.UTF8);
-            _promptCache[promptName] = content;
-            // Only log if we won the race to add to shared cache
-            if (_sharedCache.TryAdd(promptName, content)) {
+		try {
+			string content = await File.ReadAllTextAsync(path, Encoding.UTF8);
+			_promptCache[promptName] = content;
+			// Only log if we won the race to add to shared cache
+			if (_sharedCache.TryAdd(promptName, content)) {
 				trace("Loaded prompt: {PromptName} from {Path}", promptName, path);
-            }
-            return _sharedCache[promptName];
+			}
+			return _sharedCache[promptName];
 		} catch (Exception ex) {
 			err(ex, "Failed to load prompt: {PromptName}", promptName);
 			throw;

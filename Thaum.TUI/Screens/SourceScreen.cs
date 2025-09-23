@@ -14,17 +14,17 @@ public class SourceScreen : ThaumScreen {
 	public SourceScreen(ThaumTUI tui) : base(tui) { }
 
 	public override void Draw(Terminal term, Rect area) {
-        Paragraph title = Paragraph("", title: "Source", title_border: true);
-        (Rect titleRect, Rect listRect) = area.SplitTop(2);
-        term.Draw(title, titleRect);
+		Paragraph title = Paragraph("", title: "Source", title_border: true);
+		(Rect titleRect, Rect listRect) = area.SplitTop(2);
+		term.Draw(title, titleRect);
 
-        List<string> lines = model.sourceLines ?? new List<string>();
-        List   list  = List();
-        int view = Math.Max(1, listRect.Height - 1);
-        if (model.sourceSelected < model.sourceOffset) model.sourceOffset = model.sourceSelected;
-        if (model.sourceSelected >= model.sourceOffset + view) model.sourceOffset = Math.Max(0, model.sourceSelected - (view - 1));
-        int start = Math.Max(0, model.sourceOffset);
-        int end   = Math.Min(lines.Count, start + view);
+		List<string> lines                                                        = model.sourceLines ?? new List<string>();
+		List         list                                                         = List();
+		int          view                                                         = Math.Max(1, listRect.Height - 1);
+		if (model.sourceSelected < model.sourceOffset) model.sourceOffset         = model.sourceSelected;
+		if (model.sourceSelected >= model.sourceOffset + view) model.sourceOffset = Math.Max(0, model.sourceSelected - (view - 1));
+		int start                                                                 = Math.Max(0, model.sourceOffset);
+		int end                                                                   = Math.Min(lines.Count, start + view);
 
 		int symStartLine = 0, symEndLine = -1, symStartCol = 0, symEndCol = 0;
 		if (model.visibleSymbols.Count > 0) {
@@ -53,15 +53,19 @@ public class SourceScreen : ThaumScreen {
 			} else {
 				runs.Add(new Batching.SpanRun(Encoding.UTF8.GetBytes(line).AsMemory(), default));
 			}
-            list.AppendItem(CollectionsMarshal.AsSpan(runs));
-        }
-        term.Draw(list, listRect);
+			list.AppendItem(CollectionsMarshal.AsSpan(runs));
+		}
+		term.Draw(list, listRect);
 	}
 
-    public override Task OnEnter() {
-        if (!_keysReady) { ConfigureKeys(); _keysReady = true; keys.DumpBindings(nameof(SourceScreen)); }
-        return model.EnsureSource();
-    }
+	public override Task OnEnter() {
+		if (!_keysReady) {
+			ConfigureKeys();
+			_keysReady = true;
+			keys.DumpBindings(nameof(SourceScreen));
+		}
+		return model.EnsureSource();
+	}
 
 	private bool _keysReady;
 

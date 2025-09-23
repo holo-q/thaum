@@ -42,7 +42,7 @@ public sealed class TraceWrapGenerator : IIncrementalGenerator
                 })
             .Where(m => m.Symbol is not null);
 
-        // Map invocation sites to traced methods
+        // Map invocation sites across the compilation. We filter to traced methods later
         var invocations = context.SyntaxProvider.CreateSyntaxProvider(
                 static (node, _) => node is InvocationExpressionSyntax,
                 static (ctx, _) =>
@@ -51,13 +51,27 @@ public sealed class TraceWrapGenerator : IIncrementalGenerator
                     var model = ctx.SemanticModel;
                     var symbol = model.GetSymbolInfo(inv).Symbol as IMethodSymbol;
                     if (symbol == null) return default(InvocationInfo);
-                    // If the target method bears [TraceWrap]
-                    bool traced = symbol.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == "Thaum.Meta.TraceWrapAttribute");
-                    if (!traced) return default;
-                    var loc = inv.GetLocation().GetLineSpan();
-                    var file = loc.Path ?? "";
-                    var line = loc.StartLinePosition.Line + 1;   // 1-based
-                    var col = loc.StartLinePosition.Character + 1; // 1-based
+
+                    // Interceptors require the location to refer to the invoked method identifier token,
+                    // not the whole invocation span. Compute the name token location if possible.
+                    string file = string.Empty;
+                    int line = 0, col = 0;
+
+                    SyntaxNode? expr = inv.Expression;
+                    Location? nameLoc = expr switch
+                    {
+                        MemberAccessExpressionSyntax mae => mae.Name.GetLocation(),
+                        MemberBindingExpressionSyntax mbe => mbe.Name.GetLocation(),
+                        IdentifierNameSyntax id => id.GetLocation(),
+                        GenericNameSyntax gen => gen.GetLocation(),
+                        _ => inv.GetLocation(), // fallback: may not be interceptable, but keeps behavior
+                    };
+
+                    var span = nameLoc.GetLineSpan();
+                    file = span.Path ?? string.Empty;
+                    line = span.StartLinePosition.Line + 1;   // 1-based
+                    col = span.StartLinePosition.Character + 1; // 1-based
+
                     return new InvocationInfo(symbol, file, line, col);
                 })
             .Where(i => i.Target is not null);
@@ -69,13 +83,42 @@ public sealed class TraceWrapGenerator : IIncrementalGenerator
             var ((methodsCol, invocationsCol), compilation) = data;
             if (methodsCol.IsDefaultOrEmpty || invocationsCol.IsDefaultOrEmpty) return;
 
-            // Group invocations by target method
-            var traced = new HashSet<IMethodSymbol>(SymbolEqualityComparer.Default);
+            // Build a set of call-target symbols to intercept for traced methods, including base/interface members
+            var callTargets = new HashSet<IMethodSymbol>(SymbolEqualityComparer.Default);
             foreach (var m in methodsCol)
-                if (m.Symbol is not null) traced.Add(m.Symbol);
+            {
+                var sym = m.Symbol;
+                if (sym is null) continue;
 
-            // Only keep invocations whose target is in traced
-            var sites = invocationsCol.Where(i => traced.Contains(i.Target!)).ToImmutableArray();
+                // Add the traced method itself
+                callTargets.Add(sym);
+
+                // Add its overridden base chain (if any)
+                var b = sym.OverriddenMethod;
+                while (b is not null)
+                {
+                    callTargets.Add(b);
+                    b = b.OverriddenMethod;
+                }
+
+                // Add any interface members it implements (explicit or implicit)
+                var type = sym.ContainingType;
+                foreach (var iface in type.AllInterfaces)
+                {
+                    foreach (var mem in iface.GetMembers(sym.Name).OfType<IMethodSymbol>())
+                    {
+                        var impl = type.FindImplementationForInterfaceMember(mem) as IMethodSymbol;
+                        if (impl is null) continue;
+                        // ReducedFrom handles extension-reduction edge cases; fallback to direct compare
+                        var targetImpl = impl.ReducedFrom ?? impl;
+                        if (SymbolEqualityComparer.Default.Equals(targetImpl, sym))
+                            callTargets.Add(mem);
+                    }
+                }
+            }
+
+            // Only keep invocations whose target is one of the call-targets
+            var sites = invocationsCol.Where(i => callTargets.Contains(i.Target!)).ToImmutableArray();
             if (sites.IsDefaultOrEmpty) return;
 
             // Emit one wrapper class per containing namespace to keep file sizes modest
@@ -84,6 +127,7 @@ public sealed class TraceWrapGenerator : IIncrementalGenerator
             {
                 var sb = new StringBuilder();
                 sb.AppendLine("// <auto-generated/>\n#nullable enable");
+                sb.AppendLine("using Microsoft.Extensions.Logging;");
                 var ns = group.Key;
                 if (!string.IsNullOrEmpty(ns)) sb.Append("namespace ").Append(ns).AppendLine(";");
                 sb.AppendLine("internal static partial class __TraceWrap_Generated");
@@ -137,8 +181,8 @@ public sealed class TraceWrapGenerator : IIncrementalGenerator
         string wrapperName = $"{methodName}__wrap_{idx++}";
 
         // Header with InterceptsLocation
-        sb.Append("    [System.Diagnostics.DebuggerStepThrough]\n    [System.Runtime.CompilerServices.InterceptsLocation(\"")
-          .Append(Escape(site.FilePath)).Append('\"').Append(", ").Append(site.Line).Append(", ").Append(site.Column).AppendLine(")]");
+            sb.Append("    [System.Diagnostics.DebuggerStepThrough]\n    [System.Runtime.CompilerServices.InterceptsLocation(\"")
+              .Append(Escape(site.FilePath)).Append('\"').Append(", ").Append(site.Line).Append(", ").Append(site.Column).AppendLine(")]");
 
         if (isTask)
         {
@@ -146,28 +190,33 @@ public sealed class TraceWrapGenerator : IIncrementalGenerator
             sb.AppendLine("    {");
             sb.AppendLine("        var __lg = global::Thaum.Core.Utils.Logging.Get(\"TraceWrap\");");
             sb.AppendLine("        var __sw = System.Diagnostics.Stopwatch.StartNew();");
-            sb.Append("        __lg.LogTrace(\"→ ").Append(type.Name).Append('.').Append(methodName).AppendLine("\");");
+            // Log compile-time type/method to keep generated code simple and robust
+            sb.Append("        __lg.LogTrace(\"→ ")
+              .Append(Escape(type.Name)).Append('.').Append(Escape(methodName)).AppendLine("\");");
             sb.AppendLine("        try");
             sb.AppendLine("        {");
             if (ret.Name == "Task")
             {
                 sb.Append("            await ").Append(isStatic ? $"{typeName}.{methodName}({argList})" : $"__self.{methodName}({argList})").AppendLine(";");
                 sb.AppendLine("            __sw.Stop();");
-                sb.Append("            __lg.LogTrace(\"← ").Append(type.Name).Append('.').Append(methodName).AppendLine(" in {ms}ms\", __sw.ElapsedMilliseconds);");
+                sb.Append("            __lg.LogTrace(\"← ")
+                  .Append(Escape(type.Name)).Append('.').Append(Escape(methodName)).AppendLine(" in {ms}ms\", __sw.ElapsedMilliseconds);");
                 sb.AppendLine("            return;");
             }
             else
             {
                 sb.Append("            var __ret = await ").Append(isStatic ? $"{typeName}.{methodName}({argList})" : $"__self.{methodName}({argList})").AppendLine(".ConfigureAwait(false);");
                 sb.AppendLine("            __sw.Stop();");
-                sb.Append("            __lg.LogTrace(\"← ").Append(type.Name).Append('.').Append(methodName).AppendLine(" in {ms}ms\", __sw.ElapsedMilliseconds);");
+                sb.Append("            __lg.LogTrace(\"← ")
+                  .Append(Escape(type.Name)).Append('.').Append(Escape(methodName)).AppendLine(" in {ms}ms\", __sw.ElapsedMilliseconds);");
                 sb.AppendLine("            return __ret;");
             }
             sb.AppendLine("        }");
             sb.AppendLine("        catch (System.Exception ex)");
             sb.AppendLine("        {");
             sb.AppendLine("            __sw.Stop();");
-            sb.Append("            __lg.LogError(ex, \"✖ ").Append(type.Name).Append('.').Append(methodName).AppendLine(" in {ms}ms\", __sw.ElapsedMilliseconds);");
+            sb.Append("            __lg.LogError(ex, \"✖ ")
+              .Append(Escape(type.Name)).Append('.').Append(Escape(methodName)).AppendLine(" in {ms}ms\", __sw.ElapsedMilliseconds);");
             sb.AppendLine("            throw;");
             sb.AppendLine("        }");
             sb.AppendLine("    }");
@@ -178,20 +227,23 @@ public sealed class TraceWrapGenerator : IIncrementalGenerator
             sb.AppendLine("    {");
             sb.AppendLine("        var __lg = global::Thaum.Core.Utils.Logging.Get(\"TraceWrap\");");
             sb.AppendLine("        var __sw = System.Diagnostics.Stopwatch.StartNew();");
-            sb.Append("        __lg.LogTrace(\"→ ").Append(type.Name).Append('.').Append(methodName).AppendLine("\");");
+            sb.Append("        __lg.LogTrace(\"→ ")
+              .Append(Escape(type.Name)).Append('.').Append(Escape(methodName)).AppendLine("\");");
             sb.AppendLine("        try");
             sb.AppendLine("        {");
             if (!isVoid) sb.Append("            var __ret = "); else sb.Append("            ");
             sb.Append(isStatic ? $"{typeName}.{methodName}({argList});" : $"__self.{methodName}({argList});");
             sb.AppendLine();
             sb.AppendLine("            __sw.Stop();");
-            sb.Append("            __lg.LogTrace(\"← ").Append(type.Name).Append('.').Append(methodName).AppendLine(" in {ms}ms\", __sw.ElapsedMilliseconds);");
+            sb.Append("            __lg.LogTrace(\"← ")
+                  .Append(Escape(type.Name)).Append('.').Append(Escape(methodName)).AppendLine(" in {ms}ms\", __sw.ElapsedMilliseconds);");
             if (!isVoid) sb.AppendLine("            return __ret;");
             sb.AppendLine("        }");
             sb.AppendLine("        catch (System.Exception ex)");
             sb.AppendLine("        {");
             sb.AppendLine("            __sw.Stop();");
-            sb.Append("            __lg.LogError(ex, \"✖ ").Append(type.Name).Append('.').Append(methodName).AppendLine(" in {ms}ms\", __sw.ElapsedMilliseconds);");
+            sb.Append("            __lg.LogError(ex, \"✖ ")
+              .Append(Escape(type.Name)).Append('.').Append(Escape(methodName)).AppendLine(" in {ms}ms\", __sw.ElapsedMilliseconds);");
             sb.AppendLine("            throw;");
             sb.AppendLine("        }");
             if (isVoid) sb.AppendLine("        return;");

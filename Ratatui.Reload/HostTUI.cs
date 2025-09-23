@@ -41,7 +41,7 @@ public class HostTUI : RatTUI<HostTUI> {
 		int y  = (h - mh) / 2;
 
 		Rect   rect   = rect_sz(x, y, mw, mh);
-		Colors colors = _isError ? Colors.LightRed : Colors.LightBlue;
+		Colors colors = _isError ? Colors.LIGHTRED : Colors.LBLUE;
 
 		using var para = new Paragraph(_message)
 			.Title("Thaum Host", border: true)

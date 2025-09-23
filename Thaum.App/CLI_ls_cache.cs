@@ -39,8 +39,8 @@ public partial class CLI {
 		public DateTimeOffset LastAccessed { get; init; }
 	}
 
-    [RequiresUnreferencedCode("Uses reflection for cache deserialization")]
-    public async Task CMD_ls_cache(string[] args) {
+	[RequiresUnreferencedCode("Uses reflection for cache deserialization")]
+	public async Task CMD_ls_cache(string[] args) {
 		bool   showKeys    = args.Contains("--keys") || args.Contains("-k");
 		bool   showAll     = args.Contains("--all") || args.Contains("-a");
 		bool   showDetails = args.Contains("--details") || args.Contains("-d");

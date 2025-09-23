@@ -5,7 +5,7 @@ namespace Thaum.Core.Crawling;
 // Simplified LSP client manager for initial implementation
 public class RegexCrawler : Crawler {
 	private readonly ILogger<RegexCrawler>? _logger;
-	private readonly string                _lang;
+	private readonly string                 _lang;
 
 	public RegexCrawler(string lang) {
 		this._lang = lang;

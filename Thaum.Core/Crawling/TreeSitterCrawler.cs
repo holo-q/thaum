@@ -32,8 +32,8 @@ public class TreeSitterCrawler : Crawler {
 	private readonly int                                          _maxDegreeOfParallelism;
 
 	public TreeSitterCrawler() {
-		_logger          = Logging.Get<TreeSitterCrawler>();
-		_languageConfigs = InitializeLanguageConfigs();
+		_logger                 = Logging.Get<TreeSitterCrawler>();
+		_languageConfigs        = InitializeLanguageConfigs();
 		_maxDegreeOfParallelism = GetMaxDegreeOfParallelism();
 	}
 
@@ -87,9 +87,9 @@ public class TreeSitterCrawler : Crawler {
 				return null;
 			}
 
-			string[] lines = await File.ReadAllLinesAsync(targetSymbol.FilePath);
-			int startLine = Math.Clamp(targetSymbol.StartCodeLoc.Line, 0, Math.Max(0, lines.Length - 1));
-			int endLine   = Math.Clamp(targetSymbol.EndCodeLoc.Line,   0, Math.Max(0, lines.Length - 1));
+			string[] lines     = await File.ReadAllLinesAsync(targetSymbol.FilePath);
+			int      startLine = Math.Clamp(targetSymbol.StartCodeLoc.Line, 0, Math.Max(0, lines.Length - 1));
+			int      endLine   = Math.Clamp(targetSymbol.EndCodeLoc.Line, 0, Math.Max(0, lines.Length - 1));
 
 			if (endLine < startLine) (startLine, endLine) = (endLine, startLine);
 
@@ -101,7 +101,7 @@ public class TreeSitterCrawler : Crawler {
 				string line = lines[i];
 				if (i == startLine && i == endLine) {
 					int from = Math.Min(startCol, line.Length);
-					int to   = Math.Min(endCol,   line.Length);
+					int to   = Math.Min(endCol, line.Length);
 					if (to > from) sb.Append(line.AsSpan(from, to - from));
 					else sb.Append(line[from..]);
 				} else if (i == startLine) {
@@ -143,7 +143,7 @@ public class TreeSitterCrawler : Crawler {
 			_logger.LogDebug("Found {Count} {Language} files to parse", sourceFiles.Count, lang);
 
 			ConcurrentDictionary<string, List<CodeSymbol>> results = new ConcurrentDictionary<string, List<CodeSymbol>>();
-			ParallelOptions                     options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism };
+			ParallelOptions                                options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism };
 
 			await Parallel.ForEachAsync(sourceFiles, options, async (filePath, ct) => {
 				try {
@@ -268,36 +268,36 @@ public class TreeSitterCrawler : Crawler {
 	// 	}
 	// }
 
-    private static readonly HashSet<string> s_missingGrammars = new(StringComparer.OrdinalIgnoreCase);
+	private static readonly HashSet<string> s_missingGrammars = new(StringComparer.OrdinalIgnoreCase);
 
-    private async Task<List<CodeSymbol>> ExtractSymbolsFromFile(string filePath, string language) {
-        List<CodeSymbol> symbols = [];
+	private async Task<List<CodeSymbol>> ExtractSymbolsFromFile(string filePath, string language) {
+		List<CodeSymbol> symbols = [];
 
-        try {
-            string content = await File.ReadAllTextAsync(filePath);
+		try {
+			string content = await File.ReadAllTextAsync(filePath);
 
-            // Get the TreeSitter language configuration
-            if (_languageConfigs.TryGetValue(language, out TreeSitterLanguageConfig? config)) {
-                if (s_missingGrammars.Contains(config.Language)) {
-                    // Grammar previously detected as missing; skip quietly
-                    return symbols;
-                }
+			// Get the TreeSitter language configuration
+			if (_languageConfigs.TryGetValue(language, out TreeSitterLanguageConfig? config)) {
+				if (s_missingGrammars.Contains(config.Language)) {
+					// Grammar previously detected as missing; skip quietly
+					return symbols;
+				}
 
-                try {
-                    using Parser parser = new Parser(config.Language);
-                    symbols = parser.Parse(content, filePath);
-                    _logger.LogDebug("Extracted {Count} symbols from {FilePath} using TreeSitter", symbols.Count, filePath);
-                } catch (DllNotFoundException dllEx) {
-                    // Native parser library for this language is not available. Remember and downgrade noise.
-                    s_missingGrammars.Add(config.Language);
-                    _logger.LogWarning(dllEx, "Tree-sitter grammar not found for language '{Language}'. Skipping files for this language.", config.Language);
-                }
-            } else {
-                _logger.LogWarning("No TreeSitter configuration found for language: {Language}", language);
-            }
-        } catch (Exception ex) {
-            _logger.LogError(ex, "Error parsing file with TreeSitter: {FilePath}", filePath);
-        }
+				try {
+					using Parser parser = new Parser(config.Language);
+					symbols = parser.Parse(content, filePath);
+					_logger.LogDebug("Extracted {Count} symbols from {FilePath} using TreeSitter", symbols.Count, filePath);
+				} catch (DllNotFoundException dllEx) {
+					// Native parser library for this language is not available. Remember and downgrade noise.
+					s_missingGrammars.Add(config.Language);
+					_logger.LogWarning(dllEx, "Tree-sitter grammar not found for language '{Language}'. Skipping files for this language.", config.Language);
+				}
+			} else {
+				_logger.LogWarning("No TreeSitter configuration found for language: {Language}", language);
+			}
+		} catch (Exception ex) {
+			_logger.LogError(ex, "Error parsing file with TreeSitter: {FilePath}", filePath);
+		}
 
 		return symbols;
 	}
@@ -354,8 +354,8 @@ public class TreeSitterCrawler : Crawler {
 		public List<CodeSymbol> Parse(string sourceCode, string filePath) {
 			List<CodeSymbol> symbols = new List<CodeSymbol>();
 			using Tree?      tree    = _parser.Parse(sourceCode);
-			string          qtext   = GetQueryForLanguage(_languageId);
-			using Query     query   = new Query(_language, qtext);
+			string           qtext   = GetQueryForLanguage(_languageId);
+			using Query      query   = new Query(_language, qtext);
 			List<QueryMatch> matches = query.Execute(tree.RootNode).Matches.ToList();
 
 			foreach (QueryMatch match in matches) {
@@ -371,7 +371,7 @@ public class TreeSitterCrawler : Crawler {
 				}
 
 				if (nameNode != null && bodyNode != null) {
-					string captureName = match.Captures.First(c => c.Name.EndsWith(".name")).Name;
+					string     captureName = match.Captures.First(c => c.Name.EndsWith(".name")).Name;
 					SymbolKind symbolKind  = GetSymbolKind(captureName);
 
 					symbols.Add(new CodeSymbol(
@@ -389,7 +389,7 @@ public class TreeSitterCrawler : Crawler {
 
 		private static (string library, string function) ResolveLanguageBinding(string id) {
 			string lid = id.ToLowerInvariant();
-			string lib = $"tree-sitter-{lid}";               // native library name uses hyphens
+			string lib = $"tree-sitter-{lid}";                   // native library name uses hyphens
 			string fn  = $"tree_sitter_{lid.Replace('-', '_')}"; // exported function uses underscores
 			return (lib, fn);
 		}

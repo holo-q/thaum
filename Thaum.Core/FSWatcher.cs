@@ -12,18 +12,18 @@ public record FileChangeEvent(
 );
 
 public class FSWatcher : IDisposable {
-	private readonly Crawler                                  _crawler;
+	private readonly Crawler                                      _crawler;
 	private readonly DependencyTracker                            _dependencyTracker;
 	private readonly ILogger<FSWatcher>                           _logger;
 	private readonly ConcurrentDictionary<string, ProjectWatcher> _watchers = new();
 
 	public FSWatcher(
-		Crawler        crawler,
+		Crawler            crawler,
 		DependencyTracker  dependencyTracker,
 		ILogger<FSWatcher> logger) {
-		_crawler = crawler;
-		_dependencyTracker  = dependencyTracker;
-		_logger             = logger;
+		_crawler           = crawler;
+		_dependencyTracker = dependencyTracker;
+		_logger            = logger;
 	}
 
 	public async Task StartWatchingAsync(string projectPath, string language) {
@@ -104,7 +104,7 @@ public class FSWatcher : IDisposable {
 internal class ProjectWatcher : IDisposable {
 	private readonly string                           _projectPath;
 	private readonly string                           _language;
-	private readonly Crawler                      _crawler;
+	private readonly Crawler                          _crawler;
 	private readonly DependencyTracker                _dependencyTracker;
 	private readonly ILogger                          _logger;
 	private readonly FileSystemWatcher                _fileWatcher;
@@ -114,14 +114,14 @@ internal class ProjectWatcher : IDisposable {
 	public ProjectWatcher(
 		string            projectPath,
 		string            language,
-		Crawler       crawler,
+		Crawler           crawler,
 		DependencyTracker dependencyTracker,
 		ILogger           logger) {
-		_projectPath        = projectPath;
-		_language           = language;
-		_crawler = crawler;
-		_dependencyTracker  = dependencyTracker;
-		_logger             = logger;
+		_projectPath       = projectPath;
+		_language          = language;
+		_crawler           = crawler;
+		_dependencyTracker = dependencyTracker;
+		_logger            = logger;
 
 		_fileWatcher = new FileSystemWatcher(projectPath) {
 			IncludeSubdirectories = true,

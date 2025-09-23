@@ -4,6 +4,8 @@
         <TargetFramework>net9.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <!-- Enable C# interceptors preview so InterceptsLocation works (for any Core call sites) -->
+        <Features>InterceptorsPreview</Features>
         <PublishAot>false</PublishAot>
         <InvariantGlobalization>true</InvariantGlobalization>
         <TrimMode>partial</TrimMode>
@@ -11,9 +13,11 @@
         <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
         <RootNamespace>Thaum.Core</RootNamespace>
         <NoWarn>$(NoWarn)</NoWarn>
-        <WarningsAsErrors />
-        <WarningsNotAsErrors />
+        <WarningsAsErrors/>
+        <WarningsNotAsErrors/>
         <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+        <!-- Allow interceptors in this namespace where wrappers are emitted -->
+        <InterceptorsNamespaces>$(InterceptorsNamespaces);Thaum.App.RatatuiTUI</InterceptorsNamespaces>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
         <DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
         <RestoreUseSkipNonexistentTargets>true</RestoreUseSkipNonexistentTargets>
@@ -33,34 +37,34 @@
         <TrimmerDefaultAction>link</TrimmerDefaultAction>
     </PropertyGroup>
 
-  <ItemGroup>
-        <PackageReference Include="OmniSharp.Extensions.LanguageProtocol" Version="0.19.9" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.9" />
-        <PackageReference Include="Serilog" Version="4.3.0" />
-        <PackageReference Include="Serilog.Extensions.Logging" Version="9.0.2" />
-        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
-        <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
-        <PackageReference Include="Serilog.Sinks.Seq" Version="8.0.0" />
-        <PackageReference Include="Serilog.Formatting.Compact" Version="2.0.0" />
-        <PackageReference Include="Spectre.Console" Version="0.51.1" />
-        <PackageReference Include="Serilog.Sinks.SpectreConsole" Version="0.3.3" />
-        <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
-        <PackageReference Include="System.Text.Json" Version="8.0.5" />
-        <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
-        <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
-        <PackageReference Include="TreeSitter.DotNet" Version="1.0.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-      <ProjectReference Include="..\docs\Ratatui.cs\src\Ratatui\Ratatui.csproj" />
-      <ProjectReference Include="..\Thaum.Generators\Thaum.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-      <ProjectReference Include="..\Holoware.cs\Holoware.cs.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="OmniSharp.Extensions.LanguageProtocol" Version="0.19.9"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9"/>
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.9"/>
+        <PackageReference Include="Serilog" Version="4.3.0"/>
+        <PackageReference Include="Serilog.Extensions.Logging" Version="9.0.2"/>
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0"/>
+        <PackageReference Include="Serilog.Sinks.File" Version="7.0.0"/>
+        <PackageReference Include="Serilog.Sinks.Seq" Version="8.0.0"/>
+        <PackageReference Include="Serilog.Formatting.Compact" Version="2.0.0"/>
+        <PackageReference Include="Spectre.Console" Version="0.51.1"/>
+        <PackageReference Include="Serilog.Sinks.SpectreConsole" Version="0.3.3"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0"/>
+        <PackageReference Include="System.Text.Json" Version="8.0.5"/>
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10"/>
+        <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1"/>
+        <PackageReference Include="TreeSitter.DotNet" Version="1.0.1"/>
+    </ItemGroup>
 
     <ItemGroup>
-        <TrimmerRootAssembly Include="OmniSharp.Extensions.LanguageProtocol" />
+        <ProjectReference Include="..\docs\Ratatui.cs\src\Ratatui\Ratatui.csproj"/>
+        <ProjectReference Include="..\Thaum.Generators\Thaum.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+        <ProjectReference Include="..\Holoware.cs\Holoware.cs.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <TrimmerRootAssembly Include="OmniSharp.Extensions.LanguageProtocol"/>
     </ItemGroup>
 
 </Project>

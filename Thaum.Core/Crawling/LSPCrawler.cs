@@ -456,8 +456,8 @@ public class LSPInstance : IDisposable {
 		await Task.CompletedTask;
 	}
 
-    [RequiresUnreferencedCode("Calls System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver.DefaultJsonTypeInfoResolver()")]
-    private async Task SendRequest(object request) {
+	[RequiresUnreferencedCode("Calls System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver.DefaultJsonTypeInfoResolver()")]
+	private async Task SendRequest(object request) {
 		if (_writer == null) return;
 
 		JsonSerializerOptions jsonOptions = new JsonSerializerOptions {
@@ -475,8 +475,8 @@ public class LSPInstance : IDisposable {
 		await _writer.FlushAsync();
 	}
 
-    [RequiresUnreferencedCode("Calls System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver.DefaultJsonTypeInfoResolver()")]
-    private async Task SendNotification(object notification) {
+	[RequiresUnreferencedCode("Calls System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver.DefaultJsonTypeInfoResolver()")]
+	private async Task SendNotification(object notification) {
 		if (_writer == null) return;
 
 		JsonSerializerOptions jsonOptions = new JsonSerializerOptions {

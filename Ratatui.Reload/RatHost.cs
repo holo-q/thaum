@@ -342,8 +342,7 @@ public partial class RatHost : IDisposable {
 			if (_isPendingSwap) {
 				_isPendingSwap = false;
 				ReloadSwap();
-				var active = _tui;
-				active?.OnResize(w, h);
+				_tui?.OnResize(w, h);
 				_ui.OnResize(w, h);
 			}
 
@@ -360,9 +359,8 @@ public partial class RatHost : IDisposable {
 				}
 			}
 
-			var active = _tui;
-			active?.Tick(dt);
-			active?.Draw(term);
+			_tui?.Tick(dt);
+			_tui?.Draw(term);
 		}
 
 		return 0;
@@ -387,8 +385,7 @@ public partial class RatHost : IDisposable {
 
 		using Terminal term = new Terminal();
 		term.Viewport = new Rect(0, 0, 120, 36);
-		term.FrameSink = span =>
-		{
+		term.FrameSink = span => {
 			DrawCommand[] arr  = span.ToArray();
 			string        ansi = Testing.Headless.RenderFrame(120, 36, arr);
 			bridge.WriteAnsi(ansi);
@@ -408,7 +405,8 @@ public partial class RatHost : IDisposable {
 			if (_allowLiveReload && _buildRequested && !_isBuilding) {
 				SetBuilding("Rebuilding for external TUI...");
 				bool ok = await BuildPluginAsync(_cts.Token);
-				if (ok) SetBuildSuccess(); else SetBuildFailed();
+				if (ok) SetBuildSuccess();
+				else SetBuildFailed();
 			}
 
 			// Swap after successful build
@@ -424,7 +422,9 @@ public partial class RatHost : IDisposable {
 					DispatchToApp(ev, term);
 			}
 
-			TimeSpan now = sw.Elapsed; TimeSpan dt = now - last; last = now;
+			TimeSpan now = sw.Elapsed;
+			TimeSpan dt  = now - last;
+			last = now;
 			_tui?.Tick(dt);
 			_tui?.Draw(term);
 
@@ -520,7 +520,7 @@ public partial class RatHost : IDisposable {
 		Rect            rect   = new Rect(2, 1, width, height);
 		using Paragraph para   = new Paragraph("").Title("Build Error", border: true);
 		string          tail   = string.Join('\n', log.Split('\n').TakeLast(height - 4));
-		para.AppendSpan(tail, new Style(fg: Colors.LightRed));
+		para.AppendSpan(tail, new Style(fg: Colors.LIGHTRED));
 		term.Draw(para, rect);
 	}
 
@@ -532,7 +532,7 @@ public partial class RatHost : IDisposable {
 		int scrimW = Math.Max(1, w - 2);
 		int scrimH = Math.Max(1, h - 2);
 		using (Paragraph border = new Paragraph("")) {
-			border.Block(new Block().Borders(Borders.All));
+			border.Bordered();
 			term.Draw(border, new Rect(1, 1, scrimW, scrimH));
 		}
 
@@ -676,7 +676,7 @@ public partial class RatHost : IDisposable {
 		int y       = Math.Max(0, safeH - 2);
 
 		using Paragraph p = new Paragraph("");
-		p.AppendSpan(msg, new Style(fg: Colors.LightYellow));
+		p.AppendSpan(msg, new Style(fg: Colors.LYELLOW));
 		term.Draw(p, new Rect(x, y, w, 1));
 	}
 
@@ -706,7 +706,7 @@ public partial class RatHost : IDisposable {
 	private void ReloadSwap() {
 		object? state = _tui.CaptureState();
 
-		IRatTUI             oldApp = _tui;
+		IRatTUI            oldApp = _tui;
 		PluginLoadContext? oldAlc = _alc;
 
 		// Always fallback to HostTUI first

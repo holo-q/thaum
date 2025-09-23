@@ -7,8 +7,8 @@ namespace Thaum.App.RatatuiTUI;
 public sealed class ThaumModel {
 	public ThaumTUI.Panel focus = ThaumTUI.Panel.Files;
 
-	public Crawler _crawler;
-	public Golfer  _golfer;
+	public Crawler      _crawler;
+	public Defragmentor defrag;
 
 	public List<string>     allFiles   = [];
 	public List<CodeSymbol> allSymbols = [];

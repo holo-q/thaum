@@ -43,16 +43,38 @@ find_executable_project() {
 
 main() {
     local FORCE_REBUILD=0
-    if [[ "${1-}" == "--rebuild" ]]; then
-        FORCE_REBUILD=1
-        shift
-    fi
+    local project=""
 
-    local project
-    project=$(find_executable_project)
-    
-    if [ $? -ne 0 ]; then
-        exit 1
+    # Parse optional --rebuild and optional <project> (first non-flag arg)
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --rebuild)
+                FORCE_REBUILD=1
+                shift
+                ;;
+            --)
+                # passthrough marker for app args; stop parsing
+                shift
+                break
+                ;;
+            -*)
+                # unknown flag for this wrapper; stop parsing and pass through to app
+                break
+                ;;
+            *)
+                # first positional is the project path/name
+                if [[ -z "$project" ]]; then
+                    project="$1"
+                    shift
+                else
+                    break
+                fi
+                ;;
+        esac
+    done
+
+    if [[ -z "$project" ]]; then
+        project=$(find_executable_project) || exit 1
     fi
 
     # Build before running (incremental by default; full rebuild only when requested)
@@ -60,11 +82,12 @@ main() {
     CORES=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo "4")
 
     if [[ "$FORCE_REBUILD" == "1" ]]; then
-        echo "Rebuilding: dotnet build '$project' -t:Rebuild (using $CORES cores)" >&2
+        echo "Rebuilding (no-restore): dotnet build '$project' -t:Rebuild --no-restore (using $CORES cores)" >&2
         {
             dotnet build "$project" \
                 -t:Rebuild \
                 -c Debug \
+                --no-restore \
                 -v minimal -clp:ErrorsOnly \
                 -nologo \
                 -m:"$CORES" \
@@ -72,10 +95,11 @@ main() {
                 /p:BuildInParallel=true
         } | sed -E '/warning :/d;/warning\(s\)/d'
     else
-        echo "Building (incremental): dotnet build '$project' (using $CORES cores)" >&2
+        echo "Building (incremental, no-restore): dotnet build '$project' --no-restore (using $CORES cores)" >&2
         {
             dotnet build "$project" \
                 -c Debug \
+                --no-restore \
                 -v minimal -clp:ErrorsOnly \
                 -nologo \
                 -m:"$CORES" \

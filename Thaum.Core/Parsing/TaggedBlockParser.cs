@@ -13,96 +13,102 @@ namespace Thaum.Core.Parsing;
 /// TODO we could add support for <block name="TAG"> ... </block> style.
 /// </summary>
 public static class TaggedBlockParser {
-    private static readonly Regex StartTagRx = new Regex(
-        pattern: @"(?is)<\s*([A-Za-z][A-Za-z0-9_-]*)\b([^>]*)>",
-        options: RegexOptions.Compiled
-    );
+	private static readonly Regex StartTagRx = new Regex(
+		pattern: @"(?is)<\s*([A-Za-z][A-Za-z0-9_-]*)\b([^>]*)>",
+		options: RegexOptions.Compiled
+	);
 
-    private static readonly Regex EndTagRx = new Regex(
-        pattern: @"(?is)</\s*([A-Za-z][A-Za-z0-9_-]*)\s*>",
-        options: RegexOptions.Compiled
-    );
+	private static readonly Regex EndTagRx = new Regex(
+		pattern: @"(?is)</\s*([A-Za-z][A-Za-z0-9_-]*)\s*>",
+		options: RegexOptions.Compiled
+	);
 
-    private static readonly Regex AttrRx = new Regex(
-        pattern: @"(?is)([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*(""([^""]*)""|'([^']*)'|([^\s>]+))",
-        options: RegexOptions.Compiled
-    );
+	private static readonly Regex AttrRx = new Regex(
+		pattern: @"(?is)([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*(""([^""]*)""|'([^']*)'|([^\s>]+))",
+		options: RegexOptions.Compiled
+	);
 
-    public record TaggedBlock(string Name, Dictionary<string, string> Attributes, string Content, int StartIndex, int EndIndex);
+	public record TaggedBlock(string Name, Dictionary<string, string> Attributes, string Content, int StartIndex, int EndIndex);
 
-    /// <summary>
-    /// Extracts all first-level tags from the input text. If allowedNames is provided, only returns those names.
-    /// Tag names are matched case-insensitively and normalized to upper case in results.
-    /// </summary>
-    public static List<TaggedBlock> ExtractAll(string text, IEnumerable<string>? allowedNames = null) {
-        List<TaggedBlock> result = new List<TaggedBlock>();
-        if (string.IsNullOrEmpty(text)) return result;
+	/// <summary>
+	/// Extracts all first-level tags from the input text. If allowedNames is provided, only returns those names.
+	/// Tag names are matched case-insensitively and normalized to upper case in results.
+	/// </summary>
+	public static List<TaggedBlock> ExtractAll(string text, IEnumerable<string>? allowedNames = null) {
+		List<TaggedBlock> result = new List<TaggedBlock>();
+		if (string.IsNullOrEmpty(text)) return result;
 
-        HashSet<string>? allow = null;
-        if (allowedNames != null) {
-            allow = new HashSet<string>(allowedNames.Select(n => n.ToUpperInvariant()));
-        }
+		HashSet<string>? allow = null;
+		if (allowedNames != null) {
+			allow = new HashSet<string>(allowedNames.Select(n => n.ToUpperInvariant()));
+		}
 
-        int index = 0;
-        while (index < text.Length) {
-            Match m = StartTagRx.Match(text, index);
-            if (!m.Success) break;
+		int index = 0;
+		while (index < text.Length) {
+			Match m = StartTagRx.Match(text, index);
+			if (!m.Success) break;
 
-            string name = m.Groups[1].Value;
-            string nameUp = name.ToUpperInvariant();
-            int startTagEnd = m.Index + m.Length;
+			string name        = m.Groups[1].Value;
+			string nameUp      = name.ToUpperInvariant();
+			int    startTagEnd = m.Index + m.Length;
 
-            // Self-closing tags are ignored for block extraction
-            if (text[m.Index..startTagEnd].Contains("/>")) { index = startTagEnd; continue; }
+			// Self-closing tags are ignored for block extraction
+			if (text[m.Index..startTagEnd].Contains("/>")) {
+				index = startTagEnd;
+				continue;
+			}
 
-            // Find closing tag of same name (first occurrence). Non-greedy search using regex from startTagEnd.
-            Match end = EndTagRx.Match(text, startTagEnd);
-            while (end.Success && !string.Equals(end.Groups[1].Value, name, StringComparison.OrdinalIgnoreCase)) {
-                end = EndTagRx.Match(text, end.Index + end.Length);
-            }
-            if (!end.Success) { index = startTagEnd; continue; }
+			// Find closing tag of same name (first occurrence). Non-greedy search using regex from startTagEnd.
+			Match end = EndTagRx.Match(text, startTagEnd);
+			while (end.Success && !string.Equals(end.Groups[1].Value, name, StringComparison.OrdinalIgnoreCase)) {
+				end = EndTagRx.Match(text, end.Index + end.Length);
+			}
+			if (!end.Success) {
+				index = startTagEnd;
+				continue;
+			}
 
-            int contentStart = startTagEnd;
-            int contentEnd   = end.Index;
-            string content   = text.Substring(contentStart, Math.Max(0, contentEnd - contentStart)).Trim();
+			int    contentStart = startTagEnd;
+			int    contentEnd   = end.Index;
+			string content      = text.Substring(contentStart, Math.Max(0, contentEnd - contentStart)).Trim();
 
-            // Filter by allowed names if provided
-            if (allow is null || allow.Contains(nameUp)) {
-                Dictionary<string, string> attrs = ParseAttributes(m.Groups[2].Value);
-                result.Add(new TaggedBlock(nameUp, attrs, content, m.Index, end.Index + end.Length));
-            }
+			// Filter by allowed names if provided
+			if (allow is null || allow.Contains(nameUp)) {
+				Dictionary<string, string> attrs = ParseAttributes(m.Groups[2].Value);
+				result.Add(new TaggedBlock(nameUp, attrs, content, m.Index, end.Index + end.Length));
+			}
 
-            index = end.Index + end.Length;
-        }
+			index = end.Index + end.Length;
+		}
 
-        return result;
-    }
+		return result;
+	}
 
-    /// <summary>
-    /// Extracts blocks by name (case-insensitive). Returns empty list if not found.
-    /// </summary>
-    public static List<TaggedBlock> ExtractByName(string text, string name) {
-        return ExtractAll(text, new[] { name });
-    }
+	/// <summary>
+	/// Extracts blocks by name (case-insensitive). Returns empty list if not found.
+	/// </summary>
+	public static List<TaggedBlock> ExtractByName(string text, string name) {
+		return ExtractAll(text, new[] { name });
+	}
 
-    /// <summary>
-    /// Tries to extract the first block by name (case-insensitive).
-    /// </summary>
-    public static bool TryExtractFirst(string text, string name, out TaggedBlock? block) {
-        block = ExtractByName(text, name).FirstOrDefault();
-        return block is not null;
-    }
+	/// <summary>
+	/// Tries to extract the first block by name (case-insensitive).
+	/// </summary>
+	public static bool TryExtractFirst(string text, string name, out TaggedBlock? block) {
+		block = ExtractByName(text, name).FirstOrDefault();
+		return block is not null;
+	}
 
-    private static Dictionary<string, string> ParseAttributes(string raw) {
-        Dictionary<string, string> dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (Match m in AttrRx.Matches(raw)) {
-            string key = m.Groups[1].Value;
-            string val = m.Groups[3].Success ? m.Groups[3].Value
-                        : m.Groups[4].Success ? m.Groups[4].Value
-                        : m.Groups[5].Success ? m.Groups[5].Value
-                        : string.Empty;
-            if (!dict.ContainsKey(key)) dict[key] = val;
-        }
-        return dict;
-    }
+	private static Dictionary<string, string> ParseAttributes(string raw) {
+		Dictionary<string, string> dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		foreach (Match m in AttrRx.Matches(raw)) {
+			string key = m.Groups[1].Value;
+			string val = m.Groups[3].Success ? m.Groups[3].Value
+				: m.Groups[4].Success        ? m.Groups[4].Value
+				: m.Groups[5].Success        ? m.Groups[5].Value
+				                               : string.Empty;
+			if (!dict.ContainsKey(key)) dict[key] = val;
+		}
+		return dict;
+	}
 }

@@ -54,16 +54,16 @@ internal sealed class DevHostUi : IHotReloadUi {
 
 		// Header: build state + time since last success
 		using (Paragraph header = new Paragraph("")) {
-			string state = st.Building ? "building…" : st.BuildFailed  ? "failed" : "ok";
-			Colors    colors = st.Building ? Colors.Yellow : st.BuildFailed ? Colors.LightRed : Colors.LightGreen;
-			header.AppendSpan("DevHost • ", new Style(fg: Colors.Gray));
+			string state  = st.Building ? "building…" : st.BuildFailed   ? "failed" : "ok";
+			Colors colors = st.Building ? Colors.YELLOW : st.BuildFailed ? Colors.LIGHTRED : Colors.LIGHTGREEN;
+			header.AppendSpan("DevHost • ", new Style(fg: Colors.GRAY));
 			header.AppendSpan(state, new Style(fg: colors, bold: true));
 			if (st.LastSuccessUtc.HasValue) {
 				TimeSpan ago = (DateTime.UtcNow - st.LastSuccessUtc.Value);
-				header.AppendSpan($"  last: {FormatAgo(ago)}", new Style(fg: Colors.Gray));
+				header.AppendSpan($"  last: {FormatAgo(ago)}", new Style(fg: Colors.GRAY));
 			}
 			if (st.ChangesPending) {
-				header.AppendSpan($"  ⟳ changes pending — press {(char)st.ReloadKey}", new Style(fg: Colors.LightYellow));
+				header.AppendSpan($"  ⟳ changes pending — press {(char)st.ReloadKey}", new Style(fg: Colors.LYELLOW));
 			}
 			term.Draw(header, rHeader);
 		}
@@ -73,9 +73,9 @@ internal sealed class DevHostUi : IHotReloadUi {
 
 		// Console panel (build log tail)
 		if (_consoleVisible && consoleH > 0) {
-			int       maxLines = Math.Max(1, consoleH);
-			string[]  lines    = st.LastBuildLog?.Split('\n') ?? Array.Empty<string>();
-			string       tail     = string.Join('\n', lines.TakeLast(maxLines));
+			int             maxLines = Math.Max(1, consoleH);
+			string[]        lines    = st.LastBuildLog?.Split('\n') ?? Array.Empty<string>();
+			string          tail     = string.Join('\n', lines.TakeLast(maxLines));
 			using Paragraph p        = new Paragraph(tail).Title("Console", border: true);
 			term.Draw(p, rConsole);
 		}
@@ -83,12 +83,12 @@ internal sealed class DevHostUi : IHotReloadUi {
 		// Footer: hints
 		using (Paragraph footer = new Paragraph("")) {
 			if (st.Building) {
-				footer.AppendSpan(" ⟳ building… ", new Style(fg: Colors.Yellow));
+				footer.AppendSpan(" ⟳ building… ", new Style(fg: Colors.YELLOW));
 			} else if (st.BuildFailed) {
-				footer.AppendSpan(" build failed — check console (F12) ", new Style(fg: Colors.LightRed));
+				footer.AppendSpan(" build failed — check console (F12) ", new Style(fg: Colors.LIGHTRED));
 			} else {
-				footer.AppendSpan(" F12 dev console  ", new Style(fg: Colors.Gray));
-				footer.AppendSpan($" reload {(char)st.ReloadKey} ", new Style(fg: Colors.Gray));
+				footer.AppendSpan(" F12 dev console  ", new Style(fg: Colors.GRAY));
+				footer.AppendSpan($" reload {(char)st.ReloadKey} ", new Style(fg: Colors.GRAY));
 			}
 			term.Draw(footer, rFooter);
 		}

@@ -18,8 +18,8 @@ internal class AssemblyCommands {
 		_colorer = colorer;
 	}
 
-    [RequiresUnreferencedCode("Calls System.Reflection.Assembly.GetTypes()")]
-    public async Task HandleAssemblyListing(Assembly assembly, LsOptions options) {
+	[RequiresUnreferencedCode("Calls System.Reflection.Assembly.GetTypes()")]
+	public async Task HandleAssemblyListing(Assembly assembly, LsOptions options) {
 		println($"Scanning assembly {assembly.GetName().Name}...");
 
 		try {
@@ -121,8 +121,8 @@ internal class AssemblyCommands {
 		await Task.CompletedTask;
 	}
 
-    [RequiresUnreferencedCode("Calls System.Reflection.Assembly.GetTypes()")]
-    public async Task HandleLoadedAssemblyListing(string assemblyNamePattern, LsOptions options) {
+	[RequiresUnreferencedCode("Calls System.Reflection.Assembly.GetTypes()")]
+	public async Task HandleLoadedAssemblyListing(string assemblyNamePattern, LsOptions options) {
 		println($"Searching for loaded assemblies matching '{assemblyNamePattern}'...");
 
 		try {

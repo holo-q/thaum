@@ -33,7 +33,7 @@ public partial class ThaumTUI : RatTUI<ThaumTUI>, IReloadableApp {
 		InitializeScreens();
 	}
 
-	public ThaumTUI(string projectPath, CodeMap codemap, Crawler crawler, Golfer golfer) {
+	public ThaumTUI(string projectPath, CodeMap codemap, Crawler crawler, Defragmentor defrag) {
 		this.projectPath = projectPath;
 
 		List<CodeSymbol> allSymbols = codemap
@@ -51,7 +51,7 @@ public partial class ThaumTUI : RatTUI<ThaumTUI>, IReloadableApp {
 			allFiles   = allSymbols.Select(s => s.FilePath).Distinct().OrderBy(x => x).ToList(),
 			summary    = null,
 			_crawler   = crawler,
-			_golfer    = golfer
+			defrag     = defrag
 		};
 
 		// Constructors now aligned - all screens just take ThaumTUI
@@ -82,7 +82,7 @@ public partial class ThaumTUI : RatTUI<ThaumTUI>, IReloadableApp {
 				AvailableKeys: [],
 				PromptName: GLB.GetDefaultPrompt(sym));
 
-			return await model._golfer.RewriteAsync(sym, ctx, src);
+			return await model.defrag.RewriteAsync(sym, ctx, src);
 		} catch (Exception ex) {
 			err(ex, "Error summarizing symbol {Name}", sym.Name);
 			return $"Error: {ex.Message}";

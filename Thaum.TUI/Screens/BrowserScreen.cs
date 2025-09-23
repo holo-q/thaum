@@ -303,5 +303,4 @@ public sealed class BrowserScreen : ThaumScreen {
 
 	private static string SymbolLine(CodeSymbol s)
 		=> $"{s.Kind switch { SymbolKind.Class => "[C]", SymbolKind.Method => "[M]", SymbolKind.Function => "[F]", SymbolKind.Interface => "[I]", SymbolKind.Enum => "[E]", _ => "[·]" }} {s.Name.Replace('\n', ' ')}";
-
 }

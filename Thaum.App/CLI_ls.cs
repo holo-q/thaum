@@ -97,7 +97,8 @@ public partial class CLI {
 				await PrintTriadsForBatchRows(root, report.Rows, split);
 				return;
 			}
-		} catch { /* fall through */ }
+		} catch { /* fall through */
+		}
 
 		// Otherwise, treat as session index (from compress-batch)
 		try {
@@ -113,7 +114,8 @@ public partial class CLI {
 						FunctionTriad? triad     = JsonSerializer.Deserialize<FunctionTriad>(triadJson, GLB.JsonOptions);
 						if (triad is null) continue;
 						triadObjs.Add(triad);
-					} catch { /* ignore per-file errors */ }
+					} catch { /* ignore per-file errors */
+					}
 				}
 				PrintTriadsTree(root, triadObjs, split);
 				return;
@@ -130,7 +132,8 @@ public partial class CLI {
 						FunctionTriad? triad     = JsonSerializer.Deserialize<FunctionTriad>(triadJson, GLB.JsonOptions);
 						if (triad is null) continue;
 						triadObjs.Add(triad);
-					} catch { /* ignore per-file errors */ }
+					} catch { /* ignore per-file errors */
+					}
 				}
 				if (triadObjs.Count == 0) {
 					println("No triads resolved from session items; verify triadPath fields point to existing files.");
@@ -156,15 +159,19 @@ public partial class CLI {
 					FunctionTriad? triad     = JsonSerializer.Deserialize<FunctionTriad>(triadJson, GLB.JsonOptions);
 					if (triad is null) continue;
 					triadsMap[(Path.GetFullPath(triad.FilePath), triad.SymbolName)] = triad;
-				} catch { /* ignore */ }
+				} catch { /* ignore */
+				}
 			}
 		}
 
 		List<FunctionTriad> triads  = new List<FunctionTriad>();
-		int    missing = 0;
+		int                 missing = 0;
 		foreach (BatchRow row in rows) {
 			string absFile = Path.GetFullPath(Path.Combine(root, row.File));
-			if (!triadsMap.TryGetValue((absFile, row.Symbol), out FunctionTriad? triad)) { missing++; continue; }
+			if (!triadsMap.TryGetValue((absFile, row.Symbol), out FunctionTriad? triad)) {
+				missing++;
+				continue;
+			}
 			triads.Add(triad);
 		}
 		PrintTriadsTree(root, triads, split);
@@ -173,10 +180,10 @@ public partial class CLI {
 
 	private static void PrintTriadsTree(string root, IEnumerable<FunctionTriad> triads, bool split = false) {
 		List<FunctionTriad> ordered = triads.OrderBy(x => x.FilePath).ThenBy(x => x.SymbolName).ToList();
-		int    c1      = RenderSection("topology", "blue",    ordered.Where(t => !string.IsNullOrWhiteSpace(t.Topology)) .Select(t => (t, t.Topology!)),  root, split);
-		int    c2      = RenderSection("morphism", "magenta", ordered.Where(t => !string.IsNullOrWhiteSpace(t.Morphism)).Select(t => (t, t.Morphism!)), root, split);
-		int    c3      = RenderSection("policy",   "yellow",  ordered.Where(t => !string.IsNullOrWhiteSpace(t.Policy))  .Select(t => (t, t.Policy!)),   root, split);
-		int    c4      = RenderSection("manifest", "green",   ordered.Where(t => !string.IsNullOrWhiteSpace(t.Manifest)).Select(t => (t, t.Manifest!)), root, split);
+		int                 c1      = RenderSection("topology", "blue", ordered.Where(t => !string.IsNullOrWhiteSpace(t.Topology)).Select(t => (t, t.Topology!)), root, split);
+		int                 c2      = RenderSection("morphism", "magenta", ordered.Where(t => !string.IsNullOrWhiteSpace(t.Morphism)).Select(t => (t, t.Morphism!)), root, split);
+		int                 c3      = RenderSection("policy", "yellow", ordered.Where(t => !string.IsNullOrWhiteSpace(t.Policy)).Select(t => (t, t.Policy!)), root, split);
+		int                 c4      = RenderSection("manifest", "green", ordered.Where(t => !string.IsNullOrWhiteSpace(t.Manifest)).Select(t => (t, t.Manifest!)), root, split);
 		if (c1 + c2 + c3 + c4 == 0) {
 			AnsiConsole.MarkupLine("[dim]No non-empty triad blocks to display for this session.[/]");
 		}
@@ -232,7 +239,10 @@ public partial class CLI {
 		return Path.GetFullPath(Path.Combine(sessionDir, triadPath));
 	}
 
-	private static int GetConsoleWidth() { try { return Console.WindowWidth; } catch { return GLB.ConsoleMinWidth; } }
+	private static int GetConsoleWidth() {
+		try { return Console.WindowWidth; } catch { return GLB.ConsoleMinWidth; }
+	}
+
 	private static string Ellipsize(string s, int max) {
 		if (string.IsNullOrEmpty(s) || max <= 0) return string.Empty;
 		if (s.Length <= max) return s;

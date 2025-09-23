@@ -5,9 +5,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
+    <!-- Enable C# interceptors preview so InterceptsLocation works -->
+    <Features>InterceptorsPreview</Features>
+    <!-- Allow interceptors in this namespace where wrappers are emitted -->
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Thaum.App.RatatuiTUI</InterceptorsNamespaces>
   </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="../docs/Ratatui.cs/src/Ratatui/Ratatui.csproj" />
-    <ProjectReference Include="../Thaum.Generators/Thaum.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="../docs/Ratatui.cs/src/Ratatui/Ratatui.csproj"/>
+        <ProjectReference Include="../Thaum.Generators/Thaum.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+    </ItemGroup>
 </Project>

@@ -40,19 +40,19 @@ public record OptimizationContext(
 /// redundant LLM calls where streaming enables real-time progress visualization
 /// </summary>
 [LoggingIntrinsics]
-public partial class Golfer {
-	private readonly LLM             _llm;
-	private readonly Crawler         _crawler;
-	private readonly ICache          _cache;
-	private readonly PromptLoader    _promptLoader;
-	private readonly ILogger<Golfer> _logger;
+public partial class Defragmentor {
+	private readonly LLM                   _llm;
+	private readonly Crawler               _crawler;
+	private readonly ICache                _cache;
+	private readonly PromptLoader          _promptLoader;
+	private readonly ILogger<Defragmentor> _logger;
 
-	public Golfer(LLM llm, Crawler crawler, ICache cache, PromptLoader promptLoader) {
+	public Defragmentor(LLM llm, Crawler crawler, ICache cache, PromptLoader promptLoader) {
 		_llm          = llm;
 		_crawler      = crawler;
 		_cache        = cache;
 		_promptLoader = promptLoader;
-		_logger       = Logging.Get<Golfer>();
+		_logger       = Logging.Get<Defragmentor>();
 	}
 
 	/// <summary>
@@ -142,8 +142,8 @@ public partial class Golfer {
 		HierarchyBuilder hierarchyBuilder = new HierarchyBuilder();
 
 		// Phase 1: Optimize functions (deepest scope)
-		using IDisposable        p1        = Logging.Scope("PHASE 1: Function Analysis");
-		List<CodeSymbol> functions = allSymbols.Where(s => s.Kind is SymbolKind.Function or SymbolKind.Method).ToList();
+		using IDisposable p1        = Logging.Scope("PHASE 1: Function Analysis");
+		List<CodeSymbol>  functions = allSymbols.Where(s => s.Kind is SymbolKind.Function or SymbolKind.Method).ToList();
 
 		List<string> functionOptimizations = new List<string>(functions.Count);
 		await AnsiConsole.Progress()
@@ -167,7 +167,7 @@ public partial class Golfer {
 			.SpinnerStyle(Style.Parse("yellow"))
 			.StartAsync("Extracting K1 from function summaries", async _ => await ExtractCommonKeyWithStreamAsync(functionOptimizations, 1));
 		Dictionary<string, string> extractedKeys = new Dictionary<string, string> { ["K1"] = k1 };
-			info("K1: {Sample}", k1.Length > 50 ? $"{k1[..47]}..." : k1);
+		info("K1: {Sample}", k1.Length > 50 ? $"{k1[..47]}..." : k1);
 
 		// Phase 3: Re-summarize functions with K1
 		using IDisposable p3 = Logging.Scope("PHASE 3: Function Re-analysis with K1");
@@ -184,8 +184,8 @@ public partial class Golfer {
 			});
 
 		// Phase 4: Optimize classes with K1
-		using IDisposable        p4      = Logging.Scope("PHASE 4: Class Analysis with K1");
-		List<CodeSymbol> classes = allSymbols.Where(s => s.Kind == SymbolKind.Class).ToList();
+		using IDisposable p4      = Logging.Scope("PHASE 4: Class Analysis with K1");
+		List<CodeSymbol>  classes = allSymbols.Where(s => s.Kind == SymbolKind.Class).ToList();
 
 		List<string> classOptimizations = new List<string>(classes.Count);
 		await AnsiConsole.Progress()
@@ -209,7 +209,7 @@ public partial class Golfer {
 			.SpinnerStyle(Style.Parse("yellow"))
 			.StartAsync("Extracting K2 from class summaries", async _ => await ExtractCommonKeyWithStreamAsync(classOptimizations, 2));
 		extractedKeys["K2"] = k2;
-			info("K2: {Sample}", k2.Length > 50 ? $"{k2[..47]}..." : k2);
+		info("K2: {Sample}", k2.Length > 50 ? $"{k2[..47]}..." : k2);
 
 		// Phase 6: Re-summarize everything with K1+K2
 		using IDisposable p6  = Logging.Scope("PHASE 6: Final Re-analysis with K1+K2");
@@ -229,8 +229,8 @@ public partial class Golfer {
 				}));
 			});
 
-		using IDisposable        p7          = Logging.Scope("Hierarchy Construction");
-		List<CodeSymbol> rootSymbols = hierarchyBuilder.BuildHierarchy(allSymbols);
+		using IDisposable p7          = Logging.Scope("Hierarchy Construction");
+		List<CodeSymbol>  rootSymbols = hierarchyBuilder.BuildHierarchy(allSymbols);
 
 		info("Done: {Count} symbols processed", allSymbols.Count);
 		return new SymbolHierarchy(projectPath, rootSymbols, extractedKeys, DateTime.UtcNow);

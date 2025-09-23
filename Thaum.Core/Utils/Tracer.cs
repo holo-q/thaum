@@ -7,16 +7,16 @@ namespace Thaum.Core.Utils;
 
 // Backwards-compatible façade that routes to unified Logging.
 public static class Tracer {
-    private static ILogger _logger = Logging.Factory.CreateLogger("Tracer");
+	private static ILogger _logger = Logging.Factory.CreateLogger("Tracer");
 	private static bool    _isInteractiveMode;
 	private static int     _terminalWidth      = 80;
 	private static string  _operator           = "->";
 	private static int     _fixedOperatorWidth = 4; // operator plus surrounding spaces
 
 	public static void Initialize(ILogger logger, bool isInteractiveMode = false) {
-		_logger            = logger;
-		_isInteractiveMode = isInteractiveMode;
-		_terminalWidth     = GetTerminalWidth();
+		_logger             = logger;
+		_isInteractiveMode  = isInteractiveMode;
+		_terminalWidth      = GetTerminalWidth();
 		_fixedOperatorWidth = _operator.Length + 2;
 	}
 
@@ -165,14 +165,14 @@ public static class Tracer {
 
 	public static void traceheader(string title) {
 		println();
-        try {
-            Rule rule = new Rule($"{title}");
-            AnsiConsole.Write(rule);
-        } catch {
-            println(tracehdr(title));
-        }
-        println();
-    }
+		try {
+			Rule rule = new Rule($"{title}");
+			AnsiConsole.Write(rule);
+		} catch {
+			println(tracehdr(title));
+		}
+		println();
+	}
 
 	public static void traceprogress(string operation, int current, int total) {
 		double percentage = (double)current / total * 100;

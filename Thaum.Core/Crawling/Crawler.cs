@@ -12,13 +12,13 @@ public abstract class Crawler {
 	/// all discovered symbols organized by file and indexed by name for efficient access
 	/// </summary>
 	public abstract Task<CodeMap> CrawlDir(string directory, CodeMap? codeMap = null);
-	
+
 	/// <summary>
 	/// Crawls single file for symbols updating the provided CodeMap where file-specific
 	/// symbols are added to the map maintaining discovery order and indexing
 	/// </summary>
 	public abstract Task<CodeMap> CrawlFile(string filePath, CodeMap? codeMap = null);
-	
+
 	/// <summary>
 	/// Legacy method for backward compatibility - creates new CodeMap and returns symbols as list
 	/// </summary>
@@ -26,7 +26,7 @@ public abstract class Crawler {
 		CodeMap codeMap = await CrawlDir(directory);
 		return codeMap.ToList();
 	}
-	
+
 	/// <summary>
 	/// Legacy method for backward compatibility - creates new CodeMap and returns symbols as list
 	/// </summary>
@@ -34,7 +34,7 @@ public abstract class Crawler {
 		CodeMap codeMap = await CrawlFile(filePath);
 		return codeMap.ToList();
 	}
-	
+
 	public abstract Task<CodeSymbol?>      GetDefinitionFor(string name, CodeLoc location);
 	public abstract Task<List<CodeSymbol>> GetReferencesFor(string name, CodeLoc location);
 

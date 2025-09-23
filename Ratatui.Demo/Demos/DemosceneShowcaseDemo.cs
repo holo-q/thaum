@@ -123,8 +123,8 @@ public sealed class DemosceneShowcaseDemo : BaseDemo {
 		int y = Math.Max(2, frame.Height / 2 - 6);
 
 		double pulse  = (Math.Sin(time * 3) + 1) * 0.5;
-		var    glow   = new Style(fg: Colors.White, bg: Colors.Blue, bold: true);
-		var    accent = new Style(fg: Colors.LightCyan, bold: true);
+		var    glow   = new Style(fg: Colors.WHITE, bg: Colors.BLUE, bold: true);
+		var    accent = new Style(fg: Colors.LCYAN, bold: true);
 
 		using var banner = new Paragraph("")
 			.AppendLine("    ▄█████████▄", accent)
@@ -133,7 +133,7 @@ public sealed class DemosceneShowcaseDemo : BaseDemo {
 			.AppendLine("   ███  DEMO ███", glow)
 			.AppendLine("    ▀█████████▀", accent)
 			.AppendLine("", accent)
-			.AppendLine($"   time {time:0.00}s  fps 60  pulse {pulse:0.00}", new Style(fg: Colors.Gray));
+			.AppendLine($"   time {time:0.00}s  fps 60  pulse {pulse:0.00}", new Style(fg: Colors.GRAY));
 		frame.Draw(banner, new Rect(x, y, Math.Min(36, frame.Width - x - 2), 7), BlendMode.Over, fgAlpha: 255, bgAlpha: 200);
 	}
 

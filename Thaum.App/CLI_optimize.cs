@@ -16,15 +16,15 @@ public partial class CLI {
 		trace($"Executing optimize command: {path}, {language}, prompt: {promptName}, endgame: {endgame}");
 
 		// Convert to options - endgame uses endgame prompts, otherwise use specified prompt or default
-		string actualPromptName = endgame ? "endgame_function" : promptName;
-		CompressorOptions    options          = new CompressorOptions(path, LangUtil.DetectLanguageInternal(path, language), actualPromptName);
+		string            actualPromptName = endgame ? "endgame_function" : promptName;
+		CompressorOptions options          = new CompressorOptions(path, LangUtil.DetectLanguageInternal(path, language), actualPromptName);
 
 		println($"Starting hierarchical optimization of {options.ProjectPath} ({options.Language})...");
 		println();
 
 		try {
 			DateTime        startTime = DateTime.UtcNow;
-			SymbolHierarchy hierarchy = await _golfer.ProcessCodebaseAsync(options.ProjectPath, options.Language, options.DefaultPromptName);
+			SymbolHierarchy hierarchy = await _defrag.ProcessCodebaseAsync(options.ProjectPath, options.Language, options.DefaultPromptName);
 			TimeSpan        duration  = DateTime.UtcNow - startTime;
 
 			// Display extracted keys

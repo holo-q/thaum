@@ -12,8 +12,8 @@ namespace Thaum.Core;
 /// where compression isn't reduction but recognition of seeds/eigenforms/ur-patterns from which
 /// code grew where multiple rollouts create holographic interference patterns that fusion resolves
 /// </summary>
-	public class Prompter {
-		private readonly LLM _llm;
+public class Prompter {
+	private readonly LLM _llm;
 
 	// TODO we can combine all compress functions
 	public Prompter(LLM llm) {
@@ -42,12 +42,12 @@ namespace Thaum.Core;
 	/// primordial seed-form through triple-vision perception (TOPOLOGY/MORPHISM/POLICY) where
 	/// the prompt doesn't compress but recognizes the growth pattern that generated the code
 	/// </summary>
-		public async Task Compress(string code, string promptName, CodeSymbol targetSymbol) {
+	public async Task Compress(string code, string promptName, CodeSymbol targetSymbol) {
 		// Build context (simplified for testing)
 		OptimizationContext context = new OptimizationContext(
 			Level: targetSymbol.Kind is SymbolKind.Function or SymbolKind.Method ? 1 : 2,
-			AvailableKeys: [],                          // No keys for testing
-			PromptName: null // Use default prompt
+			AvailableKeys: [], // No keys for testing
+			PromptName: null   // Use default prompt
 		);
 
 		// Build prompt directly
@@ -64,20 +64,20 @@ namespace Thaum.Core;
 		HttpClient httpClient  = new();
 		HttpLLM    llmProvider = new HttpLLM(httpClient, GLB.AppConfig);
 
-			// Stream response (also capture for artifact persistence)
-			StringBuilder sb = new StringBuilder();
-			IAsyncEnumerable<string> streamResponse = await llmProvider.StreamCompleteAsync(prompt, GLB.CompressionOptions(model));
-			await foreach (string token in streamResponse) {
-				Write(token);
-				sb.Append(token);
-			}
-			println();
-			println();
-			println("═══ TEST COMPLETE ═══");
-
-			// Persist artifacts (prompt + response + parsed triad)
-			_ = await ArtifactSaver.SaveSessionAsync(targetSymbol, targetSymbol.FilePath, prompt, sb.ToString(), null);
+		// Stream response (also capture for artifact persistence)
+		StringBuilder            sb             = new StringBuilder();
+		IAsyncEnumerable<string> streamResponse = await llmProvider.StreamCompleteAsync(prompt, GLB.CompressionOptions(model));
+		await foreach (string token in streamResponse) {
+			Write(token);
+			sb.Append(token);
 		}
+		println();
+		println();
+		println("═══ TEST COMPLETE ═══");
+
+		// Persist artifacts (prompt + response + parsed triad)
+		_ = await ArtifactSaver.SaveSessionAsync(targetSymbol, targetSymbol.FilePath, prompt, sb.ToString(), null);
+	}
 
 	/// <summary>
 	/// Compression rollout for holographic fusion where each rollout creates different perspective
@@ -88,8 +88,8 @@ namespace Thaum.Core;
 		// Build context (simplified for testing)
 		OptimizationContext context = new OptimizationContext(
 			Level: targetSymbol.Kind is SymbolKind.Function or SymbolKind.Method ? 1 : 2,
-			AvailableKeys: [],                          // No keys for testing
-			PromptName: null // Use default prompt
+			AvailableKeys: [], // No keys for testing
+			PromptName: null   // Use default prompt
 		);
 
 		// Build prompt directly

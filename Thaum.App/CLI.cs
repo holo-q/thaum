@@ -20,7 +20,7 @@ public partial class CLI {
 	private readonly LLM               _llm;
 	private readonly Crawler           _crawler;
 	private readonly Prompter          _prompter;
-	private readonly Golfer            _golfer;
+	private readonly Defragmentor      _defrag;
 	private readonly PerceptualColorer _colorer;
 
 	/// <summary>
@@ -49,7 +49,7 @@ public partial class CLI {
 		Cache        cache        = new Cache(GLB.AppConfig);
 		PromptLoader promptLoader = new PromptLoader();
 
-		_golfer = new Golfer(_llm, _crawler, cache, promptLoader);
+		_defrag = new Defragmentor(_llm, _crawler, cache, promptLoader);
 		traceout();
 	}
 
@@ -221,7 +221,7 @@ public partial class CLI {
 			});
 		});
 
-        // 'tui-watch' removed: standard 'tui' always launches via live reload host (deactivates in consumer builds)
+		// 'tui-watch' removed: standard 'tui' always launches via live reload host (deactivates in consumer builds)
 
 		app.Command("ls-lsp", cmd => {
 			cmd.Description = "(Temporarily disabled during TUI migration)";
