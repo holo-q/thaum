@@ -18,7 +18,7 @@ public partial class LSPDownloader {
 	private readonly ConsoleDownloadProgress? _progressReporter;
 
 	public LSPDownloader(HttpClient? httpClient = null, ConsoleDownloadProgress? progressReporter = null) {
-		_logger           = Logging.Get<LSPDownloader>();
+		_logger           = RatLog.Get<LSPDownloader>();
 		_http             = httpClient ?? new HttpClient();
 		_progressReporter = progressReporter;
 		_cachedir = Path.Combine(

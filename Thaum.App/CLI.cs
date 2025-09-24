@@ -32,7 +32,7 @@ public partial class CLI {
 		HttpClient httpClient = new HttpClient();
 
 		_crawler = new TreeSitterCrawler();
-		_logger  = Logging.Get<CLI>();
+		_logger  = RatLog.Get<CLI>();
 		_colorer = new PerceptualColorer();
 
 		// Initialize trace logger first

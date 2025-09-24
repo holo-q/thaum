@@ -14,7 +14,7 @@ public partial class CLI {
 	[RequiresUnreferencedCode("Uses reflection for TUI component initialization")]
 	public async Task CMD_tui(string projectPath, string language) {
 		// Switch logging to TUI mode to avoid console writes that would corrupt the frame buffer
-		Logging.SetupTUI();
+		RatLog.SetupTUI();
 		trace($"Launching TUI symbol browser for path: {projectPath}, language: {language}");
 
 		try {

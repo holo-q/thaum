@@ -7,7 +7,7 @@ namespace Thaum.Core.Utils;
 
 // Backwards-compatible façade that routes to unified Logging.
 public static class Tracer {
-	private static ILogger _logger = Logging.Factory.CreateLogger("Tracer");
+	private static ILogger _logger = RatLog.Factory.CreateLogger("Tracer");
 	private static bool    _isInteractiveMode;
 	private static int     _terminalWidth      = 80;
 	private static string  _operator           = "->";
@@ -193,7 +193,7 @@ public static class Tracer {
 
 	public static void println(object? obj = null) {
 		if (obj is null) {
-			Logging.NewLine();
+			RatLog.NewLine();
 			return;
 		}
 		_logger.LogInformation("{Message}", obj.ToString());

@@ -52,7 +52,7 @@ public partial class Defragmentor {
 		_crawler      = crawler;
 		_cache        = cache;
 		_promptLoader = promptLoader;
-		_logger       = Logging.Get<Defragmentor>();
+		_logger       = RatLog.Get<Defragmentor>();
 	}
 
 	/// <summary>
@@ -142,7 +142,7 @@ public partial class Defragmentor {
 		HierarchyBuilder hierarchyBuilder = new HierarchyBuilder();
 
 		// Phase 1: Optimize functions (deepest scope)
-		using IDisposable p1        = Logging.Scope("PHASE 1: Function Analysis");
+		using IDisposable p1        = RatLog.Scope("PHASE 1: Function Analysis");
 		List<CodeSymbol>  functions = allSymbols.Where(s => s.Kind is SymbolKind.Function or SymbolKind.Method).ToList();
 
 		List<string> functionOptimizations = new List<string>(functions.Count);
@@ -161,7 +161,7 @@ public partial class Defragmentor {
 			});
 
 		// Phase 2: Extract K1 from function summaries
-		using IDisposable p2 = Logging.Scope("PHASE 2: K1 Extraction");
+		using IDisposable p2 = RatLog.Scope("PHASE 2: K1 Extraction");
 		string k1 = await AnsiConsole.Status()
 			.Spinner(Spinner.Known.Dots)
 			.SpinnerStyle(Style.Parse("yellow"))
@@ -170,7 +170,7 @@ public partial class Defragmentor {
 		info("K1: {Sample}", k1.Length > 50 ? $"{k1[..47]}..." : k1);
 
 		// Phase 3: Re-summarize functions with K1
-		using IDisposable p3 = Logging.Scope("PHASE 3: Function Re-analysis with K1");
+		using IDisposable p3 = RatLog.Scope("PHASE 3: Function Re-analysis with K1");
 		await AnsiConsole.Progress()
 			.Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
 			.StartAsync(async ctx => {
@@ -184,7 +184,7 @@ public partial class Defragmentor {
 			});
 
 		// Phase 4: Optimize classes with K1
-		using IDisposable p4      = Logging.Scope("PHASE 4: Class Analysis with K1");
+		using IDisposable p4      = RatLog.Scope("PHASE 4: Class Analysis with K1");
 		List<CodeSymbol>  classes = allSymbols.Where(s => s.Kind == SymbolKind.Class).ToList();
 
 		List<string> classOptimizations = new List<string>(classes.Count);
@@ -203,7 +203,7 @@ public partial class Defragmentor {
 			});
 
 		// Phase 5: Extract K2 from class summaries
-		using IDisposable p5 = Logging.Scope("PHASE 5: K2 Extraction");
+		using IDisposable p5 = RatLog.Scope("PHASE 5: K2 Extraction");
 		string k2 = await AnsiConsole.Status()
 			.Spinner(Spinner.Known.Dots)
 			.SpinnerStyle(Style.Parse("yellow"))
@@ -212,7 +212,7 @@ public partial class Defragmentor {
 		info("K2: {Sample}", k2.Length > 50 ? $"{k2[..47]}..." : k2);
 
 		// Phase 6: Re-summarize everything with K1+K2
-		using IDisposable p6  = Logging.Scope("PHASE 6: Final Re-analysis with K1+K2");
+		using IDisposable p6  = RatLog.Scope("PHASE 6: Final Re-analysis with K1+K2");
 		List<CodeSymbol>  all = functions.Concat(classes).ToList();
 		await AnsiConsole.Progress()
 			.Columns(new SpinnerColumn(), new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new RemainingTimeColumn())
@@ -229,7 +229,7 @@ public partial class Defragmentor {
 				}));
 			});
 
-		using IDisposable p7          = Logging.Scope("Hierarchy Construction");
+		using IDisposable p7          = RatLog.Scope("Hierarchy Construction");
 		List<CodeSymbol>  rootSymbols = hierarchyBuilder.BuildHierarchy(allSymbols);
 
 		info("Done: {Count} symbols processed", allSymbols.Count);

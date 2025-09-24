@@ -16,7 +16,7 @@ public class LSPCrawler : Crawler {
 	private readonly LSPInstance         _lsp;
 
 	public LSPCrawler() {
-		_logger     = Logging.Get<LSPCrawler>();
+		_logger     = RatLog.Get<LSPCrawler>();
 		_downloader = new LSPDownloader(null, new LSPDownloader.ConsoleDownloadProgress());
 		// _lsp        = new LSPInstance()
 		throw new NotImplementedException(); // TODO

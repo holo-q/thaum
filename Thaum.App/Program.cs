@@ -13,7 +13,7 @@ public static class Program {
 		}
 
 		// Configure Serilog
-		Logging.SetupCLI();
+		RatLog.SetupCLI();
 
 		// Check if CLI arguments provided
 		if (args.Length > 0) {

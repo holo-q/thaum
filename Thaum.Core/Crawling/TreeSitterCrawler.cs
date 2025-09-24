@@ -32,7 +32,7 @@ public class TreeSitterCrawler : Crawler {
 	private readonly int                                          _maxDegreeOfParallelism;
 
 	public TreeSitterCrawler() {
-		_logger                 = Logging.Get<TreeSitterCrawler>();
+		_logger                 = RatLog.Get<TreeSitterCrawler>();
 		_languageConfigs        = InitializeLanguageConfigs();
 		_maxDegreeOfParallelism = GetMaxDegreeOfParallelism();
 	}
@@ -344,7 +344,7 @@ public class TreeSitterCrawler : Crawler {
 		private readonly ILogger<Parser>   _logger;
 
 		public Parser(string language) {
-			_logger                 = Logging.Get<Parser>();
+			_logger                 = RatLog.Get<Parser>();
 			(string lib, string fn) = ResolveLanguageBinding(language);
 			_language               = new Language(lib, fn);
 			_parser                 = new TreeSitter.Parser(_language);

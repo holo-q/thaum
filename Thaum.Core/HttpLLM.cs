@@ -20,7 +20,7 @@ public partial class HttpLLM : LLM {
 	public HttpLLM(HttpClient client, IConfiguration configuration) {
 		_client        = client;
 		_configuration = configuration;
-		_logger        = Logging.Get<HttpLLM>();
+		_logger        = RatLog.Get<HttpLLM>();
 	}
 
 	public override async Task<string> CompleteAsync(string prompt, LLMOptions? options = null) {

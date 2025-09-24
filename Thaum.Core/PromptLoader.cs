@@ -14,7 +14,7 @@ public partial class PromptLoader {
 	private static readonly ConcurrentDictionary<string, string> _sharedCache = new();
 
 	public PromptLoader(string? directory = null) {
-		_logger           = Logging.Get<PromptLoader>();
+		_logger           = RatLog.Get<PromptLoader>();
 		_promptsDirectory = directory ?? GLB.PromptsDir;
 		_promptCache      = new Dictionary<string, string>();
 	}

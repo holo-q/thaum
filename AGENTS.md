@@ -11,7 +11,7 @@ This document is a concise contributor guide for the Thaum repository.
 - `TreeSitter/` — grammar integration and native adapters; `reference/` — external subprojects.
 - `cache/` — runtime artifacts (sessions, evals). Do not commit.
 * `docs/ratatui-ffi` — for reference only, do not change.
-* `docs/Ratatui.cs` — the actual Ratatui.cs bindings used for our TUI.
+* `Ratatui.cs` — the actual Ratatui.cs bindings used for our TUI.
 
 ## Build, Test, and Development Commands
 - Build all: `dotnet build Thaum.sln`
