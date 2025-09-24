@@ -58,7 +58,10 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\docs\Ratatui.cs\src\Ratatui\Ratatui.csproj"/>
+        <ProjectReference Include="..\Ratatui.cs\generators\Ratatui.Generators.csproj" />
+        <ProjectReference Include="..\Ratatui.cs\generators\Ratatui.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\Ratatui.cs\Ratatui\Ratatui.csproj" />
+        <ProjectReference Include="..\Ratatui.cs\src\Ratatui\Ratatui.csproj" />
         <ProjectReference Include="..\Thaum.Generators\Thaum.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
         <ProjectReference Include="..\Holoware.cs\Holoware.cs.csproj"/>
     </ItemGroup>

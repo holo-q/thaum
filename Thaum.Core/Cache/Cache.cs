@@ -4,7 +4,7 @@ using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Thaum.Core.Utils;
+using Ratatui;
 
 namespace Thaum.Core.Cache;
 

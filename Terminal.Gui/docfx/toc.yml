@@ -1,8 +1,0 @@
-- name: Documentation
-  href: docs/
-
-- name: API Reference
-  href: api/
-
-- name: Source
-  href: https://github.com/gui-cs/Terminal.Gui

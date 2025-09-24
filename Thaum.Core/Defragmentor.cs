@@ -1,10 +1,10 @@
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Ratatui;
 using Spectre.Console;
 using Thaum.Core.Cache;
 using Thaum.Core.Crawling;
-using Thaum.Core.Utils;
-using Thaum.Meta;
+using Style = Spectre.Console.Style;
 
 namespace Thaum.Core;
 

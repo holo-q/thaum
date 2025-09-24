@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Ratatui;
 using Thaum.Core.Utils;
 using TreeSitter;
 

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using McMaster.Extensions.CommandLineUtils;
+using Ratatui;
 using Thaum.Core.Models;
 using Thaum.Core.Utils;
 using static Thaum.Core.Utils.Tracer;

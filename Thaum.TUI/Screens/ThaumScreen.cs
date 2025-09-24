@@ -1,4 +1,4 @@
-using Ratatui;
+using Ratatui.Sugar;
 
 namespace Thaum.App.RatatuiTUI;
 

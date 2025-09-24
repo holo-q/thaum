@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
 using static Thaum.Core.Utils.Tracer;
 using System.Diagnostics.CodeAnalysis;
+using Ratatui;
 using Ratatui.Reload;
-using Thaum.Core.Utils;
 
 namespace Thaum.CLI;
 

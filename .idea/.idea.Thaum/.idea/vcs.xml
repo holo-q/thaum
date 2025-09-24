@@ -3,10 +3,6 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../.." vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/docs/Ratatui.cs" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/docs/Ratatui.cs/native/ratatui-ffi" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/docs/ratatui-ffi" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/docs/ratatui-ffi/target/ratatui-src/v0.29.0" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/docs/ratatui-ffi/target/src-cache/ratatui/v0.29.0" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Ratatui.cs" vcs="Git" />
   </component>
 </project>

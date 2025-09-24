@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using Thaum.Core.Utils;
+using Ratatui;
 
 namespace Thaum.Core.Crawling;
 

@@ -81,4 +81,10 @@
         <None Include="external/**"/>
     </ItemGroup>
 
+    <ItemGroup>
+      <Reference Include="Ratatui">
+        <HintPath>..\Ratatui.cs\Ratatui\bin\Debug\net9.0\Ratatui.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+
 </Project>

@@ -1,7 +1,7 @@
 using System.Text;
 using Ratatui;
 using Ratatui.Sugar;
-using static Thaum.App.RatatuiTUI.Rat;
+using static Ratatui.Sugar.Rat;
 
 namespace Thaum.App.RatatuiTUI;
 

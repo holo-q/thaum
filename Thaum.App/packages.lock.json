@@ -622,13 +622,16 @@
           "Spectre.Console": "[0.51.1, )"
         }
       },
+      "ratatui.generators": {
+        "type": "Project"
+      },
       "ratatui.reload": {
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.Logging": "[9.0.9, )",
+          "Ratatui.Generators": "[1.0.0, )",
           "Ratatui.cs": "[1.0.0, )",
-          "Spectre.Console": "[0.51.1, )",
-          "Thaum.Core": "[1.0.0, )"
+          "Spectre.Console": "[0.51.1, )"
         }
       },
       "thaum.core": {
@@ -642,6 +645,7 @@
           "Microsoft.Extensions.Http": "[8.0.1, )",
           "Microsoft.Extensions.Logging": "[9.0.9, )",
           "OmniSharp.Extensions.LanguageProtocol": "[0.19.9, )",
+          "Ratatui.Generators": "[1.0.0, )",
           "Ratatui.cs": "[1.0.0, )",
           "Serilog": "[4.3.0, )",
           "Serilog.Extensions.Logging": "[9.0.2, )",

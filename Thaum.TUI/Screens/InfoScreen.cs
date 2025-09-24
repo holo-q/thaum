@@ -1,8 +1,8 @@
 using Ratatui;
 using Ratatui.Sugar;
 using Thaum.Core.Crawling;
-using static Thaum.App.RatatuiTUI.Rat;
-using static Thaum.App.RatatuiTUI.Styles;
+using static Ratatui.Sugar.Rat;
+using static Ratatui.Sugar.Styles;
 
 namespace Thaum.App.RatatuiTUI;
 

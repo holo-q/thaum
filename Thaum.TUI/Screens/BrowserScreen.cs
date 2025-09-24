@@ -3,9 +3,9 @@ using Ratatui;
 using Ratatui.Layout;
 using Ratatui.Sugar;
 using Thaum.Core.Crawling;
-using static Thaum.App.RatatuiTUI.RatLayout;
-using static Thaum.App.RatatuiTUI.Rat;
-using static Thaum.App.RatatuiTUI.Styles;
+using static Ratatui.Sugar.RatLayout;
+using static Ratatui.Sugar.Rat;
+using static Ratatui.Sugar.Styles;
 
 namespace Thaum.App.RatatuiTUI;
 
@@ -35,13 +35,13 @@ public sealed class BrowserScreen : ThaumScreen {
 		tui.keys.Register(
 			"char",
 			"type filter",
-			ev => ev is { Kind: EventKind.Key, Key.CodeEnum: KeyCode.CHAR } && IsFilterChar((char)ev.Key.CharUint),
+			ev => ev is { kind: EventKind.Key, key.CodeEnum: KeyCode.CHAR } && IsFilterChar((char)ev.key.CharUint),
 			(ev, tui) => {
 				if (model.focus == ThaumTUI.Panel.Files) {
-					model.fileFilter += (char)ev.Key.CharUint;
+					model.fileFilter += (char)ev.key.CharUint;
 					model.ApplyFileFilter();
 				} else {
-					model.symFilter += (char)ev.Key.CharUint;
+					model.symFilter += (char)ev.key.CharUint;
 					model.ApplySymbolFilter();
 				}
 				return true;

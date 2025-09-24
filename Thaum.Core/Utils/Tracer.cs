@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Ratatui;
 using Spectre.Console;
 
 namespace Thaum.Core.Utils;

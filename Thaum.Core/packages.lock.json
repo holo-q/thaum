@@ -606,6 +606,9 @@
           "Serilog.Sinks.SpectreConsole": "[0.3.3, )",
           "Spectre.Console": "[0.51.1, )"
         }
+      },
+      "ratatui.generators": {
+        "type": "Project"
       }
     }
   }

@@ -1,10 +1,10 @@
 using System.Text;
 using Ratatui;
-using Ratatui.Reload.Abstractions;
+using Ratatui.Reload;
+using Ratatui.Sugar;
 using Thaum.Core;
 using Thaum.Core.Crawling;
-using Thaum.Meta;
-using static Thaum.App.RatatuiTUI.Styles;
+using static Ratatui.Sugar.Styles;
 
 namespace Thaum.App.RatatuiTUI;
 
@@ -61,13 +61,11 @@ public partial class ThaumTUI : RatTUI<ThaumTUI>, IReloadableApp {
 		scrReferences = new ReferencesScreen(this);
 		scrMode       = new InfoScreen(this);
 
-		// TODO does not take a handler, it instead sets a field on itself which is handled in GetNextState
 		keys.RegisterScreen('1', scrBrowser, "browser", (tui,       screen) => tui.Navigate(screen));
 		keys.RegisterScreen('2', scrSource, "source", (tui,         screen) => tui.Navigate(screen));
 		keys.RegisterScreen('3', scrSummary, "summary", (tui,       screen) => tui.Navigate(screen));
 		keys.RegisterScreen('4', scrReferences, "references", (tui, screen) => tui.Navigate(screen));
 		keys.RegisterScreen('5', scrMode, "info", (tui,             screen) => tui.Navigate(screen));
-		// TODO same for this, different field
 		keys.RegisterExits(escape: true, q: true, ctrlC: true);
 	}
 
@@ -178,7 +176,7 @@ public partial class ThaumTUI : RatTUI<ThaumTUI>, IReloadableApp {
 	}
 
 	public override bool OnEvent(Event ev) {
-		switch (ev.Kind) {
+		switch (ev.kind) {
 			case EventKind.Resize:
 				Vec2 s = ev.Size();
 				OnResize(s.w, s.h);

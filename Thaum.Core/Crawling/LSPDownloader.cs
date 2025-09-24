@@ -2,8 +2,8 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
+using Ratatui;
 using Thaum.Core.Utils;
-using Thaum.Meta;
 
 namespace Thaum.Core.Crawling;
 

@@ -1,8 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text;
 using Microsoft.Extensions.Logging;
-using Thaum.Core.Utils;
-using Thaum.Meta;
+using Ratatui;
 
 namespace Thaum.Core;
 
