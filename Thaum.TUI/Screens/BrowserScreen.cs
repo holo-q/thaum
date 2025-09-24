@@ -21,11 +21,11 @@ public sealed class BrowserScreen : ThaumScreen {
 		static bool IsFilterChar(char ch) => char.IsLetterOrDigit(ch) || ch == ' ' || ch == '-' || ch == '_' || ch == '.' || ch == '/';
 
 		// ConfigureDefaultGlobalKeys();
-		tui.keys.RegisterKey(KeyCode.Down, "↓", "move", KEY_Down);
-		tui.keys.RegisterKey(KeyCode.Up, "↑", "move", KEY_Up);
+		tui.keys.RegisterKey(KeyCode.DOWN, "↓", "move", KEY_Down);
+		tui.keys.RegisterKey(KeyCode.UP, "↑", "move", KEY_Up);
 		tui.keys.RegisterKey(KeyCode.PAGE_DOWN, "PgDn", "jump", KEY_JumpDown);
 		tui.keys.RegisterKey(KeyCode.PAGE_UP, "PgUp", "jump", KEY_JumpUp);
-		tui.keys.RegisterKey(KeyCode.Left, "←", "switch focus", KEY_Tab);
+		tui.keys.RegisterKey(KeyCode.LEFT, "←", "switch focus", KEY_Tab);
 		tui.keys.RegisterChar('j', "↓", KEY_Down);
 		tui.keys.RegisterChar('k', "↑", KEY_Up);
 		tui.keys.RegisterKey(KeyCode.TAB, "Tab", "switch focus", KEY_Tab);
@@ -35,18 +35,18 @@ public sealed class BrowserScreen : ThaumScreen {
 		tui.keys.Register(
 			"char",
 			"type filter",
-			ev => ev is { Kind: EventKind.Key, Key.CodeEnum: KeyCode.Char } && IsFilterChar((char)ev.Key.Char),
+			ev => ev is { Kind: EventKind.Key, Key.CodeEnum: KeyCode.CHAR } && IsFilterChar((char)ev.Key.CharUint),
 			(ev, tui) => {
 				if (model.focus == ThaumTUI.Panel.Files) {
-					model.fileFilter += (char)ev.Key.Char;
+					model.fileFilter += (char)ev.Key.CharUint;
 					model.ApplyFileFilter();
 				} else {
-					model.symFilter += (char)ev.Key.Char;
+					model.symFilter += (char)ev.Key.CharUint;
 					model.ApplySymbolFilter();
 				}
 				return true;
 			});
-		tui.keys.RegisterKey(KeyCode.Delete, "Backspace", "erase", KEY_Erase);
+		tui.keys.RegisterKey(KeyCode.DELETE, "Backspace", "erase", KEY_Erase);
 		return;
 	}
 
@@ -61,7 +61,7 @@ public sealed class BrowserScreen : ThaumScreen {
 		=> "↑/↓ move  Tab switch  / filter  Enter open/summarize  o open";
 
 	[SuppressMessage("ReSharper", "InconsistentNaming")]
-	public override void Draw(Terminal term, Rect area) {
+	public override void Draw(Terminal tm, Rect area) {
 		var state = tui.model;
 
 		bool hasSym     = state.visibleSymbols.Count > 0;
@@ -78,27 +78,27 @@ public sealed class BrowserScreen : ThaumScreen {
 		string t2 = state.symFilter.Length == 0 ? "(type to filter)" : $"/{state.symFilter}";
 
 		Rect      r1        = cols[0];
-		Paragraph r1title   = Paragraph(t1, title: "Files", title_border: true);
+		Paragraph r1title   = Title("Files", true).Line(t1);
 		Rect      r1inner   = r1.Inner();
 		Rect      r1content = r1inner.Body();
 
 		Rect      r2      = cols[1];
-		Paragraph r2title = Paragraph(t2, title: "Symbols", title_border: true);
+		Paragraph r2title = Title("Symbols", true).Line(t2);
 		Rect      r2inner = r2.Inner();
 		(Rect r2header, Rect r2content) = r2inner.SplitTop(1);
 
 		Rect r3 = cols[2];
-		(Rect rDetails, Rect rSummary) = r3.SplitTop(Math.Max(6, r3.Height / 3));
+		(Rect rDetails, Rect rSummary) = r3.SplitTop(Math.Max(6, r3.h / 3));
 
-		int filesView = Math.Max(1, r1content.Height);
-		int symsView  = Math.Max(1, r2content.Height);
+		int filesView = Math.Max(1, r1content.h);
+		int symsView  = Math.Max(1, r2content.h);
 
 		// FILES
 		// full-height border with title; draw content inside inner rect
 		// ----------------------------------------
-		term.Draw(r1title, r1);
+		tm.Draw(r1title, r1);
 
-		Paragraph lbFiles = Paragraph("", title: filesFocus ? " Files " : " files ");
+		Paragraph lbFiles = Title(filesFocus ? " Files " : " files ");
 		// lbFiles += (filesFocus ? S_TITLE_ACTIVE : S_TITLE_DIM) |
 		//            (filesFocus ? " Files " : " files ");
 		// term.Draw(lbFiles, r1inner.WithMinSize(1, 1));
@@ -111,39 +111,40 @@ public sealed class BrowserScreen : ThaumScreen {
 			}
 		}
 
-		state.visibleFiles.Draw(term, r1content, 0, FileLine, _ => S_PATH);
+		state.visibleFiles.Draw(tm, r1content, 0, FileLine, _ => S_PATH);
 
 		// SYMBOLS
 		// full-height border with title; draw content inside inner rect
 		// ----------------------------------------
-		term.Draw(r2title, r2);
+		tm.Draw(r2title, r2);
+		tm.Draw(
+			Title(symsFocus ? " Symbols " : " symbols ").Line(
+				symsFocus ? " Symbols " : " symbols ",
+				symsFocus ? S_TITLE_ACTIVE : S_TITLE_DIM
+			),
+			r2header.WithMinSize(minWidth: 1, minHeight: 1));
 
-		Paragraph pSymbols = Paragraph("", title: symsFocus ? " Symbols " : " symbols ");
-		pSymbols += (symsFocus ? " Symbols " : " symbols ") |
-		            (symsFocus ? S_TITLE_ACTIVE : S_TITLE_DIM);
-		// term.Draw(pSymbols, r2header.WithMinSize(minWidth: 1, minHeight: 1));
+		state.visibleSymbols.Draw(tm, r2content, 0, SymbolLine, s => ThaumStyles.StyleForKind(s.Kind));
 
-		state.visibleSymbols.Draw(term, r2content, 0, SymbolLine, s => ThaumStyles.StyleForKind(s.Kind));
-
-		term.Draw(Paragraph("", "Details", true)
-				.AppendLine(!hasSym ? "" : $"Name: {state.visibleSymbols.Selected.Name}")
-				.AppendLine(!hasSym ? "" : $"Kind: {state.visibleSymbols.Selected.Kind}")
-				.AppendLine(!hasSym ? "" : $"File: {state.visibleSymbols.Selected.FilePath}")
-				.AppendLine(!hasSym ? "" : $"Span: L{state.visibleSymbols.Selected.StartCodeLoc.Line}:C{state.visibleSymbols.Selected.StartCodeLoc.Character}"),
+		tm.Draw(Title("Details", true)
+				.Line(!hasSym ? "" : $"Name: {state.visibleSymbols.Selected.Name}")
+				.Line(!hasSym ? "" : $"Kind: {state.visibleSymbols.Selected.Kind}")
+				.Line(!hasSym ? "" : $"File: {state.visibleSymbols.Selected.FilePath}")
+				.Line(!hasSym ? "" : $"Span: L{state.visibleSymbols.Selected.StartCodeLoc.Line}:C{state.visibleSymbols.Selected.StartCodeLoc.Character}"),
 			rDetails);
 
-		bool isCurrentSymbolLoading = state.visibleSymbols.Count > 0 && state.IsSymbolLoading(state.visibleSymbols.Selected);
-		string body = isCurrentSymbolLoading
+		bool isLoadingCurrent = state.visibleSymbols.Count > 0 && state.IsSymbolLoading(state.visibleSymbols.Selected);
+		string body = isLoadingCurrent
 			? $"Summarizing… {Spinner()}"
 			: state.summary ?? "";
 
-		Paragraph detail = Paragraph("", title: "Summary", title_border: true);
+		Paragraph detail = Title("Summary", true);
 		if (body.StartsWith("Error:"))
 			detail += body | S_ERROR;
 		else
 			detail += body;
 
-		term.Draw(detail, rSummary.WithMinSize(minHeight: 1));
+		tm.Draw(detail, rSummary.WithMinSize(minHeight: 1));
 	}
 
 

@@ -13,14 +13,14 @@ namespace Thaum.App.RatatuiTUI;
 public class SourceScreen : ThaumScreen {
 	public SourceScreen(ThaumTUI tui) : base(tui) { }
 
-	public override void Draw(Terminal term, Rect area) {
-		Paragraph title = Paragraph("", title: "Source", title_border: true);
+	public override void Draw(Terminal tm, Rect area) {
+		Paragraph title = Title("Source", true);
 		(Rect titleRect, Rect listRect) = area.SplitTop(2);
-		term.Draw(title, titleRect);
+		tm.Draw(title, titleRect);
 
 		List<string> lines                                                        = model.sourceLines ?? new List<string>();
 		List         list                                                         = List();
-		int          view                                                         = Math.Max(1, listRect.Height - 1);
+		int          view                                                         = Math.Max(1, listRect.h - 1);
 		if (model.sourceSelected < model.sourceOffset) model.sourceOffset         = model.sourceSelected;
 		if (model.sourceSelected >= model.sourceOffset + view) model.sourceOffset = Math.Max(0, model.sourceSelected - (view - 1));
 		int start                                                                 = Math.Max(0, model.sourceOffset);
@@ -55,7 +55,7 @@ public class SourceScreen : ThaumScreen {
 			}
 			list.AppendItem(CollectionsMarshal.AsSpan(runs));
 		}
-		term.Draw(list, listRect);
+		tm.Draw(list, listRect);
 	}
 
 	public override Task OnEnter() {
@@ -71,8 +71,8 @@ public class SourceScreen : ThaumScreen {
 
 	private void ConfigureKeys() {
 		keys
-			.RegisterKey(KeyCode.Down, "↓", "scroll", KEY_Down)
-			.RegisterKey(KeyCode.Up, "↑", "scroll", KEY_Up)
+			.RegisterKey(KeyCode.DOWN, "↓", "scroll", KEY_Down)
+			.RegisterKey(KeyCode.UP, "↑", "scroll", KEY_Up)
 			.RegisterKey(KeyCode.PAGE_DOWN, "PgDn", "scroll", KEY_PageDown)
 			.RegisterKey(KeyCode.PAGE_UP, "PgUp", "scroll", KEY_PageUp)
 			.RegisterChar('o', "open in editor", KEY_OpenInEditor);

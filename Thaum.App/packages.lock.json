@@ -626,17 +626,9 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.Logging": "[9.0.9, )",
-          "Ratatui.Reload.Abstractions": "[1.0.0, )",
           "Ratatui.cs": "[1.0.0, )",
           "Spectre.Console": "[0.51.1, )",
           "Thaum.Core": "[1.0.0, )"
-        }
-      },
-      "ratatui.reload.abstractions": {
-        "type": "Project",
-        "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "[9.0.9, )",
-          "Ratatui.cs": "[1.0.0, )"
         }
       },
       "thaum.core": {
@@ -666,7 +658,7 @@
       "thaum.tui": {
         "type": "Project",
         "dependencies": {
-          "Ratatui.Reload.Abstractions": "[1.0.0, )",
+          "Ratatui.Reload": "[1.0.0, )",
           "Ratatui.cs": "[1.0.0, )",
           "Thaum.Core": "[1.0.0, )"
         }

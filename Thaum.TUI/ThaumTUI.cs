@@ -97,7 +97,7 @@ public partial class ThaumTUI : RatTUI<ThaumTUI>, IReloadableApp {
 		const int H_HEADER = 1;
 		const int H_FOOTER = 1;
 
-		Rect frame = Rat.rect_sz(Vec2.Zero, viewport);
+		Rect frame = Rat.rect_sz(Vec2.zero, viewport);
 
 		(Rect r1, Rect r2, Rect r3) = frame.SplitTopBottom(H_HEADER, H_FOOTER);
 		Paragraph header = ComposeHeader();

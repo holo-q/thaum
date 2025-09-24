@@ -4,7 +4,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Thaum.Core", "Thaum.Core\Thaum.Core.csproj", "{54B7C6B5-4C3A-452C-BC5F-5A93A3AA362A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ratatui.Reload", "Ratatui.Reload\Ratatui.Reload.csproj", "{B5BEBE1E-6B8C-4C5F-9F7B-5B9B2B3B7E21}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ratatui.Reload", "docs\Ratatui.cs\src\Ratatui.Reload\Ratatui.Reload.csproj", "{B5BEBE1E-6B8C-4C5F-9F7B-5B9B2B3B7E21}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Thaum.TUI", "Thaum.TUI\Thaum.TUI.csproj", "{E2C1B1B8-6E8D-4F40-9D58-8F6B7D48C0BA}"
 EndProject
@@ -16,7 +16,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ratatui", "docs\Ratatui.cs\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Holoware.cs", "Holoware.cs\Holoware.cs.csproj", "{73726C6A-D1A5-4AB5-B288-A55C7F847BE6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ratatui.Demo", "Ratatui.Demo\Ratatui.Demo.csproj", "{7860A0DE-180B-4C45-A651-2506FC909BF7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ratatui.Demo", "docs\Ratatui.cs\src\Ratatui.Demo\Ratatui.Demo.csproj", "{7860A0DE-180B-4C45-A651-2506FC909BF7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ratatui.Generators", "docs\Ratatui.cs\generators\Ratatui.Generators.csproj", "{B493A0AA-AA41-4ABC-AA9E-40356E0E1946}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -59,7 +61,9 @@ Global
 		{7860A0DE-180B-4C45-A651-2506FC909BF7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7860A0DE-180B-4C45-A651-2506FC909BF7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7860A0DE-180B-4C45-A651-2506FC909BF7}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
+		{B493A0AA-AA41-4ABC-AA9E-40356E0E1946}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B493A0AA-AA41-4ABC-AA9E-40356E0E1946}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B493A0AA-AA41-4ABC-AA9E-40356E0E1946}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B493A0AA-AA41-4ABC-AA9E-40356E0E1946}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -11,12 +11,12 @@ public sealed class ReferencesScreen : ThaumScreen {
 	public ReferencesScreen(ThaumTUI tui)
 		: base(tui) { }
 
-	public override void Draw(Terminal term, Rect area) {
-		Paragraph title = Paragraph("", title: "References", title_border: true);
+	public override void Draw(Terminal tm, Rect area) {
+		Paragraph title = Title("References", true);
 		(Rect titleRect, Rect listRect) = area.SplitTop(2);
-		term.Draw(title, titleRect);
+		tm.Draw(title, titleRect);
 		List list = List();
-		int  view = Math.Max(1, listRect.Height);
+		int  view = Math.Max(1, listRect.h);
 		if (model.refs is { Count: > 0 }) {
 			if (model.refsSelected < model.refsOffset) model.refsOffset         = model.refsSelected;
 			if (model.refsSelected >= model.refsOffset + view) model.refsOffset = Math.Max(0, model.refsSelected - (view - 1));
@@ -34,7 +34,7 @@ public sealed class ReferencesScreen : ThaumScreen {
 			};
 			list.AppendItem(runs.Span);
 		}
-		term.Draw(list, listRect);
+		tm.Draw(list, listRect);
 	}
 
 	public override Task OnEnter() {
@@ -58,8 +58,8 @@ public sealed class ReferencesScreen : ThaumScreen {
 
 	private void ConfigureKeys() {
 		keys
-			.RegisterKey(KeyCode.Down, "↓", "move", KEY_Down)
-			.RegisterKey(KeyCode.Up, "↑", "move", KEY_Up)
+			.RegisterKey(KeyCode.DOWN, "↓", "move", KEY_Down)
+			.RegisterKey(KeyCode.UP, "↑", "move", KEY_Up)
 			.RegisterKey(KeyCode.PAGE_DOWN, "PgDn", "move", KEY_PageDown)
 			.RegisterKey(KeyCode.PAGE_UP, "PgUp", "move", Key_PageUp)
 			.RegisterChar('o', "open in editor", KEY_OpenInEditor);

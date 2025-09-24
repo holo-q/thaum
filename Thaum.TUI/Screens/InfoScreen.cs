@@ -11,22 +11,23 @@ public sealed class InfoScreen : ThaumScreen {
 
 	public InfoScreen(ThaumTUI tui) : base(tui) { }
 
-	public override void Draw(Terminal term, Rect area) {
-		Paragraph title = Paragraph("", title: "Info", title_border: true);
+	public override void Draw(Terminal tm, Rect area) {
+		Paragraph title = Title("Info", true);
 		(Rect titleRect, Rect detailRect) = area.SplitTop(2);
-		term.Draw(title, titleRect);
+		tm.Draw(title, titleRect);
 		if (model.visibleSymbols.Count == 0) return;
-		CodeSymbol s    = model.visibleSymbols.Selected;
-		Paragraph  para = Paragraph("");
-		para.AppendSpan("Name: ", S_HINT).AppendSpan(s.Name, ThaumStyles.StyleForKind(s.Kind)).AppendLine("");
-		para.AppendSpan("Kind: ", S_HINT).AppendSpan(s.Kind.ToString(), S_INFO).AppendLine("");
-		para.AppendSpan("File: ", S_HINT).AppendSpan(s.FilePath, S_PATH).AppendLine("");
-		para.AppendSpan("Start: ", S_HINT).AppendSpan($"L{s.StartCodeLoc.Line}", S_LINENUM).AppendSpan(":", S_HINT).AppendSpan($"C{s.StartCodeLoc.Character}", S_LINENUM).AppendLine("");
-		para.AppendSpan("End:   ", S_HINT).AppendSpan($"L{s.EndCodeLoc.Line}", S_LINENUM).AppendSpan(":", S_HINT).AppendSpan($"C{s.EndCodeLoc.Character}", S_LINENUM).AppendLine("");
-		para.AppendSpan("Children: ", S_HINT).AppendSpan((s.Children?.Count ?? 0).ToString(), S_INFO).AppendLine("");
-		para.AppendSpan("Deps: ", S_HINT).AppendSpan((s.Dependencies?.Count ?? 0).ToString(), S_INFO).AppendLine("");
-		para.AppendSpan("Last: ", S_HINT).AppendSpan((s.LastModified?.ToString("u") ?? "n/a"), S_INFO);
-		term.Draw(para, detailRect);
+		CodeSymbol s = model.visibleSymbols.Selected;
+
+		Paragraph para = Paragraph();
+		para.Span("Name: ", S_HINT).Span(s.Name, ThaumStyles.StyleForKind(s.Kind)).Line();
+		para.Span("Kind: ", S_HINT).Span(s.Kind.ToString(), S_INFO).Line();
+		para.Span("File: ", S_HINT).Span(s.FilePath, S_PATH).Line();
+		para.Span("Start: ", S_HINT).Span($"L{s.StartCodeLoc.Line}", S_LINENUM).Span(":", S_HINT).Span($"C{s.StartCodeLoc.Character}", S_LINENUM).Line();
+		para.Span("End:   ", S_HINT).Span($"L{s.EndCodeLoc.Line}", S_LINENUM).Span(":", S_HINT).Span($"C{s.EndCodeLoc.Character}", S_LINENUM).Line();
+		para.Span("Children: ", S_HINT).Span((s.Children?.Count ?? 0).ToString(), S_INFO).Line();
+		para.Span("Deps: ", S_HINT).Span((s.Dependencies?.Count ?? 0).ToString(), S_INFO).Line();
+		para.Span("Last: ", S_HINT).Span((s.LastModified?.ToString("u") ?? "n/a"), S_INFO);
+		tm.Draw(para, detailRect);
 	}
 
 	public override Task OnEnter() {

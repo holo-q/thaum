@@ -11,11 +11,11 @@ public sealed class SummaryScreen : ThaumScreen {
 	public SummaryScreen(ThaumTUI tui)
 		: base(tui) { }
 
-	public override void Draw(Terminal term, Rect area) {
-		Paragraph title = Paragraph(title: "Summary", title_border: true);
+	public override void Draw(Terminal tm, Rect area) {
+		Paragraph title = Title("Summary", true);
 		(Rect titleRect, Rect bodyRect) = area.SplitTop(2);
 
-		term.Draw(title, titleRect);
+		tm.Draw(title, titleRect);
 
 		bool isCurrentSymbolLoading = model.visibleSymbols.Count > 0 && model.IsSymbolLoading(model.visibleSymbols.Selected);
 		string bodyText = isCurrentSymbolLoading
@@ -24,10 +24,10 @@ public sealed class SummaryScreen : ThaumScreen {
 
 		Paragraph p = Paragraph();
 		if (bodyText.StartsWith("Error:"))
-			p.AppendSpan(bodyText, Styles.S_ERROR);
+			p.Span(bodyText, Styles.S_ERROR);
 		else
-			p.AppendSpan(bodyText);
-		term.Draw(p, bodyRect);
+			p.Span(bodyText);
+		tm.Draw(p, bodyRect);
 	}
 
 	public override Task OnEnter() {
