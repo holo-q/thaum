@@ -14,17 +14,18 @@ public class SourceScreen : ThaumScreen {
 	public SourceScreen(ThaumTUI tui) : base(tui) { }
 
 	public override void Draw(Terminal tm, Rect area) {
-		Paragraph title = Title("Source", true);
 		(Rect titleRect, Rect listRect) = area.SplitTop(2);
-		tm.Draw(title, titleRect);
+		titleRect.TitleBorder("Source").Draw(tm);
 
-		List<string> lines                                                        = model.sourceLines ?? new List<string>();
-		List         list                                                         = List();
-		int          view                                                         = Math.Max(1, listRect.h - 1);
-		if (model.sourceSelected < model.sourceOffset) model.sourceOffset         = model.sourceSelected;
-		if (model.sourceSelected >= model.sourceOffset + view) model.sourceOffset = Math.Max(0, model.sourceSelected - (view - 1));
-		int start                                                                 = Math.Max(0, model.sourceOffset);
-		int end                                                                   = Math.Min(lines.Count, start + view);
+		List<string> lines = model.sourceLines ?? new List<string>();
+		List list = List();
+		int view = Math.Max(1, listRect.h - 1);
+		if (model.sourceSelected < model.sourceOffset)
+			model.sourceOffset = model.sourceSelected;
+		if (model.sourceSelected >= model.sourceOffset + view)
+			model.sourceOffset = Math.Max(0, model.sourceSelected - (view - 1));
+		int start = Math.Max(0, model.sourceOffset);
+		int end = Math.Min(lines.Count, start + view);
 
 		int symStartLine = 0, symEndLine = -1, symStartCol = 0, symEndCol = 0;
 		if (model.visibleSymbols.Count > 0) {
@@ -36,11 +37,11 @@ public class SourceScreen : ThaumScreen {
 		}
 
 		for (int i = start; i < end; i++) {
-			string                 num      = $"{(i + 1).ToString().PadLeft(5)}  ";
-			Memory<byte>           ln       = Encoding.UTF8.GetBytes(num).AsMemory();
-			string                 line     = lines[i];
-			List<Batching.SpanRun> runs     = new List<Batching.SpanRun>(4) { new Batching.SpanRun(ln, Styles.S_LINENUM) };
-			int                    oneBased = i + 1;
+			string num = $"{(i + 1).ToString().PadLeft(5)}  ";
+			Memory<byte> ln = Encoding.UTF8.GetBytes(num).AsMemory();
+			string line = lines[i];
+			List<Batching.SpanRun> runs = new List<Batching.SpanRun>(4) { new Batching.SpanRun(ln, Styles.S_LINENUM) };
+			int oneBased = i + 1;
 			if (oneBased >= symStartLine && oneBased <= symEndLine) {
 				int sc = (oneBased == symStartLine) ? symStartCol : 0;
 				int ec = (oneBased == symEndLine) ? symEndCol : line.Length;

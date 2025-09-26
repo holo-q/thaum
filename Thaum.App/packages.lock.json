@@ -613,6 +613,7 @@
         "dependencies": {
           "Microsoft.Extensions.Logging": "[9.0.9, )",
           "Microsoft.Extensions.Logging.Abstractions": "[9.0.9, )",
+          "Ratatui.Generators": "[1.0.0, )",
           "Serilog": "[4.3.0, )",
           "Serilog.Extensions.Logging": "[9.0.2, )",
           "Serilog.Formatting.Compact": "[2.0.0, )",
@@ -624,15 +625,6 @@
       },
       "ratatui.generators": {
         "type": "Project"
-      },
-      "ratatui.reload": {
-        "type": "Project",
-        "dependencies": {
-          "Microsoft.Extensions.Logging": "[9.0.9, )",
-          "Ratatui.Generators": "[1.0.0, )",
-          "Ratatui.cs": "[1.0.0, )",
-          "Spectre.Console": "[0.51.1, )"
-        }
       },
       "thaum.core": {
         "type": "Project",
@@ -662,7 +654,6 @@
       "thaum.tui": {
         "type": "Project",
         "dependencies": {
-          "Ratatui.Reload": "[1.0.0, )",
           "Ratatui.cs": "[1.0.0, )",
           "Thaum.Core": "[1.0.0, )"
         }

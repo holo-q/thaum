@@ -12,7 +12,7 @@ public sealed class ReferencesScreen : ThaumScreen {
 		: base(tui) { }
 
 	public override void Draw(Terminal tm, Rect area) {
-		Paragraph title = Title("References", true);
+		Paragraph title = new Paragraph("").Title("References", true);
 		(Rect titleRect, Rect listRect) = area.SplitTop(2);
 		tm.Draw(title, titleRect);
 		List list = List();

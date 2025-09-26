@@ -92,36 +92,30 @@ public partial class ThaumTUI : RatTUI<ThaumTUI>, IReloadableApp {
 		// layout engine edge-cases causing overlap or clears between draws.
 		Vec2 viewport = tm.SizeVec().EnsureMin();
 
-		const int H_HEADER = 1;
-		const int H_FOOTER = 1;
-
 		Rect frame = Rat.rect_sz(Vec2.zero, viewport);
 
-		(Rect r1, Rect r2, Rect r3) = frame.SplitTopBottom(H_HEADER, H_FOOTER);
-		Paragraph header = ComposeHeader();
-		Paragraph footer = ComposeFooter();
+		(Rect r1, Rect r2, Rect r3) = frame.HeaderStatus(topHeight: 1, bottomHeight: 1);
 
-		CurrentScreen.Draw(tm, r2);
-		tm.Draw(header, r1);
-		tm.Draw(footer, r3);
+		tm.Draw(DrawHeader(), r1);
+		tm.Draw(DrawFooter(), r3);
 	}
 
-	private Paragraph ComposeHeader() {
+	private Paragraph DrawHeader() {
 		Screen screen = CurrentScreen;
-		string title  = screen.TitleMsg;
+		string title = screen.TitleMsg;
 		if (screen.TaskBusyMsg)
 			title += $"  {Spinner()}";
 		if (!string.IsNullOrWhiteSpace(screen.ErrMsg))
 			title += "  [error]";
 
-		return Rat.Paragraph($"Thaum — {Path.GetFileName(projectPath)}  {title}");
-	}
+		return new Paragraph($"Thaum — {Path.GetFileName(projectPath)}  {title}");
+}
 
-	private Paragraph ComposeFooter() {
+	private Paragraph DrawFooter() {
 		Screen screen = CurrentScreen ?? scrBrowser;
 		// Prefer key bindings if provided; fallback to FooterHint
 		IReadOnlyList<KeyBinding> help = keys.GetHelp(6);
-		string                    hint;
+		string hint;
 		if (help.Count > 0) {
 			StringBuilder sb = new StringBuilder();
 			for (int i = 0; i < help.Count; i++) {
@@ -137,12 +131,14 @@ public partial class ThaumTUI : RatTUI<ThaumTUI>, IReloadableApp {
 			hint = screen.FooterMsg;
 		}
 
-		Paragraph ret = Rat.Paragraph(hint);
-		if (Environment.GetEnvironmentVariable("THAUM_TUI_DEBUG_KEYS") == "1")
-			ret += S_HINT | $"  | Focus={(model.focus == Panel.Files ? "Files" : "Symbols")} F sel={model.SelectedFile} off={model.fileOffset}  S sel={model.SelectedSymbol} off={model.symOffset}";
+		Paragraph ret = new Paragraph(hint);
+		if (Environment.GetEnvironmentVariable("THAUM_TUI_DEBUG_KEYS") == "1") {
+			string symbols = model.focus == Panel.Files ? "Files" : "Symbols";
+			ret.Style(S_HINT).Line($"  | Focus={symbols} F sel={model.SelectedFile} off={model.fileOffset}  S sel={model.SelectedSymbol} off={model.symOffset}", S_HINT);
+		}
 		if (!string.IsNullOrWhiteSpace(screen.ErrMsg))
-			ret += S_ERROR | $"   Error: {screen.ErrMsg}";
-		ret += S_HINT | "   Ratatui.cs";
+			ret.Line($"   Error: {screen.ErrMsg}", S_ERROR);
+		ret.Line("   Ratatui.cs", S_HINT);
 		return ret;
 	}
 

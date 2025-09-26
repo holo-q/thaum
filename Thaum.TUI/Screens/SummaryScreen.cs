@@ -12,7 +12,7 @@ public sealed class SummaryScreen : ThaumScreen {
 		: base(tui) { }
 
 	public override void Draw(Terminal tm, Rect area) {
-		Paragraph title = Title("Summary", true);
+		Paragraph title = new Paragraph("").Title("Summary", true);
 		(Rect titleRect, Rect bodyRect) = area.SplitTop(2);
 
 		tm.Draw(title, titleRect);
@@ -22,7 +22,7 @@ public sealed class SummaryScreen : ThaumScreen {
 			? $"Summarizing… {Styles.Spinner()}"
 			: (model.summary ?? "No summary yet. Press 3 to (re)generate.");
 
-		Paragraph p = Paragraph();
+		Paragraph p = new Paragraph("");
 		if (bodyText.StartsWith("Error:"))
 			p.Span(bodyText, Styles.S_ERROR);
 		else

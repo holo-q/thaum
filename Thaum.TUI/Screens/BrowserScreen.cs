@@ -64,9 +64,9 @@ public sealed class BrowserScreen : ThaumScreen {
 	public override void Draw(Terminal tm, Rect area) {
 		var state = tui.model;
 
-		bool hasSym     = state.visibleSymbols.Count > 0;
+		bool hasSym = state.visibleSymbols.Count > 0;
 		bool filesFocus = state.focus == ThaumTUI.Panel.Files;
-		bool symsFocus  = state.focus == ThaumTUI.Panel.Symbols;
+		bool symsFocus = state.focus == ThaumTUI.Panel.Symbols;
 
 		IReadOnlyList<Rect> cols = SplitV(area, [
 			Constraint.Percentage(30),
@@ -77,28 +77,25 @@ public sealed class BrowserScreen : ThaumScreen {
 		string t1 = state.fileFilter.Length == 0 ? "(/ to filter)" : $"/{state.fileFilter}";
 		string t2 = state.symFilter.Length == 0 ? "(type to filter)" : $"/{state.symFilter}";
 
-		Rect      r1        = cols[0];
-		Paragraph r1title   = Title("Files", true).Line(t1);
-		Rect      r1inner   = r1.Inner();
-		Rect      r1content = r1inner.Body();
-
-		Rect      r2      = cols[1];
-		Paragraph r2title = Title("Symbols", true).Line(t2);
-		Rect      r2inner = r2.Inner();
-		(Rect r2header, Rect r2content) = r2inner.SplitTop(1);
-
+		Rect r1 = cols[0];
+		Rect r2 = cols[1];
 		Rect r3 = cols[2];
-		(Rect rDetails, Rect rSummary) = r3.SplitTop(Math.Max(6, r3.h / 3));
+
+		Rect r1inner = r1.Inner();
+		Rect r1content = r1inner.Body();
+		Rect r2inner = r2.Inner();
+		(Rect r2header, Rect r2content) = r2inner.SplitTop(1);
+		(Rect rDetails, Rect rSummary)  = r3.SplitTop(Math.Max(6, r3.h / 3));
 
 		int filesView = Math.Max(1, r1content.h);
-		int symsView  = Math.Max(1, r2content.h);
+		int symsView = Math.Max(1, r2content.h);
 
 		// FILES
 		// full-height border with title; draw content inside inner rect
 		// ----------------------------------------
-		tm.Draw(r1title, r1);
+		r1.TitleBorder("Files").Line(t1).Draw(tm);
 
-		Paragraph lbFiles = Title(filesFocus ? " Files " : " files ");
+		// Paragraph lbFiles = Title(filesFocus ? " Files " : " files ");
 		// lbFiles += (filesFocus ? S_TITLE_ACTIVE : S_TITLE_DIM) |
 		//            (filesFocus ? " Files " : " files ");
 		// term.Draw(lbFiles, r1inner.WithMinSize(1, 1));
@@ -116,35 +113,40 @@ public sealed class BrowserScreen : ThaumScreen {
 		// SYMBOLS
 		// full-height border with title; draw content inside inner rect
 		// ----------------------------------------
-		tm.Draw(r2title, r2);
-		tm.Draw(
-			Title(symsFocus ? " Symbols " : " symbols ").Line(
+		r2.TitleBorder("Symbols").Line(t2).Draw(tm);
+		r2header
+			.WithMinSize(minWidth: 1, minHeight: 1)
+			.Title(symsFocus ? " Symbols " : " symbols ")
+			.Line(
 				symsFocus ? " Symbols " : " symbols ",
 				symsFocus ? S_TITLE_ACTIVE : S_TITLE_DIM
-			),
-			r2header.WithMinSize(minWidth: 1, minHeight: 1));
+			).Draw(tm);
 
 		state.visibleSymbols.Draw(tm, r2content, 0, SymbolLine, s => ThaumStyles.StyleForKind(s.Kind));
 
-		tm.Draw(Title("Details", true)
-				.Line(!hasSym ? "" : $"Name: {state.visibleSymbols.Selected.Name}")
-				.Line(!hasSym ? "" : $"Kind: {state.visibleSymbols.Selected.Kind}")
-				.Line(!hasSym ? "" : $"File: {state.visibleSymbols.Selected.FilePath}")
-				.Line(!hasSym ? "" : $"Span: L{state.visibleSymbols.Selected.StartCodeLoc.Line}:C{state.visibleSymbols.Selected.StartCodeLoc.Character}"),
-			rDetails);
+		rDetails
+			.TitleBorder("Details")
+			.Line(!hasSym ? "" : $"Name: {state.visibleSymbols.Selected.Name}")
+			.Line(!hasSym ? "" : $"Kind: {state.visibleSymbols.Selected.Kind}")
+			.Line(!hasSym ? "" : $"File: {state.visibleSymbols.Selected.FilePath}")
+			.Line(!hasSym ? "" : $"Span: L{state.visibleSymbols.Selected.StartCodeLoc.Line}:C{state.visibleSymbols.Selected.StartCodeLoc.Character}")
+			.Draw(tm);
 
 		bool isLoadingCurrent = state.visibleSymbols.Count > 0 && state.IsSymbolLoading(state.visibleSymbols.Selected);
 		string body = isLoadingCurrent
 			? $"Summarizing… {Spinner()}"
 			: state.summary ?? "";
 
-		Paragraph detail = Title("Summary", true);
+		Paragraph detail = rSummary
+			.WithMinSize(minHeight: 1)
+			.TitleBorder("Summary");
+
 		if (body.StartsWith("Error:"))
 			detail += body | S_ERROR;
 		else
 			detail += body;
 
-		tm.Draw(detail, rSummary.WithMinSize(minHeight: 1));
+		detail.Draw(tm);
 	}
 
 
