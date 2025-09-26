@@ -92,7 +92,7 @@ public partial class ThaumTUI : RatTUI<ThaumTUI>, IReloadableApp {
 		// layout engine edge-cases causing overlap or clears between draws.
 		Vec2 viewport = tm.SizeVec().EnsureMin();
 
-		Rect frame = Rat.rect_sz(Vec2.zero, viewport);
+		Rect frame = Rat.Rectsz(Vec2.zero, viewport);
 
 		(Rect r1, Rect r2, Rect r3) = frame.HeaderStatus(topHeight: 1, bottomHeight: 1);
 
